@@ -1,0 +1,4 @@
+build
+.cache
+.config
+autoconf.h
