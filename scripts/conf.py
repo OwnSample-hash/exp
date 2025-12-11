@@ -957,7 +957,7 @@ class MenuConfig:
                 else:
                     logger.verbose_1(  # pyright: ignore
                         f"Setting {props[idx]['name']} to {new_value}"
-                        )
+                    )
                     setattr(opt, props[idx]["name"], new_value)
             except ValueError:
                 continue
