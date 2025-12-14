@@ -296,6 +296,37 @@ class MenuConfig:
             return False, tuple(collected_deps)
         return True, ("",)
 
+    def _check_show_if(self, opt: ConfigOption) -> bool:
+        """Check if show_if conditions are satisfied"""
+        logger.verbose_1(  # pyright: ignore
+            f"Checking show_if conditions for option: {opt.name}"
+        )
+        if not opt.show_if:
+            return True
+
+        all_options = self._flatten_options(self.config)
+        name_to_option = {o.name: o for o in all_options}
+        split = lambda c: (c, None) if "." not in c else c.split(".", 1)
+
+        for condition in opt.show_if:
+            condition, sub = split(condition)
+            if condition not in name_to_option:
+                return False
+            cond_opt = name_to_option[condition]
+            if cond_opt.type == ConfigType.BOOL:
+                if not cond_opt.value:
+                    return False
+            elif cond_opt.type == ConfigType.TRISTATE:
+                if cond_opt.value != "y":
+                    return False
+            elif cond_opt.type == ConfigType.CHOICE:
+                if not cond_opt.value == sub:
+                    return False
+            else:
+                if not cond_opt.value:
+                    return False
+        return True
+
     def run(self, stdscr: curses.window):
         """Main curses loop"""
         logger.debug("Starting curses main loop")
@@ -335,6 +366,9 @@ class MenuConfig:
                 if idx >= display_height:
                     break
 
+                if self._check_show_if(opt) is False:
+                    continue
+
                 y_pos = idx + 2
                 actual_idx = idx + self.scroll_offset
 
@@ -369,7 +403,7 @@ class MenuConfig:
 
             # Draw footer
             logger.verbose_1("Drawing footer")  # pyright: ignore
-            footer = f"<Enter>Select/Edit  <Space>Toggle  <S>Save  <Q>Quit  <?>Help <BS>Back{'  <E>Edit Option  <N>New Option  <D>elete option' if self.editor_enabled else ''}"
+            footer = f"<Enter>Select/Edit  <Space>Toggle  <S>Save  <Q>Quit  <?>Help{'  <BS>Back' if self.menu_stack else ''}{'  <E>Edit Option  <N>New Option  <D>elete option' if self.editor_enabled else ''}"
             stdscr.attron(curses.color_pair(2))
             stdscr.addstr(height - 2, 0, footer[:width].ljust(width))
             stdscr.attroff(curses.color_pair(2))
@@ -408,6 +442,7 @@ class MenuConfig:
                         self.scroll_offset += 1
             elif key == ord(" "):
                 self._toggle_option(visible_items[self.current_selection])
+                stdscr.clear()
             elif key in [ord("n"), ord("N")] and self.editor_enabled:
                 logger.verbose_1("Creating new option")  # pyright: ignore
                 self._new_option(stdscr)
@@ -1095,6 +1130,7 @@ class MenuConfig:
                     depends_on=opt_dict.get("depends"),
                     range=opt_dict.get("range", None),
                     source_file=opt_dict.get("source", ""),
+                    show_if=opt_dict.get("show_if", None),
                     children=(
                         self._load_config_from_file(opt_dict["source"], depth=depth + 1)
                         if "source" in opt_dict
@@ -1120,6 +1156,7 @@ class MenuConfig:
                             help_text=opt_dict.get("help_text_fmt", "").format(
                                 filename=os.path.basename(file).split(".")[0]
                             ),
+                            show_if=opt_dict.get("show_if", None),
                         )
                     )
                 return ConfigOption(
@@ -1130,6 +1167,7 @@ class MenuConfig:
                     depends_on=opt_dict.get("depends_on"),
                     range=opt_dict.get("range", None),
                     source_file=opt_dict.get("source", ""),
+                    show_if=opt_dict.get("show_if", None),
                     children=children,
                 )
             return ConfigOption(
@@ -1141,6 +1179,7 @@ class MenuConfig:
                 depends_on=opt_dict.get("depends_on"),
                 choices=opt_dict.get("choices", []),
                 range=opt_dict.get("range", None),
+                show_if=opt_dict.get("show_if", None),
                 source_file=opt_dict.get("source", ""),
             )
 
