@@ -1115,6 +1115,9 @@ class MenuConfig:
             raise RecursionError("Maximum menu depth exceeded")
         with open(filename, "r") as f:
             data = yaml.safe_load(f)
+        if depth == 0:
+            self.old_cwd = os.getcwd()
+            os.chdir(os.path.dirname(os.path.abspath(filename)))
 
         def parse_option(opt_dict):
             opt_type = ConfigType(opt_dict["type"])
@@ -1183,7 +1186,10 @@ class MenuConfig:
                 source_file=opt_dict.get("source", ""),
             )
 
-        return [parse_option(opt) for opt in data]
+        tmp = [parse_option(opt) for opt in data]
+        if depth == 0:
+            os.chdir(self.old_cwd)
+        return tmp
 
 
 if __name__ == "__main__":
