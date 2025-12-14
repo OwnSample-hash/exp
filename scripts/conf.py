@@ -251,7 +251,17 @@ class MenuConfig:
     def get_visible_items(self) -> List[ConfigOption]:
         """Get currently visible menu items"""
         logger.verbose_1("Getting visible menu items")  # pyright: ignore
-        return [opt for opt in self.current_menu]
+        return [opt for opt in self.current_menu if self._check_show_if(opt)]
+
+    def _flatten_options(self, options: List[ConfigOption]) -> List[ConfigOption]:
+        logger.verbose_1("Flattening options for dependency check")  # pyright: ignore
+        result = []
+        for option in options:
+            result.append(option)
+            if option.children:
+                result.extend(self._flatten_options(option.children))
+        logger.verbose_2(f"{result=}")  # pyright: ignore
+        return result
 
     def _check_depends(self, opt: ConfigOption) -> tuple[bool, tuple[str]]:
         """Check if dependencies are satisfied, and if not return missing dependencies"""
@@ -262,19 +272,7 @@ class MenuConfig:
             return True, ("",)
         collected_deps = []
 
-        def flatten_options(options: List[ConfigOption]) -> List[ConfigOption]:
-            logger.verbose_1(  # pyright: ignore
-                "Flattening options for dependency check"
-            )
-            result = []
-            for option in options:
-                result.append(option)
-                if option.children:
-                    result.extend(flatten_options(option.children))
-            logger.verbose_2(f"{result=}")  # pyright: ignore
-            return result
-
-        all_options = flatten_options(self.config)
+        all_options = self._flatten_options(self.config)
         name_to_option = {o.name: o for o in all_options}
         for dep in opt.depends_on:
             if dep not in name_to_option:
