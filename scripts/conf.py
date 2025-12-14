@@ -38,10 +38,11 @@ class ConfigOption:
     default: Any = None
     help_text: str = ""
     help_text_fmt: Optional[str] = ""
-    depends_on: Optional[List[str]] = None
-    choices: List[dict[str, str]] = field(default_factory=list)
-    children: List["ConfigOption"] = field(default_factory=list)
+    choices: list[dict[str, str]] = field(default_factory=list)
+    children: list["ConfigOption"] = field(default_factory=list)
     range: Optional[dict[str, int]] = None
+    depends_on: Optional[List[str]] = None
+    show_if: Optional[list[str]] = None
     value: Any = None
     source_file: str = ""
 
