@@ -3,3 +3,4 @@ build
 .config
 autoconf.h
 log
+include/modules.hpp
