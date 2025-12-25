@@ -1145,7 +1145,11 @@ class MenuConfig:
                     f"Loading submenus from {opt_dict['source']} for {opt_dict['name']}"
                 )
                 children = []
-                for file in glob(opt_dict["source"]):
+                for file in (
+                    x
+                    for x in glob("modules/*/config.yaml")
+                    if x != "modules/template/config.yaml"
+                ):
                     logger.verbose_2(  # pyright: ignore
                         f"Loading dynamic submenu from file: {file}"
                     )

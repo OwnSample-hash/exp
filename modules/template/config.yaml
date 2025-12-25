@@ -1,0 +1,6 @@
+- name: CONFIG_%s
+  prompt: "%s Configuration"
+  type: string
+  default: "%s"
+  help_text: Placeholder option.
+
