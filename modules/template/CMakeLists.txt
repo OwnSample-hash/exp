@@ -1,22 +1,25 @@
 option(MODULE_%s_STATIC "Build %s module static" ON)
 option(MODULE_%s_DYNAMIC "Build %s module dynamic" OFF)
 
-
 set(MOD_NAME %s)
 set(MOD_SRC src/%s.cpp)
-
 
 if(MODULE_%s_STATIC)
   add_library(${MOD_NAME}_static STATIC ${MOD_SRC})
   target_sources(${MOD_NAME}_static PUBLIC ${MOD_SRC})
+  target_sources(${MOD_NAME}_static PUBLIC ${MOD_SRC})
+  target_include_directories(${MOD_NAME}_static PUBLIC include ../../include/ ../../interfaces/)
   target_link_libraries(${MOD_NAME}_static PRIVATE spdlog::spdlog)
+  target_compile_definitions(${MOD_NAME}_static PRIVATE MODULE_%s_STATIC)
 endif()
 
-
-if(MODULE_EXAMPLE_DYNAMIC)
+if(MODULE_%s_DYNAMIC)
   add_library(${MOD_NAME}_dynamic SHARED ${MOD_SRC})
   target_sources(${MOD_NAME}_dynamic PUBLIC ${MOD_SRC})
+  target_sources(${MOD_NAME}_static PUBLIC ${MOD_SRC})
+  target_include_directories(${MOD_NAME}_dynamic PUBLIC include ../../include/ ../../interfaces/)
   target_link_libraries(${MOD_NAME}_dynamic PRIVATE spdlog::spdlog)
+  target_compile_definitions(${MOD_NAME}_static PRIVATE MODULE_%s_DYNAMIC)
 endif()
 
 enable_testing()

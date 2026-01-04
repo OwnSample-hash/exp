@@ -1,7 +1,7 @@
 #include "/tmp/new_mod.h"
 
-#include <asm-generic/errno-base.h>
 #include <errno.h>
+#include <iso646.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,13 +12,23 @@
 #define __MAX_SIZE 40960
 #endif
 
+#ifndef TEMPLATE_CPP_VARGS
+#error "TEMPLATE_CPP_VARGS not defined"
+#endif
+
+#ifndef TEMPLATE_HPP_VARGS
+#error "TEMPLATE_HPP_VARGS not defined"
+#endif
+
 typedef struct {
   const char *name;
   const char *in_file[16];
+  const int skip_first_line;
+  const char *cnt;
   const char contents[__MAX_SIZE + 1];
 } FileTemplate_t;
 
-const FileTemplate_t file_templates[] = {
+FileTemplate_t file_templates[] = {
     {
         "CMakeLists.txt",
         {
@@ -29,10 +39,16 @@ const FileTemplate_t file_templates[] = {
             CONFIG_NEW_MODULE_NAME,
             CONFIG_NEW_MODULE_NAME,
             CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
             NULL,
         },
+        0,
+        NULL,
 #embed "../modules/template/CMakeLists.txt"
     },
+
     {
         "tests/CMakeLists.txt",
         {
@@ -43,39 +59,61 @@ const FileTemplate_t file_templates[] = {
             CONFIG_NEW_MODULE_NAME,
             CONFIG_NEW_MODULE_NAME,
             CONFIG_NEW_MODULE_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_NAME,
+            CONFIG_NEW_MODULE_NAME,
+            CONFIG_NEW_MODULE_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_NAME,
             CONFIG_NEW_MODULE_NAME,
             NULL,
         },
+        0,
+        NULL,
 #embed "../modules/template/tests/CMakeLists.txt"
     },
+
     {
         "tests/test_" CONFIG_NEW_MODULE_NAME ".cpp",
         {
 
             CONFIG_NEW_MODULE_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_NAME,
+            CONFIG_NEW_MODULE_NAME,
+            CONFIG_NEW_MODULE_UP_NAME,
+            CONFIG_NEW_MODULE_NAME,
             CONFIG_NEW_MODULE_NAME,
             NULL,
         },
-#embed "../modules/template/tests/test_template.cpp"
+        1,
+        NULL,
+#embed "../modules/template/tests/test.cpp"
     },
+
     {
         "src/" CONFIG_NEW_MODULE_NAME ".cpp",
         {
-            CONFIG_NEW_MODULE_NAME,
-            CONFIG_NEW_MODULE_NAME,
-            CONFIG_NEW_MODULE_NAME,
+            TEMPLATE_CPP_VARGS,
             NULL,
         },
+        1,
+        NULL,
 #embed "../modules/template/src/template.cpp"
     },
+
     {
         "include/" CONFIG_NEW_MODULE_NAME ".hpp",
         {
-            CONFIG_NEW_MODULE_NAME,
+            TEMPLATE_HPP_VARGS,
             NULL,
         },
+        1,
+        NULL,
 #embed "../modules/template/include/template.hpp"
     },
+
     {
         "config.yaml",
         {
@@ -84,10 +122,15 @@ const FileTemplate_t file_templates[] = {
             CONFIG_NEW_MODULE_NAME,
             NULL,
         },
+        0,
+        NULL,
 #embed "../modules/template/config.yaml"
     },
+
     {
         NULL,
+        NULL,
+        0,
         NULL,
         0,
     } // Sentinel to mark the end of the array
@@ -96,7 +139,7 @@ const FileTemplate_t file_templates[] = {
 const char *BASE_PATH = "modules/" CONFIG_NEW_MODULE_NAME "/";
 
 size_t get_memory_size_for_formatting(const FileTemplate_t *template) {
-  size_t size = strlen(template->contents) + 1; // +1 for null terminator
+  size_t size = strlen(template->cnt) + 1; // +1 for null terminator
   for (int i = 0; template->in_file[i] != NULL; i++) {
     size += strlen(template->in_file[i]);
   }
@@ -113,7 +156,7 @@ int main(int argc, const char **argv) {
     return 1;
   }
   for (int i = 0; file_templates[i].name != NULL; i++) {
-    const FileTemplate_t *template = file_templates + i;
+    FileTemplate_t *template = file_templates + i;
     char full_path[512];
     snprintf(full_path, sizeof(full_path), "%s%s", BASE_PATH, template->name);
 
@@ -132,6 +175,18 @@ int main(int argc, const char **argv) {
       }
     }
 
+    if (template->skip_first_line) {
+      int i = 0;
+      while (template->contents[i] != '\n' && template->contents[i] != '\0') {
+        i++;
+      }
+      if (template->contents[i] == '\n')
+        template->cnt = template->contents + i + 1;
+
+    } else {
+      template->cnt = template->contents;
+    }
+
     if (template->in_file[0] == NULL) {
       // Write the file
       FILE *file = fopen(full_path, "w");
@@ -139,7 +194,7 @@ int main(int argc, const char **argv) {
         perror("Failed to create file");
         return 1;
       }
-      fwrite(template->contents, 1, strlen(template->contents), file);
+      fwrite(template->contents, 1, strlen(template->cnt), file);
       fclose(file);
       printf("Created: %s\n", full_path);
     } else {
@@ -156,7 +211,7 @@ int main(int argc, const char **argv) {
         fclose(file);
         return 1;
       }
-      snprintf(buffer, needed_size, template->contents, template->in_file[0],
+      snprintf(buffer, needed_size, template->cnt, template->in_file[0],
                template->in_file[1], template->in_file[2], template->in_file[3],
                template->in_file[4], template->in_file[5], template->in_file[6],
                template->in_file[7], template->in_file[8], template->in_file[9],
