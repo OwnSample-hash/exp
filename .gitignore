@@ -4,3 +4,4 @@ build
 autoconf.h
 log
 include/modules.hpp
+conf_debug.log
