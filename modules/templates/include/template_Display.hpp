@@ -1,9 +1,11 @@
 // clang-format off
 #pragma once
 #include <color.hpp>
-#include <display.hpp>
+#include <interfaces/display.hpp>
 #include <functional>
 #include <string_view>
+
+using namespace exp;
 
 void module_entry_%s();
 
@@ -11,6 +13,13 @@ class %s : IDisplay {
 public:
   %s();
   ~%s() override;
+
+  const char *getName() const override;
+  const char *getVersion() const override;
+
+  void initialize() override;
+  void shutdown() override;
+
   void clearScreen() override;
   void updateScreen() override;
 

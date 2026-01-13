@@ -4,6 +4,20 @@
 void module_entry_%s() {
   // Module entry point implementation
 }
+ 
+const char *%s::getName() const {
+  return "%s";
+}
+const char *%s::getVersion() const {
+  return %s;
+}
+
+void %s::initialize() {
+  // Module initialization implementation
+}
+void %s::shutdown() {
+  // Module shutdown implementation
+}
 
 %s::%s() {
   // Constructor implementation
