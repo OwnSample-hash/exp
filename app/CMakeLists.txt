@@ -1,7 +1,6 @@
 add_executable(main_app src/main.cpp)
 target_link_libraries(main_app PRIVATE spdlog::spdlog)
 target_include_directories(main_app PRIVATE ../include)
-target_include_directories(main_app PRIVATE ../interfaces)
 
 target_sources(main_app PUBLIC)
 

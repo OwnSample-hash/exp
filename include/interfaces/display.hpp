@@ -2,9 +2,12 @@
 
 #include <color.hpp>
 #include <functional>
+#include <interfaces/mod.hpp>
 #include <string_view>
 
-class IDisplay {
+namespace explo {
+
+class IDisplay : public IMod {
 public:
   virtual ~IDisplay() = default;
 
@@ -33,4 +36,6 @@ public:
   virtual ~IInetarctableUIComponent() = default;
   virtual T getResult() = 0;
 };
+
+}; // namespace explo
 // Vim: set expandtab tabstop=2 shiftwidth=2:
