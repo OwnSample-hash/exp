@@ -1,7 +1,7 @@
 CONFIG_FILE := ".config"
 
 menuconfig:
-	@scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "autoconf.h" --rm --debug -vv --enable-editor
+	@scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "include/config.h" --rm --debug -vv --enable-editor
 
 newmodules:
 	@scripts/conf.py --config configs/new_module.yaml --output "/tmp/new_mod.json" --header "/tmp/new_mod.h" --debug -vv
