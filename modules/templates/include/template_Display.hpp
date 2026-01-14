@@ -9,7 +9,7 @@ using namespace exp;
 
 void module_entry_%s();
 
-class %s : IDisplay {
+class %s : public IDisplay {
 public:
   %s();
   ~%s() override;
