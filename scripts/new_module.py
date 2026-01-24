@@ -3,6 +3,7 @@ import os
 import json
 import pathlib
 import argparse
+import argcomplete
 import tabulate
 
 
@@ -60,7 +61,6 @@ def load_fargs(name: str, config_data: dict) -> list[str]:
     raw_list = []
     template_path = pathlib.Path(
         os.getcwd(),
-        "modules",
         "templates",
         name.split("/")[0],
         f"vargs_{config_data["CONFIG_NEW_MODULE_TYPE"]}.txt",
@@ -87,7 +87,7 @@ def generate_templates() -> list[FileTemplate]:
                 "CONFIG_NEW_MODULE_UP_NAME",
             ],
             skip_first_line=False,
-            template_file="modules/templates/CMakeLists.txt",
+            template_file="templates/CMakeLists.txt",
         ),
         FileTemplate(
             name="tests/CMakeLists.txt",
@@ -109,7 +109,7 @@ def generate_templates() -> list[FileTemplate]:
                 "CONFIG_NEW_MODULE_NAME",
             ],
             skip_first_line=False,
-            template_file="modules/templates/tests/CMakeLists.txt",
+            template_file="templates/tests/CMakeLists.txt",
         ),
         FileTemplate(
             name=(
@@ -125,7 +125,7 @@ def generate_templates() -> list[FileTemplate]:
                 "CONFIG_NEW_MODULE_NAME",
             ],
             skip_first_line=True,
-            template_file="modules/templates/tests/test.cpp",
+            template_file="templates/tests/test.cpp",
         ),
         FileTemplate(
             name=(
@@ -134,7 +134,7 @@ def generate_templates() -> list[FileTemplate]:
             fargs=load_fargs,  # pyright: ignore
             skip_first_line=True,
             template_file=(
-                lambda x: f"modules/templates/src/template_{x["CONFIG_NEW_MODULE_TYPE"]}.cpp"
+                lambda x: f"templates/src/template_{x["CONFIG_NEW_MODULE_TYPE"]}.cpp"
             ),  # pyright: ignore
         ),
         FileTemplate(
@@ -144,7 +144,7 @@ def generate_templates() -> list[FileTemplate]:
             fargs=load_fargs,  # pyright: ignore
             skip_first_line=True,
             template_file=(
-                lambda x: f"modules/templates/include/template_{x["CONFIG_NEW_MODULE_TYPE"]}.hpp"
+                lambda x: f"templates/include/template_{x["CONFIG_NEW_MODULE_TYPE"]}.hpp"
             ),  # pyright: ignore
         ),
         FileTemplate(
@@ -155,7 +155,7 @@ def generate_templates() -> list[FileTemplate]:
                 "CONFIG_NEW_MODULE_NAME",
             ],
             skip_first_line=False,
-            template_file="modules/templates/config.yaml",
+            template_file="templates/config.yaml",
         ),
     ]
 
@@ -179,6 +179,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Outputs the formatted content of each generated file to stdout.",
     )
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
     try:
@@ -260,6 +261,7 @@ if __name__ == "__main__":
                 config_data["CONFIG_NEW_MODULE_NAME"],
                 template.name,
             )
+            print(f"Creating file: {target_path}")
             os.makedirs(target_path.parent, exist_ok=True)
             with open(template.template_file, "r") as tf:
                 template_lines = tf.readlines()
@@ -268,7 +270,6 @@ if __name__ == "__main__":
             content = "".join(template_lines) % tuple(template.fargs)
             with open(target_path, "w") as out_file:
                 out_file.write(content)
-            print(f"Created file: {target_path}")
         print(
             f"Module {config_data['CONFIG_NEW_MODULE_NAME']} created successfully."
         )

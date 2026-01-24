@@ -1,0 +1,25 @@
+- name: CONFIG_NEW_MODULE_NAME
+  prompt: New Module Name
+  type: string
+  default: "new_module"
+  help_text: Specify the name of the new module.
+
+- name: CONFIG_NEW_MODULE_TYPE
+  prompt: New Module Type
+  type: choice
+  help_text: Select the type of the new module.
+  default: Script
+  choices:
+    - name: BasicPlugin
+      description: basic plugin with no modul 
+    - name: Script
+      description: script-based module
+    - name: Display
+      description: display module
+
+- name: CONFIG_NEW_MODULE_ENABLED
+  prompt: Enable New Module
+  type: bool
+  default: false
+  help_text: Enable or disable the new module functionality.
+

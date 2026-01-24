@@ -1,10 +1,27 @@
 // clang-format off
 #include <%s.hpp>
 
-void module_entry_%s() {
-  // Module entry point implementation
+std::string_view PL_%s::getName() const {
+  return "%s";
 }
- 
+
+std::string_view PL_%s::getVersion() const {
+  return %s;
+}
+
+void PL_%s::initialize(std::list<explo::Module> &modules) {
+  // Register the display module
+  modules.emplace_back(%s, explo::MODULE_TYPE_DISPLAY, std::make_unique<%s>());
+}
+
+void PL_%s::execute() {
+  // Plugin execution implementation
+}
+
+static PluginRegistry::Add<PL_%s> %sRegister(%s);
+
+// Belongs to the module type(s): %s
+
 const char *%s::getName() const {
   return "%s";
 }
