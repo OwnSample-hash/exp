@@ -15,13 +15,13 @@ enum ModuleType {
 };
 
 struct Module {
-  int id;
+  int id = -1;
   const char *name;
   int type;
   std::unique_ptr<IMod> instance;
 
-  Module(int id, const char *name, int type, std::unique_ptr<IMod> instance)
-      : id(id), name(name), type(type), instance(std::move(instance)) {}
+  Module(const char *name, int type, std::unique_ptr<IMod> instance)
+      : name(name), type(type), instance(std::move(instance)) {}
   Module(Module &&) = default;
   Module(const Module &) = delete;
 };
