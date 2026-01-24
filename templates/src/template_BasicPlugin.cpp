@@ -17,5 +17,5 @@ void PL_%s::execute() {
   // Plugin execution implementation
 }
 
-static PluginRegistry::Add<PL_%s> %sRegister(%s);
+static PluginRegistry::Add<PL_%s> %sRegister("%s");
 // Vim: set expandtab tabstop=2 shiftwidth=2:

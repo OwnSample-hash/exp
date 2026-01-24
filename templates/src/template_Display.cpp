@@ -18,7 +18,7 @@ void PL_%s::execute() {
   // Plugin execution implementation
 }
 
-static PluginRegistry::Add<PL_%s> %sRegister(%s);
+static PluginRegistry::Add<PL_%s> %sRegister("%s");
 
 // Belongs to the module type(s): %s
 

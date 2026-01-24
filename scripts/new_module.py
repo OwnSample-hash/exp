@@ -75,15 +75,8 @@ def generate_templates() -> list[FileTemplate]:
         FileTemplate(
             name="CMakeLists.txt",
             fargs=[
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
                 "CONFIG_NEW_MODULE_NAME",
                 "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
                 "CONFIG_NEW_MODULE_UP_NAME",
             ],
             skip_first_line=False,

@@ -13,10 +13,10 @@ class PL_%s : public IPlugin {
 public:
   PL_%s() = default;
   ~PL_%s() = default;
-  std::string_view getName() const;
-  std::string_view getVersion() const;
-  void initialize(std::list<Module> &modules);
-  void execute();
+  std::string_view getName() const override;
+  std::string_view getVersion() const override;
+  void initialize(std::list<Module> &modules) override;
+  void execute() override;
 };
 
 // Vim: set expandtab tabstop=2 shiftwidth=2:
