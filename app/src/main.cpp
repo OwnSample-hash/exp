@@ -27,8 +27,6 @@ const std::list<std::unique_ptr<IPlugin>> &get_loaded_plugins() {
 }
 
 int main() {
-  spdlog::info("Platform: {}", platform_name);
-
   PluginLoader &loader = PluginLoader::instance();
 
   std::string plugin_path = "";
