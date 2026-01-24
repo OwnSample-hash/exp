@@ -5,6 +5,7 @@ A terminal-based configuration menu similar to Linux kernel menuconfig
 """
 
 import argparse
+import argcomplete
 import curses
 import logging
 import json
@@ -1247,6 +1248,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v", "--verbose", action="count", default=0, help="Increase verbosity level"
     )
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
     MAX_VERBOSE_LEVEL = 2
     args.verbose = min(args.verbose, MAX_VERBOSE_LEVEL)
