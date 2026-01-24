@@ -4,6 +4,8 @@ target_include_directories(main_app PRIVATE ../include)
 
 target_sources(main_app PUBLIC)
 
+set_property(TARGET main_app PROPERTY ENABLE_EXPORTS ON)
+
 if(MODULE_NEW_MODULE_STATIC)
   target_link_libraries(main_app PRIVATE new_module_static)
 endif()
