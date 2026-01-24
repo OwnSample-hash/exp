@@ -6,6 +6,7 @@
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <type_traits>
 
 template <typename T, typename... CTorParamTypes> class SRE {
   using FactoryFN = std::function<std::unique_ptr<T>(CTorParamTypes &&...)>;
@@ -97,7 +98,9 @@ public:
     return explo::iterator_range<iterator>(begin(), end());
   }
 
-  template <typename V> class Add {
+  template <typename V>
+    requires std::is_base_of<T, V>::value
+  class Add {
     entry Entry;
     node Node;
 
