@@ -13,10 +13,10 @@ class PL_basic_tui : public IPlugin {
 public:
   PL_basic_tui() = default;
   ~PL_basic_tui() = default;
-  std::string_view getName() const;
-  std::string_view getVersion() const;
-  void initialize(std::list<Module> &modules);
-  void execute();
+  std::string_view getName() const override;
+  std::string_view getVersion() const override;
+  void initialize(std::list<Module> &modules) override;
+  void execute() override;
 };
 
 class basic_tui : public IDisplay {

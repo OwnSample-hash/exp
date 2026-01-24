@@ -1,32 +1,25 @@
 #include <basic_tui.hpp>
 
-std::string_view PL_basic_tui::getName() const {
-  return "basic_tui";
-}
+std::string_view PL_basic_tui::getName() const { return "basic_tui"; }
 
-std::string_view PL_basic_tui::getVersion() const {
-  return "0.0.1";
-}
+std::string_view PL_basic_tui::getVersion() const { return "0.0.1"; }
 
 void PL_basic_tui::initialize(std::list<explo::Module> &modules) {
   // Register the display module
-  modules.emplace_back("basic display module", explo::MODULE_TYPE_DISPLAY, std::make_unique<basic_tui>());
+  modules.emplace_back("basic display module", explo::MODULE_TYPE_DISPLAY,
+                       std::make_unique<basic_tui>());
 }
 
 void PL_basic_tui::execute() {
   // Plugin execution implementation
 }
 
-static PluginRegistry::Add<PL_basic_tui> basic_tuiRegister(basic_tui);
+static PluginRegistry::Add<PL_basic_tui> basic_tuiRegister("basic_tui");
 
 // Belongs to the module type(s): basic_tui
 
-const char *basic_tui::getName() const {
-  return "basic_tui";
-}
-const char *basic_tui::getVersion() const {
-  return "0.1.0";
-}
+const char *basic_tui::getName() const { return "basic_tui"; }
+const char *basic_tui::getVersion() const { return "0.1.0"; }
 
 void basic_tui::initialize() {
   // Module initialization implementation
@@ -61,7 +54,8 @@ int basic_tui::getHeight() const {
   return 0;
 }
 
-void basic_tui::drawText(int x, int y, std::string_view text, Color fg, Color bg) {
+void basic_tui::drawText(int x, int y, std::string_view text, Color fg,
+                         Color bg) {
   // Implementation to draw text on the display
 }
 
