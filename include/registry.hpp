@@ -1,8 +1,8 @@
 #pragma once
-#include "iterator.hpp"
-#include "iterator_range.hpp"
 #include <functional>
+#include <iterator.hpp>
 #include <iterator>
+#include <iterator_range.hpp>
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -94,7 +94,7 @@ public:
   static iterator end() { return iterator(nullptr); }
 
   static explo::iterator_range<iterator> entries() {
-    return iterator_range<iterator>(begin(), end());
+    return explo::iterator_range<iterator>(begin(), end());
   }
 
   template <typename V> class Add {
