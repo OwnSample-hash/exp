@@ -41,4 +41,5 @@ public:
 
   void onInputChar(std::function<void(char)>) override;
 };
+
 // Vim: set expandtab tabstop=2 shiftwidth=2:
