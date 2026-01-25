@@ -11,7 +11,7 @@ gen_modules_inc:
 	@mkdir -p include
 	@echo "// This file is auto-generated. Do not edit!" > include/modules.hpp
 	@echo "#pragma once" >> include/modules.hpp
-	@for i in $$(find modules/ -type f -wholename "*/include/*.hpp"); do \
+	@for i in $$(find plugins/ -type f -wholename "*/include/*.hpp"); do \
 		if [[ "$$i" == *"template"* ]]; then continue; fi; \
 		echo "#include \"../$$i\"" >> include/modules.hpp; \
 	done

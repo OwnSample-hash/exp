@@ -17,7 +17,7 @@ CPMAddPackage("gh:gabime/spdlog@1.16.0")
 CPMAddPackage("gh:catchorg/Catch2@3.11.0")
 
 # Global modules
-add_subdirectory(modules)
+add_subdirectory(plugins)
 add_subdirectory(app)
 enable_testing()
 # Vim: set expandtab tabstop=2 shiftwidth=2:
