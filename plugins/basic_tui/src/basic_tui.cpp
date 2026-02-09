@@ -1,8 +1,8 @@
 #include <basic_tui.hpp>
 
-std::string_view PL_basic_tui::getName() const { return "basic_tui"; }
+const std::string PL_basic_tui::getName() const { return "basic_tui"; }
 
-std::string_view PL_basic_tui::getVersion() const { return "0.0.1"; }
+const std::string PL_basic_tui::getVersion() const { return "0.0.1"; }
 
 void PL_basic_tui::initialize(std::list<explo::Module> &modules) {
   // Register the display module

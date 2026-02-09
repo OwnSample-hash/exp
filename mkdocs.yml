@@ -1,0 +1,28 @@
+site_name: "explo"
+
+theme:
+  name: "material"
+  palette:
+    - scheme: default
+      primary: "indigo"
+      accent: "indigo"
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: "indigo"
+      accent: "indigo"
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdoxy:
+      projects:
+        explo:
+          src-dirs: app/src include/
+          full-doc: true
+          doxy-cfg:
+            FILE_PATTERNS: "*.hpp *.cpp"
+            RECURSIVE: YES
