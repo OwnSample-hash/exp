@@ -9,7 +9,9 @@ flow: @flow
 	@printf "Done!\n"
 
 menuconfig menuconfig@flow:
-	@scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "include/config.h" --rm --debug -vv --enable-editor
+	@if [[ ! -f ${CONFIG_FILE} ]]; then \
+		scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "include/config.h" --rm --debug -vv --enable-editor; \
+	fi
 
 newmodules:
 	@scripts/conf.py --config configs/new_module.yaml --output "/tmp/new_mod.json" --header "/tmp/new_mod.h" --debug -vv
@@ -27,5 +29,14 @@ gen_plugins_inc gen_plugins_inc@flow:
 
 build build@flow:
 	@mkdir -p build
-	@cmake -S . -B build -G "Ninja"
+	@if [[ -x "$(which ninja)" ]]; then \
+		GENERATOR="Ninja"; \
+	else \
+		GENERATOR="Unix Makefiles"; \
+	fi; \
+	if [[ ! -d build ]]; then \
+		cmake -S . -B build -G "$$GENERATOR" -DCMAKE_BUILD_TYPE=Release; \
+	else \
+		cmake -S . -B build;  \
+	fi; 
 	@cmake --build build
