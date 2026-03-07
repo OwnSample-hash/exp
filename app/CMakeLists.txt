@@ -1,5 +1,7 @@
-add_executable(main_app src/main.cpp)
-target_link_libraries(main_app PRIVATE spdlog::spdlog)
+add_executable(main_app 
+  src/main.cpp
+)
+target_link_libraries(main_app PRIVATE spdlog::spdlog argparse::argparse)
 target_include_directories(main_app PRIVATE ../include)
 
 target_sources(main_app PUBLIC)

@@ -15,6 +15,7 @@ set(SPDLOG_BUILD_SHARED ON)
 
 CPMAddPackage("gh:gabime/spdlog@1.16.0")
 CPMAddPackage("gh:catchorg/Catch2@3.11.0")
+CPMAddPackage("gh:p-ranav/argparse@3.2")
 
 # Global modules
 add_subdirectory(plugins)

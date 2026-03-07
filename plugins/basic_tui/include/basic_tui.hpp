@@ -2,7 +2,6 @@
 #include <color.hpp>
 #include <functional>
 #include <interfaces/display.hpp>
-#include <list>
 #include <module.hpp>
 #include <plugin_interface.hpp>
 #include <string_view>
@@ -10,18 +9,23 @@
 using namespace explo;
 
 class PL_basic_tui : public IPlugin {
+  std::shared_ptr<spdlog::logger> logger;
+
 public:
   PL_basic_tui() = default;
   ~PL_basic_tui() = default;
   const std::string getName() const override;
   const std::string getVersion() const override;
-  void initialize(std::list<Module> &modules) override;
+  void initialize(initArgs &args) override;
   void execute() override;
 };
 
 class basic_tui : public IDisplay {
+  std::shared_ptr<spdlog::logger> logger;
+
 public:
   basic_tui();
+  basic_tui(std::shared_ptr<spdlog::logger> logger) : logger(logger) {};
   ~basic_tui() override;
 
   const char *getName() const override;

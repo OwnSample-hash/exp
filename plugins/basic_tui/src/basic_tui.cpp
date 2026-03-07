@@ -4,10 +4,25 @@ const std::string PL_basic_tui::getName() const { return "basic_tui"; }
 
 const std::string PL_basic_tui::getVersion() const { return "0.0.1"; }
 
-void PL_basic_tui::initialize(std::list<explo::Module> &modules) {
+void PL_basic_tui::initialize(initArgs &args) {
   // Register the display module
-  modules.emplace_back("basic display module", explo::MODULE_TYPE_DISPLAY,
-                       std::make_unique<basic_tui>());
+  args.modules->emplace_back("basic display module", explo::MODULE_TYPE_DISPLAY,
+                             std::make_unique<basic_tui>(args.logger->clone(
+                                 args.logger->name() + "::display")));
+
+  // Store the logger for later use
+  this->logger = args.logger;
+  this->logger->info("Initialized plugin: {}", getName());
+  this->logger->debug("Adding command-line arguments for plugin: {}",
+                      getName());
+
+  args.gParser->add_argument("--basic-tui-global-option")
+      .help("An example global option for the basic_tui plugin")
+      .default_value(std::string("default_global_value"));
+
+  args.parser->add_argument("--basic-tui-option")
+      .help("An example option for the basic_tui plugin")
+      .default_value(std::string("default_value"));
 }
 
 void PL_basic_tui::execute() {
@@ -22,7 +37,8 @@ const char *basic_tui::getName() const { return "basic_tui"; }
 const char *basic_tui::getVersion() const { return "0.1.0"; }
 
 void basic_tui::initialize() {
-  // Module initialization implementation
+  std::cout << "\33[H\33[2J\33[3J";
+  logger->info("Initialize display mod");
 }
 void basic_tui::shutdown() {
   // Module shutdown implementation
