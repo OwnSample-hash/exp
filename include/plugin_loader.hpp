@@ -1,3 +1,9 @@
+/**
+ * @file
+ * @brief PluginLoader class for loading dynamic libraries (plugins) at runtime
+ * in a cross-platform manner.
+ */
+
 #pragma once
 #include <string>
 #include <vector>
