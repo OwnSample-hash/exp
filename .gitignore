@@ -3,6 +3,7 @@ build
 .config
 autoconf.h
 log
-include/modules.hpp
-conf_debug.log
+include/plugins.hpp
 include/config.h
+conf_debug.log
+docs
