@@ -1,20 +1,8 @@
-- name: CONFIG_EXAMPLE
-  prompt: Options for example
-  type: menu
-  source: build_options.yaml
-  help_text: Select an option from the example configuration.
-
-- name: CONFIG_INT
-  prompt: Int opt
-  type: int
-  default: 1
-  range:
-    min: 0
-    max: 500
+- name: CONFIG_PROJECT_NAME
+  prompt: Project Name
+  type: string
+  default: explo
   help_text: Help Text
-  help_text_fmt: ''
-  depends_on: null
-  choices: []
 
 - name: CONFIG_MODULES
   prompt: Module options
