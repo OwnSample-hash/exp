@@ -9,7 +9,7 @@ std::string_view PL_%s::getVersion() const {
   return %s;
 }
 
-void PL_%s::initialize(std::list<explo::Module> &modules) {
+void PL_%s::initialize(initArgs &args) {
   // Register the display module
   modules.emplace_back(%s, explo::MODULE_TYPE_DISPLAY, std::make_unique<%s>());
 }

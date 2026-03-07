@@ -15,7 +15,7 @@ public:
   ~PL_%s() = default;
   std::string_view getName() const override;
   std::string_view getVersion() const override;
-  void initialize(std::list<Module> &modules) override;
+  void initialize(initArgs &args) override;
   void execute() override;
 };
 

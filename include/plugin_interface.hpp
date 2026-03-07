@@ -8,9 +8,18 @@
 
 #pragma once
 
+#include <argparse/argparse.hpp>
 #include <list>
+#include <memory>
 #include <module.hpp>
 #include <registry.hpp>
+
+struct initArgs {
+  std::shared_ptr<std::list<explo::Module>> modules;
+  std::shared_ptr<argparse::ArgumentParser> gParser;
+  std::shared_ptr<argparse::ArgumentParser> parser;
+  std::shared_ptr<spdlog::logger> logger;
+};
 
 /**
  * @class IPlugin
@@ -39,7 +48,7 @@ public:
    *
    * @warning Don't rely on the constructor to do any work.
    */
-  virtual void initialize(std::list<explo::Module> &) = 0;
+  virtual void initialize(initArgs &) = 0;
 
   /**
    * @brief Executes the plugin's main functionality.
