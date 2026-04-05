@@ -17,8 +17,11 @@ from dataclasses import dataclass, field
 from datetime import date, time, timedelta
 from enum import Enum
 from glob import glob
-from typing import List, Optional, Any
+from typing import Callable, List, Optional, Any
 from pathlib import Path
+
+CWD = os.getcwd()
+generators = []
 
 
 class ConfigType(Enum):
@@ -46,10 +49,25 @@ class ConfigOption:
     show_if: Optional[list[str]] = None
     value: Any = None
     source_file: str = ""
+    editable: bool = False
 
     def __post_init__(self):
         if self.value is None:
             self.value = self.default
+
+
+@dataclass
+class Generator:
+    name: str
+    description: str
+    gen: Callable[
+        [list[ConfigOption]], list[str]
+    ]  # Callable that takes config dict and generates output
+
+
+def register_generator(rgen: Callable[[], Generator]):
+    generators.append(rgen())
+    return rgen
 
 
 def error_popup(stdscr: curses.window, message: str):
@@ -121,6 +139,9 @@ def qusetion_popup(stdscr: curses.window, question: str, length: int) -> str:
     popup_width = len(question) + length + 4
     popup_y = (height - popup_height) // 2
     popup_x = (width - popup_width) // 2
+    logger.verbose_2(  # pyright: ignore
+        f"{popup_height=}, {popup_width=}, {popup_y=}, {popup_x=}"
+    )
     popup_win = stdscr.subwin(popup_height, popup_width, popup_y, popup_x)
     popup_win.clear()
     popup_win.attron(curses.color_pair(5))
@@ -218,9 +239,6 @@ class MenuConfig:
         with open(self.config_file, "w") as f:
             json.dump(config_dict, f, indent=2)
 
-        # Also generate a C header file
-        self._generate_header(config_dict)
-
     def _collect_values(self, options: List[ConfigOption], config_dict: dict):
         """Recursively collect all configuration values"""
         logger.verbose_1("Collecting configuration values")  # pyright: ignore
@@ -229,25 +247,6 @@ class MenuConfig:
                 config_dict[opt.name] = opt.value
             if opt.children:
                 self._collect_values(opt.children, config_dict)
-
-    def _generate_header(self, config_dict: dict):
-        """Generate autoconf.h header file"""
-        logger.debug("Generating header file")
-        with open(self.header_file, "w") as f:
-            f.write("/* Automatically generated - do not edit */\n")
-            f.write("#ifndef __AUTOCONF_H\n")
-            f.write("#define __AUTOCONF_H\n\n")
-
-            for key, value in config_dict.items():
-                if isinstance(value, bool):
-                    if value:
-                        f.write(f"#define {key} 1\n")
-                elif isinstance(value, int):
-                    f.write(f"#define {key} {value}\n")
-                elif isinstance(value, str):
-                    f.write(f'#define {key} "{value}"\n')
-
-            f.write("\n#endif /* __AUTOCONF_H */\n")
 
     def get_visible_items(self) -> List[ConfigOption]:
         """Get currently visible menu items"""
@@ -450,7 +449,10 @@ class MenuConfig:
             elif key in [ord("e"), ord("E")] and self.editor_enabled:
                 logger.verbose_1("Editing current option")  # pyright: ignore
                 opt = visible_items[self.current_selection]
-                self._edit_option(stdscr, opt)
+                if opt.editable:
+                    self._edit_option(stdscr, opt)
+                else:
+                    error_popup(stdscr, "This option is not editable")
             elif key in [ord("d"), ord("D")] and self.editor_enabled:
                 logger.verbose_1("Deleting current option")  # pyright: ignore
                 opt = visible_items[self.current_selection]
@@ -920,7 +922,7 @@ class MenuConfig:
                 ),
                 (
                     {
-                        "name": "source",
+                        "name": "source_file",
                         "description": "Source File (for MENU/DYNAMICMENU types)",
                     }
                     if opt.type in [ConfigType.MENU, ConfigType.DYNAMICMENU]
@@ -933,6 +935,8 @@ class MenuConfig:
             ]
             if x
         ]
+        logger.verbose_2(f"{props=}")  # pyright: ignore
+        logger.verbose_2(f"{opt=}")  # pyright: ignore
         while True:
             choice_idx = choice_popup(
                 stdscr,
@@ -1024,6 +1028,7 @@ class MenuConfig:
                             "depends_on": opt.depends_on,
                             "choices": opt.choices,
                             "range": opt.range,
+                            "source": opt.source_file,
                         }.items()
                         if v
                     }
@@ -1108,7 +1113,7 @@ class MenuConfig:
         return "\n".join(formatted) + "\n"
 
     def _load_config_from_file(
-        self, filename: str, depth: int = 0
+        self, filename: str, depth: int = 0, editable: bool = True
     ) -> List[ConfigOption]:
         """Load configuration definition from a YAML file"""
         logger.debug(f"Loading configuration from file: {filename}")
@@ -1140,32 +1145,35 @@ class MenuConfig:
                         if "source" in opt_dict
                         else []
                     ),
+                    editable=editable,
                 )
             elif opt_type == ConfigType.DYNAMICMENU:
+                old_cwd = os.getcwd()
+                os.chdir(CWD)
+                logger.verbose_1(os.getcwd())  # pyright: ignore
                 logger.verbose_1(  # pyright: ignore
                     f"Loading submenus from {opt_dict['source']} for {opt_dict['name']}"
                 )
                 children = []
-                for file in (
-                    x
-                    for x in glob("modules/*/config.yaml")
-                ):
+                for file in glob(opt_dict["source"]):
                     logger.verbose_2(  # pyright: ignore
                         f"Loading dynamic submenu from file: {file}"
                     )
                     children.append(
                         ConfigOption(
-                            name=os.path.basename(file).split(".")[0],
-                            prompt=os.path.basename(file).split(".")[0],
+                            name=os.path.dirname(file).split("/")[-1],
+                            prompt=os.path.dirname(file).split("/")[-1],
                             type=ConfigType.MENU,
                             children=self._load_config_from_file(file, depth=depth + 1),
                             source_file=file,
                             help_text=opt_dict.get("help_text_fmt", "").format(
-                                filename=os.path.basename(file).split(".")[0]
+                                filename=os.path.dirname(file).split("/")[-1]
                             ),
                             show_if=opt_dict.get("show_if", None),
+                            editable=False,  # Dynamic submenus are not editable since they are generated from files
                         )
                     )
+                os.chdir(old_cwd)
                 return ConfigOption(
                     name=opt_dict["name"],
                     prompt=opt_dict["prompt"],
@@ -1176,6 +1184,7 @@ class MenuConfig:
                     source_file=opt_dict.get("source", ""),
                     show_if=opt_dict.get("show_if", None),
                     children=children,
+                    editable=editable,
                 )
             return ConfigOption(
                 name=opt_dict["name"],
@@ -1188,6 +1197,7 @@ class MenuConfig:
                 range=opt_dict.get("range", None),
                 show_if=opt_dict.get("show_if", None),
                 source_file=opt_dict.get("source", ""),
+                editable=editable,
             )
 
         tmp = [parse_option(opt) for opt in data]
@@ -1245,6 +1255,13 @@ if __name__ == "__main__":
         help="Path to debug log file",
     )
     parser.add_argument(
+        "-gd",
+        "--generator-dir",
+        action="store",
+        default="generators",
+        help="Directory to load configuration generators from",
+    )
+    parser.add_argument(
         "-v", "--verbose", action="count", default=0, help="Increase verbosity level"
     )
     argcomplete.autocomplete(parser)
@@ -1296,6 +1313,7 @@ if __name__ == "__main__":
     logger.debug("Starting menuconfig")
     logger.verbose_1(f"{args=}")  # pyright: ignore
     logger.verbose_2(f"{sys.argv=}")  # pyright: ignore
+    logger.verbose_2(f"Current working directory: {os.getcwd()}")  # pyright: ignore
 
     if args.rm and os.path.exists(args.output):
         logging.info(f"Removing existing configuration file: {args.output}")
@@ -1316,9 +1334,31 @@ if __name__ == "__main__":
         print("Configuration definition files formatted.")
         sys.exit(0)
 
+    for gen_file in glob(os.path.join(args.generator_dir, "*.py")):
+        with open(gen_file, "r") as f:
+            code = f.read()
+        exec(
+            code,
+            vars(),
+        )
+
+    if not generators:
+        logger.warning("No generators found in directory")  # pyright: ignore
+
+    for gen in generators:
+        logger.verbose_1(f"Generator: {gen.name}")  # pyright: ignore
+
     try:
         curses.wrapper(menu.run)
-        print("\nConfiguration complete!")
+        print("\nConfiguration complete!\nGenerating additional files...")
+        for gen in generators:
+            generated_files = gen.gen(menu.config)
+            logger.verbose_1(  # pyright: ignore
+                f"Generated files from {gen.name}: {generated_files}"
+            )
+            print(f"Generator: {gen.name} generated files:")
+            for f in generated_files:
+                print(f"  - {f}")
     except KeyboardInterrupt:
         print("\nConfiguration cancelled")
     except Exception as e:

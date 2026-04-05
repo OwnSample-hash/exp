@@ -263,6 +263,4 @@ if __name__ == "__main__":
             content = "".join(template_lines) % tuple(template.fargs)
             with open(target_path, "w") as out_file:
                 out_file.write(content)
-        print(
-            f"Module {config_data['CONFIG_NEW_MODULE_NAME']} created successfully."
-        )
+        print(f"Module {config_data['CONFIG_NEW_MODULE_NAME']} created successfully.")
