@@ -1,11 +1,23 @@
-- name: CONFIG_PROJECT_NAME
-  prompt: Project Name
+- name: CONFIG_PLUGIN_INSTALL_DIR
+  prompt: Plugin install directory
   type: string
-  default: explo
-  help_text: Help Text
+  default: plugins
+  help_text: Directory where plugins will be loaded from.
+
+- name: CONFIG_LOG_DIR
+  prompt: Log directory
+  type: string
+  default: logs
+  help_text: Directory where logs will be placed.
+
+- name: CONFIG_BO
+  prompt: Build options
+  type: menu
+  source: build_options.yaml
 
 - name: CONFIG_MODULES
   prompt: Module options
   type: dynamicmenu
-  source: modules/*/config.yaml
+  source: plugins/*/config.yaml
   help_text: Select module options.
+  help_text_fmt: Options for {filename} plugin.

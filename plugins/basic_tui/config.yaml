@@ -1,6 +1,5 @@
 - name: CONFIG_BASIC_TUI
-  prompt: "basic_tui Configuration"
+  prompt: basic_tui Configuration
   type: string
-  default: "basic_tui"
+  default: basic_tui
   help_text: Placeholder option.
-

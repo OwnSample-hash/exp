@@ -1,0 +1,32 @@
+- name: CONFIG_BOOL
+  prompt: "Enable feature X?"
+  type: bool
+  default: true
+  help_text: "Set to true to enable feature X, false to disable it."
+
+- name: CONFIG_NUMBER
+  prompt: "Set the maximum number of connections"
+  type: int
+  default: 10
+  help_text: "Specify the maximum number of concurrent connections allowed."
+
+- name: CONFIG_CHOICE
+  prompt: "Choose the logging level"
+  type: choice
+  choices:
+    - name: "DEBUG"
+      description: "Detailed debugging information"
+    - name: "INFO"
+      description: "General informational messages"
+    - name: "WARNING"
+      description: "Warning messages about potential issues"
+    - name: "ERROR"
+      description: "Error messages indicating failures"
+  default: "INFO"
+  help_text: "Select the logging level for the application."
+
+- name: CONFIG_STRING
+  prompt: "Enter the server hostname"
+  type: string
+  default: "localhost"
+  help_text: "Specify the hostname or IP address of the server."
