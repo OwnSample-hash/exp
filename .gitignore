@@ -4,7 +4,7 @@ build
 autoconf.h
 log
 include/plugins.hpp
-config.hpp
+*config.hpp
 conf_debug.log
 docs
 __pycache__
