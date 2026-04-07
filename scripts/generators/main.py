@@ -4,22 +4,22 @@ if TYPE_CHECKING:
     from conf import *
 
 
-def dump_entry(f, entry):
+def dump_entry(f, entry, prefix="CONFIG_"):
     match entry.type:
         case ConfigType.BOOL:
-            f.write(f"#define {entry.name} {1 if entry.value else 0}\n")
+            f.write(f"#define {prefix}{entry.name} {1 if entry.value else 0}\n")
         case ConfigType.INT:
-            f.write(f"#define {entry.name} {entry.value}\n")
+            f.write(f"#define {prefix}{entry.name} {entry.value}\n")
         case ConfigType.STRING:
-            f.write(f'#define {entry.name} "{entry.value}"\n')
+            f.write(f'#define {prefix}{entry.name} "{entry.value}"\n')
         case ConfigType.CHOICE:
-            f.write(f"#define {entry.name} {entry.value}\n")
+            f.write(f"#define {prefix}{entry.name} {entry.value}\n")
         case ConfigType.MENU | ConfigType.DYNAMICMENU:
             for e in entry.children:
-                dump_entry(f, e)
+                dump_entry(f, e, prefix=prefix+entry.name+"_")
         case ConfigType.TRISTATE:
             f.write(
-                f"#define {entry.name} {2 if entry.value == 'm' else 1 if entry.value == 'y' else 0}\n"
+                f"#define {prefix}{entry.name} {2 if entry.value == 'm' else 1 if entry.value == 'y' else 0}\n"
             )
         case _:
             raise ValueError(f"Unknown type: {entry.type}")
@@ -32,7 +32,7 @@ def generate_func(opt: list[ConfigOption]) -> list[str]:
         f.write("#pragma once\n")
 
         for entry in opt:
-            if entry.name == "CONFIG_MODULES":
+            if entry.name == "MODULES":
                 continue
             dump_entry(f, entry)
     return [args.header]

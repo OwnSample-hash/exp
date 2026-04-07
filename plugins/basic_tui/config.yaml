@@ -1,4 +1,4 @@
-- name: CONFIG_BASIC_TUI
+- name: BASIC_TUI
   prompt: basic_tui Configuration
   type: string
   default: basic_tui
