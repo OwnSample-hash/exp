@@ -1,11 +1,11 @@
 // clang-format off
 #include <%s.hpp>
 
-std::string_view PL_%s::getName() const {
+const char *PL_%s::getName() const {
   return "%s";
 }
 
-std::string_view PL_%s::getVersion() const {
+const char *PL_%s::getVersion() const {
   return %s;
 }
 

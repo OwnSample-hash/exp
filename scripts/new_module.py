@@ -77,7 +77,6 @@ def generate_templates() -> list[FileTemplate]:
             fargs=[
                 "CONFIG_NEW_MODULE_NAME",
                 "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
             ],
             skip_first_line=False,
             template_file="templates/CMakeLists.txt",
@@ -87,19 +86,10 @@ def generate_templates() -> list[FileTemplate]:
             fargs=[
                 "CONFIG_NEW_MODULE_NAME",
                 "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
                 "CONFIG_NEW_MODULE_UP_NAME",
                 "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
                 "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
+                "CONFIG_NEW_MODULE_UP_NAME",
             ],
             skip_first_line=False,
             template_file="templates/tests/CMakeLists.txt",
@@ -187,13 +177,13 @@ if __name__ == "__main__":
         exit(1)
 
     if os.path.exists(
-        pathlib.Path(os.getcwd(), "modules", config_data["CONFIG_NEW_MODULE_NAME"])
+        pathlib.Path(os.getcwd(), "plugins", config_data["CONFIG_NEW_MODULE_NAME"])
     ):
         print(f"Module {config_data['CONFIG_NEW_MODULE_NAME']} already exists.")
         exit(1)
     else:
         os.makedirs(
-            pathlib.Path(os.getcwd(), "modules", config_data["CONFIG_NEW_MODULE_NAME"])
+            pathlib.Path(os.getcwd(), "plugins", config_data["CONFIG_NEW_MODULE_NAME"])
         )
 
     templates = generate_templates()
@@ -203,7 +193,7 @@ if __name__ == "__main__":
         for template in templates:
             target_path = pathlib.Path(
                 os.getcwd(),
-                "modules",
+                "plugins",
                 config_data["CONFIG_NEW_MODULE_NAME"],
                 template.name,
             )
@@ -234,7 +224,7 @@ if __name__ == "__main__":
                     print(f"  Argument: {args}")
                 target_path = pathlib.Path(
                     os.getcwd(),
-                    "modules",
+                    "plugins",
                     config_data["CONFIG_NEW_MODULE_NAME"],
                     template.name,
                 )
@@ -243,14 +233,18 @@ if __name__ == "__main__":
                 if template.skip_first_line:
                     template_lines = template_lines[1:]
                 print(f"--- {target_path} ---")
-                content = "".join(template_lines) % tuple(template.fargs)
+                try:
+                    content = "".join(template_lines) % tuple(template.fargs)
+                except Exception as e:
+                    print(f"Error formatting template {template.template_file}: {e}")
+                    content = "".join(template_lines)
                 print(content)
                 print(f"--- End of {target_path} ---\n")
     else:
         for template in templates:
             target_path = pathlib.Path(
                 os.getcwd(),
-                "modules",
+                "plugins",
                 config_data["CONFIG_NEW_MODULE_NAME"],
                 template.name,
             )
