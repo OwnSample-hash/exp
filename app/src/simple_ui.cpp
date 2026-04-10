@@ -17,9 +17,15 @@ void printHelp(const std::vector<std::string> &options) {
 }
 
 void printAutocomplete(const std::string &buf, bool unique) {
-  std::cout << "\r\033[K> " << buf;
-  if (!unique)
+  auto &cp = cmd::CommandProcessor::instance();
+  auto prompt = cp.vars().get("prompt").has_value()
+                    ? cp.vars().get("prompt")->toString()
+                    : "> ";
+  if (unique)
+    std::cout << "\r\033[K" << prompt << buf;
+  else {
     std::cout << "\a";
+  }
   std::cout << std::flush;
 }
 
