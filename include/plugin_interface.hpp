@@ -33,12 +33,12 @@ public:
   /**
    * @brief Returns the name of the plugin.
    */
-  virtual const std::string getName() const = 0;
+  virtual const char *getName() const = 0;
 
   /**
    * @brief Returns the version of the plugin.
    */
-  virtual const std::string getVersion() const = 0;
+  virtual const char *getVersion() const = 0;
 
   // TODO: Add ref argument to register plugin mods
   /**
@@ -49,11 +49,6 @@ public:
    * @warning Don't rely on the constructor to do any work.
    */
   virtual void initialize(initArgs &) = 0;
-
-  /**
-   * @brief Executes the plugin's main functionality.
-   */
-  virtual void execute() = 0;
 };
 
 /**
