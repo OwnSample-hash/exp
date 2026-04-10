@@ -83,6 +83,10 @@ public:
   void executeScript(const std::vector<std::string> &lines);
   void executeScript(const std::string &path);
 
+  std::shared_ptr<Context> getContext(bool isGlobal = true) const {
+    return isGlobal ? this->globalCtx_ : this->currentCtx_;
+  }
+
 private:
   std::string buffer_, bufferBackup_;
   std::fstream historyFile;

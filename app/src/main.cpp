@@ -1,9 +1,13 @@
+#include "cmd/command_def.hpp"
+#include "cmd/command_processor.hpp"
+#include "cmd/execution_context.hpp"
 #include <argparse/argparse.hpp>
 #include <cmd.hpp>
-#include <config.h>
+#include <config.hpp>
 #include <csignal>
 #include <dispatcher.hpp>
 #include <fstream>
+#include <iomanip>
 #include <list>
 #include <module.hpp>
 #include <plugin_interface.hpp>
@@ -13,6 +17,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <sstream>
 #include <string.hpp>
 #include <termios.h>
 #include <ui.hpp>
@@ -158,6 +163,48 @@ int main(int argc, const char **argv, const char **envp) {
       }
       const char *units[] = {"KB", "MB", "GB", "TB"};
       return "Memory usage: " + std::to_string(rss) + " " + units[dc];
+    };
+    cp.registerGlobalCommand(c);
+  }
+
+  {
+    cmd::CommandDef c;
+    c.name = "plugins";
+    c.description = "List loaded plugins";
+    c.variadic = false;
+    c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
+      std::string result = "Loaded plugins:\n";
+      for (const auto &entry : get_loaded_plugins()) {
+        result += " - " + std::string(entry->getName()) +
+                  " version: " + std::string(entry->getVersion()) + "\n";
+      }
+      return result;
+    };
+    cp.registerGlobalCommand(c);
+  }
+
+  {
+    cmd::CommandDef c;
+    c.name = "help";
+    c.description = "List of all avaiable commands";
+    c.variadic = false;
+    c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+      std::stringstream ss;
+      ss << std::left;
+      ss << "Global commands:\n";
+      for (const auto &cmd : cp.getContext()->commands()) {
+        ss << "  - " << std::setw(15) << cmd.name << std::setw(15)
+           << cmd.description << "\n";
+      }
+      if (cp.getContext(false).get() == nullptr) {
+        ss << "Current commands are not available\n";
+        return ss.str();
+      }
+      ss << "Current commands:\n";
+      for (const auto &cmd : cp.getContext(false)->commands()) {
+        ss << "  - " << cmd.name << " " << cmd.description << "\n";
+      }
+      return ss.str();
     };
     cp.registerGlobalCommand(c);
   }
