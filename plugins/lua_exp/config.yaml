@@ -1,0 +1,6 @@
+- name: CONFIG_LUA_EXP
+  prompt: "lua_exp Configuration"
+  type: string
+  default: "lua_exp"
+  help_text: Placeholder option.
+
