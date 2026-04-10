@@ -13,6 +13,8 @@ add_custom_command(TARGET ${MOD_NAME} POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${MOD_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/../$<TARGET_FILE_NAME:${MOD_NAME}>
 )
 
-enable_testing()
-add_subdirectory(tests)
+if(ENABLE_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
 # Vim: set expandtab tabstop=2 shiftwidth=2:
