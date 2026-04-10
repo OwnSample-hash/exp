@@ -264,3 +264,4 @@ if __name__ == "__main__":
             with open(target_path, "w") as out_file:
                 out_file.write(content)
         print(f"Module {config_data['CONFIG_NEW_MODULE_NAME']} created successfully.")
+# Vim: set expandtab tabstop=4 shiftwidth=4:
