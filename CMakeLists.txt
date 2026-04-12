@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 4.3)
 
 option(ENABLE_TESTS "Enable tests" ON)
 
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 
-project(exp LANGUAGES C CXX)
+project(exp LANGUAGES C CXX VERSION 0.0.1 SPDX_LICENSE "GPL-3.0-or-later")
 
 include(cmake/CPM.cmake)
 CPMUsePackageLock("cpm-package-lock.cmake")
