@@ -1,8 +1,12 @@
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 /**
  * @file
  * @brief IteratorFacade is a CRTP base class that provides default
  * implementations of common iterator operations based on the derived class's
  * implementation of a few core operations.
+ * @note Taken from LLVM
  */
 
 #pragma once

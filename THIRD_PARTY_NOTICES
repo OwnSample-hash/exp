@@ -1,0 +1,28 @@
+================================================================================
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+For [Your Project Name]
+================================================================================
+
+This project incorporates components from the projects listed below.
+The original copyright notices and the licenses under which we received
+such components are set forth below.
+
+================================================================================
+
+1. LLVM / Clang
+   https://llvm.org/
+
+   Files used:
+     - include/iterator.hpp (derived from llvm/ADT/iterator.h)
+     - include/iterator_range.hpp (derived from llvm/ADT/iterator_range.h)
+     - include/registry.hpp (derived from llvm/Support/Registry.h)
+
+   Copyright (c) 2003-2024 University of Illinois at Urbana-Champaign.
+   All rights reserved.
+
+   Licensed under the Apache License, Version 2.0 with LLVM Exceptions.
+   See: https://llvm.org/LICENSE.txt
+
+   SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+================================================================================
