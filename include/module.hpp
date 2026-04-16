@@ -4,24 +4,18 @@
 
 namespace explo {
 
-enum ModuleType {
-  MODULE_TYPE_EXTENSION = 0x0,
-  MODULE_TYPE_CORE = 0x1,
-
-  MODULE_TYPE_STATIC = 0x2,
-  MODULE_TYPE_DYNMAIC = 0x4,
-
+enum class ModuleType {
   MODULE_TYPE_RENDERER,
+  MODULE_TYPE_EXPLOIT_PROVIDER,
   MODULE_TYPE_EXPLOIT,
 };
 
 struct Module {
-  int id = -1;
   const char *name;
-  int type;
+  ModuleType type;
   std::unique_ptr<IMod> instance;
 
-  Module(const char *name, int type, std::unique_ptr<IMod> instance)
+  Module(const char *name, ModuleType type, std::unique_ptr<IMod> instance)
       : name(name), type(type), instance(std::move(instance)) {}
   Module(Module &&) = default;
   Module(const Module &) = delete;
