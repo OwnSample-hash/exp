@@ -15,8 +15,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(SPDLOG_BUILD_SHARED ON)
 
-CPMAddPackage("gh:gabime/spdlog@1.16.0")
-CPMAddPackage("gh:p-ranav/argparse@3.2")
+CPMAddPackage("gh:gabime/spdlog@1.17.0")
 
 add_compile_options(-ggdb)
 
