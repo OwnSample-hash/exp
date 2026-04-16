@@ -10,6 +10,18 @@
   default: logs
   help_text: Directory where logs will be placed.
 
+- name: DEFAULT_CONFIG_FILE
+  prompt: Default config file
+  type: string
+  default: config.yaml
+  help_text: Default configuration file to use if no other is specified.
+
+- name: DEFAULT_PREFERRED_UI
+  prompt: Default UI type
+  type: string
+  default: simple_ui
+  help_text: Default UI type to use if no other is specified.
+
 - name: BO
   prompt: Build options
   type: menu

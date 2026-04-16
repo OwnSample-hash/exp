@@ -12,7 +12,8 @@ class Dispatcher {
   IRenderer *rendererModule = nullptr;
 
 public:
-  Dispatcher(std::unordered_map<std::string, initArgs> &pluginInitArgs);
+  Dispatcher(std::unordered_map<std::string, initArgs> &pluginInitArgs,
+             const std::string &preferredRenderer = "");
 
   ~Dispatcher() {
     if (rendererModule) {

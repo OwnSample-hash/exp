@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <argparse/argparse.hpp>
+#include <args.hxx>
 #include <list>
 #include <memory>
 #include <module.hpp>
@@ -16,8 +16,7 @@
 
 struct initArgs {
   std::shared_ptr<std::list<explo::Module>> modules;
-  std::shared_ptr<argparse::ArgumentParser> gParser;
-  std::shared_ptr<argparse::ArgumentParser> parser;
+  std::shared_ptr<args::Group> parser;
   std::shared_ptr<spdlog::logger> logger;
 };
 
@@ -40,7 +39,6 @@ public:
    */
   virtual const char *getVersion() const = 0;
 
-  // TODO: Add ref argument to register plugin mods
   /**
    * @brief Initializes the plugin with a list of modules. This function is
    * called when the plugin is loaded and allows the plugin to perform any

@@ -1,10 +1,7 @@
-#include "cmd/command_def.hpp"
-#include "cmd/command_processor.hpp"
-#include "cmd/execution_context.hpp"
 #include <argparse/argparse.hpp>
+#include <args.hxx>
 #include <cmd.hpp>
 #include <config.hpp>
-#include <csignal>
 #include <dispatcher.hpp>
 #include <fstream>
 #include <iomanip>
@@ -13,13 +10,12 @@
 #include <plugin_interface.hpp>
 #include <plugin_loader.hpp>
 #include <plugins.hpp>
-#include <simple_ui.hpp>
+#include <spdlog/common.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <string.hpp>
-#include <termios.h>
 #include <ui.hpp>
 #include <unordered_map>
 
@@ -39,38 +35,108 @@ const std::list<std::unique_ptr<IPlugin>> &get_loaded_plugins() {
   return plugins;
 }
 
-struct termios origTermios;
+std::string normalizePath(const std::string &path) {
+  constexpr char allowed_chars[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-";
+  std::string normalized;
+  for (char c : path) {
+    if (std::strchr(allowed_chars, c)) {
+      normalized += c;
+    } else {
+      normalized += '_';
+    }
+  }
+  return normalized;
+}
+
+namespace spdlog {
+namespace level {
+
+std::istream &operator>>(std::istream &is, spdlog::level::level_enum &level) {
+  std::string token;
+  is >> token;
+  if (token == "trace") {
+    level = spdlog::level::trace;
+  } else if (token == "debug") {
+    level = spdlog::level::debug;
+  } else if (token == "info") {
+    level = spdlog::level::info;
+  } else if (token == "warn") {
+    level = spdlog::level::warn;
+  } else if (token == "error") {
+    level = spdlog::level::err;
+  } else if (token == "critical") {
+    level = spdlog::level::critical;
+  } else {
+    is.setstate(std::ios::failbit);
+  }
+  return is;
+}
+
+} // namespace level
+} // namespace spdlog
 
 int main(int argc, const char **argv, const char **envp) {
-  struct termios newTermios;
-  tcgetattr(STDIN_FILENO, &origTermios);
-  atexit([]() { tcsetattr(STDIN_FILENO, TCSANOW, &origTermios); });
-  std::memcpy(&newTermios, &origTermios, sizeof(newTermios));
-  newTermios.c_lflag &= ~(ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newTermios);
-  signal(SIGINT, SIG_IGN);
+  args::ArgumentParser parser("Explo - A modular exploitation framework");
+  args::CompletionFlag completion(parser, {"complete"});
+  parser.Prog(argv[0]);
 
-  std::filesystem::create_directories(CONFIG_LOG_DIR);
-  spdlog::set_default_logger(
-      spdlog::basic_logger_mt("main", CONFIG_LOG_DIR "/main.log"));
-  spdlog::set_level(spdlog::level::debug);
+  args::ValueFlag<spdlog::level::level_enum> logLevel(
+      parser, "log-level",
+      "Set log level (trace, debug, info, warn, error, critical)",
+      {'l', "log-level"}, spdlog::level::info);
+
+  args::ValueFlag<std::string> logFile(
+      parser, "log-file", "Set log file path (default: explo.log)",
+      {'f', "log-file"}, std::string("explo.log"));
+
+  args::ValueFlag<std::string> logDir(
+      parser, "log-dir", "Set log directory (default: " CONFIG_LOG_DIR ")",
+      {'d', "log-dir"}, std::string(CONFIG_LOG_DIR));
+
+  args::ValueFlag<std::string> pluginDir(
+      parser, "plugin-dir",
+      "Set plugin directory (default: " CONFIG_PLUGIN_INSTALL_DIR ")",
+      {'p', "plugin-dir"}, std::string(CONFIG_PLUGIN_INSTALL_DIR));
+
+  args::ValueFlag<std::string> configFile(
+      parser, "config-file",
+      "Set configuration file path (default: " CONFIG_DEFAULT_CONFIG_FILE ")",
+      {'c', "config-file"}, std::string(CONFIG_DEFAULT_CONFIG_FILE));
+
+  args::ValueFlag<std::string> preferredUI(
+      parser, "preferred-ui",
+      "Set preferred UI (default: " CONFIG_DEFAULT_PREFERRED_UI ")",
+      {'P', "preferred-ui"}, std::string(CONFIG_DEFAULT_PREFERRED_UI));
+
+  try {
+    parser.ParseCLI(argc, argv);
+  } catch (const std::exception &err) {
+    if (std::strcmp(err.what(), "Flag could not be matched: 'h'") == 0 ||
+        std::strcmp(err.what(), "Flag could not be matched: 'help'") == 0) {
+    } else {
+
+      std::cerr << err.what() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    }
+  }
+
+  args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+
+  std::filesystem::create_directories(std::filesystem::path(logDir.Get()));
+  spdlog::set_default_logger(spdlog::basic_logger_mt(
+      "main", logDir.Get() + "/" + normalizePath(logFile.Get())));
   spdlog::flush_on(spdlog::level::debug);
+  spdlog::set_level(logLevel.Get());
   const auto now = std::chrono::system_clock::now();
   const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
   spdlog::info("Starting application at {}", std::ctime(&t_c));
 
-  std::shared_ptr<argparse::ArgumentParser> parser =
-      std::make_shared<argparse::ArgumentParser>(
-          *argv, "1.0.0", argparse::default_arguments::all);
-
-  parser->add_argument("-c", "--config")
-      .help("Path to configuration file")
-      .default_value(std::string("config.yaml"));
-
   PluginLoader &loader = PluginLoader::instance();
 
   for (const auto &dir_entry :
-       std::filesystem::directory_iterator(CONFIG_PLUGIN_INSTALL_DIR)) {
+       std::filesystem::directory_iterator(pluginDir.Get())) {
     if (dir_entry.is_regular_file() && dir_entry.path().extension() == ".so") {
       std::string plugin_path = dir_entry.path().string();
       if (loader.loadPlugin(plugin_path)) {
@@ -93,25 +159,27 @@ int main(int argc, const char **argv, const char **envp) {
   for (const auto &plugin : get_loaded_plugins()) {
     std::shared_ptr<std::list<explo::Module>> plModules =
         std::make_shared<std::list<explo::Module>>();
-    std::shared_ptr<argparse::ArgumentParser> plParser =
-        std::make_shared<argparse::ArgumentParser>(
-            plugin->getName(), plugin->getVersion(),
-            argparse::default_arguments::all);
+    std::shared_ptr<args::Group> pluginGroup =
+        std::make_shared<args::Group>(parser, plugin->getName());
     std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
-        plugin->getName(),
-        std::string(CONFIG_LOG_DIR "/") + plugin->getName() + ".log");
+        plugin->getName(), std::string(CONFIG_LOG_DIR "/") +
+                               normalizePath(plugin->getName()) + ".log");
 
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
     plLogger->info("\nStarting plugin at {} ", std::ctime(&t_c));
 
-    auto iA = initArgs{plModules, parser, plParser, plLogger};
+    auto iA = initArgs{plModules, pluginGroup, plLogger};
     pluginInitArgs.emplace(plugin->getName(), iA);
 
     plugin->initialize(iA);
-    parser->add_subparser(*plParser.get());
   }
 
   try {
-    parser->parse_args(argc, argv);
+    parser.ParseCLI(argc, argv);
+  } catch (args::Help) {
+    std::cout << parser;
+    std::exit(0);
   } catch (const std::exception &err) {
     spdlog::error("Error parsing arguments: {}", err.what());
     std::cerr << err.what() << std::endl;
@@ -119,102 +187,147 @@ int main(int argc, const char **argv, const char **envp) {
     std::exit(1);
   }
 
-  auto &cp = cmd::CommandProcessor::instance();
-
-  cp.vars().set("version", cmd::VarValue(std::string("1.0.0")));
-  cp.vars().set("prompt", cmd::VarValue(std::string("\33[33m>\33[0m ")));
-
-  // TODO: Make an way to switch to plugin based ui mode defulting to simple_ui
-  // Dispatcher dispatcher(pluginInitArgs);
-  //
-  // if (!dispatcher.isInitialized()) {
-  //   spdlog::error("Failed to initialize dispatcher");
-  //   std::exit(1);
-  // }
-  // spdlog::info("Setting base widget UI...");
-  // dispatcher.setBaseWidget(nullptr);
-  // spdlog::info("Starting main loop...");
-  // dispatcher.runLoop();
+  // Command
   {
-    cmd::CommandDef c;
-    c.name = "mem";
-    c.description = "Show memory usage";
-    c.variadic = false;
-    c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
-      std::ifstream fp("/proc/self/stat");
-      if (!fp)
-        return "Failed to open /proc/self/stat";
-      std::string token;
-      int field_num = 0;
-      double rss = 0;
-      while (fp >> token) {
-        field_num++;
-        if (field_num == 24) { // RSS is the 24th field in /proc/[pid]/stat
-          rss = std::stol(token);
-          break;
+    spdlog::info("Registering global commands...");
+    auto &cp = cmd::CommandProcessor::instance();
+
+    {
+      cp.vars().set("version", cmd::VarValue(std::string("1.0.0")));
+      cp.vars().set("prompt", cmd::VarValue(std::string("\33[33m>\33[0m ")));
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "mem";
+      c.description = "Show memory usage";
+      c.variadic = false;
+      c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
+        std::ifstream fp("/proc/self/stat");
+        if (!fp)
+          return "Failed to open /proc/self/stat";
+        std::string token;
+        int field_num = 0;
+        double rss = 0;
+        while (fp >> token) {
+          field_num++;
+          if (field_num == 24) { // RSS is the 24th field in /proc/[pid]/stat
+            rss = std::stol(token);
+            break;
+          }
         }
-      }
-      int dc = 0;
-      int page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // Get page size in KB
-      rss *= page_size_kb; // Convert RSS from pages to KB
-      while (rss > 1024) {
-        rss /= 1024;
-        dc++;
-      }
-      const char *units[] = {"KB", "MB", "GB", "TB"};
-      return "Memory usage: " + std::to_string(rss) + " " + units[dc];
-    };
-    cp.registerGlobalCommand(c);
-  }
-
-  {
-    cmd::CommandDef c;
-    c.name = "plugins";
-    c.description = "List loaded plugins";
-    c.variadic = false;
-    c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
-      std::string result = "Loaded plugins:\n";
-      for (const auto &entry : get_loaded_plugins()) {
-        result += " - " + std::string(entry->getName()) +
-                  " version: " + std::string(entry->getVersion()) + "\n";
-      }
-      return result;
-    };
-    cp.registerGlobalCommand(c);
-  }
-
-  {
-    cmd::CommandDef c;
-    c.name = "help";
-    c.description = "List of all avaiable commands";
-    c.variadic = false;
-    c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
-      std::stringstream ss;
-      ss << std::left;
-      ss << "Global commands:\n";
-      for (const auto &cmd : cp.getContext()->commands()) {
-        ss << "  - " << std::setw(15) << cmd.name << std::setw(15)
-           << cmd.description << "\n";
-      }
-      if (cp.getContext(false).get() == nullptr) {
-        ss << "Current commands are not available\n";
+        int dc = 0;
+        int page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // Get page size in KB
+        rss *= page_size_kb; // Convert RSS from pages to KB
+        while (rss > 1024) {
+          rss /= 1024;
+          dc++;
+        }
+        const char *units[] = {"KB", "MB", "GB", "TB"};
+        return "Memory usage: " + std::to_string(rss) + " " + units[dc];
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "plugins";
+      c.description = "List loaded plugins";
+      c.variadic = false;
+      c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
+        std::stringstream result;
+        result << "Loaded plugins:\n";
+        for (const auto &entry : get_loaded_plugins()) {
+          result << " - " << entry->getName()
+                 << " version: " << entry->getVersion() << "\n";
+        }
+        return result.str();
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "help";
+      c.description = "List of all avaiable commands";
+      c.variadic = false;
+      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+        std::stringstream ss;
+        ss << std::left;
+        ss << "Global commands:\n";
+        for (const auto &cmd : cp.getContext()->commands()) {
+          ss << "  - " << std::setw(15) << cmd.name << std::setw(15)
+             << cmd.description << "\n";
+        }
+        if (cp.getContext(false).get() == nullptr) {
+          ss << "Current commands are not available\n";
+          return ss.str();
+        }
+        ss << "Current commands:\n";
+        for (const auto &cmd : cp.getContext(false)->commands()) {
+          ss << "  - " << cmd.name << " " << cmd.description << "\n";
+        }
         return ss.str();
-      }
-      ss << "Current commands:\n";
-      for (const auto &cmd : cp.getContext(false)->commands()) {
-        ss << "  - " << cmd.name << " " << cmd.description << "\n";
-      }
-      return ss.str();
-    };
-    cp.registerGlobalCommand(c);
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "mods";
+      c.description = "List loaded modules";
+      c.variadic = false;
+      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+        std::stringstream result;
+        result << "Loaded modules:\n";
+        for (const auto &[plugin, args] : pluginInitArgs) {
+          result << "Plugin: " << plugin << "\n";
+          for (const auto &mod : *args.modules) {
+            result << "  - " << mod.name << "\n";
+          }
+        }
+        return result.str();
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "exit";
+      c.description = "Exit the application";
+      c.variadic = false;
+      c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
+        std::exit(0);
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "clear";
+      c.description = "Clear the screen";
+      c.variadic = false;
+      c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
+        std::cout << "\033[2J\033[H"; // ANSI escape code to clear screen
+        return "";
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "mods";
+      c.description = "List loaded modules";
+      c.variadic = false;
+      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+        std::stringstream result;
+        result << "Loaded modules:\n";
+        for (const auto &[plugin, args] : pluginInitArgs) {
+          result << "Plugin: " << plugin << "\n";
+          for (const auto &mod : *args.modules) {
+            result << "  - " << mod.name << "\n";
+          }
+        }
+        return result.str();
+      };
+    }
   }
 
-  cp.onHelp(printHelp);
-  cp.onAutocomplete(printAutocomplete);
-  cp.onExecute(printResult);
-  cp.onError(printError);
-
-  runInteractive(cp);
+  Dispatcher dispatcher = Dispatcher(pluginInitArgs, preferredUI.Get());
+  dispatcher.runLoop();
 
   return 0;
 }

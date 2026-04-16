@@ -6,11 +6,18 @@
 namespace explo {
 
 Dispatcher::Dispatcher(
-    std::unordered_map<std::string, initArgs> &pluginInitArgs) {
+    std::unordered_map<std::string, initArgs> &pluginInitArgs,
+    const std::string &preferredRenderer) {
   IMod *rendererModuleRaw = nullptr;
   for (const auto &[name, args] : pluginInitArgs) {
     for (const auto &mod : *args.modules) {
-      if (mod.type == explo::MODULE_TYPE_RENDERER) {
+      if (mod.type == explo::ModuleType::MODULE_TYPE_RENDERER) {
+        if (!preferredRenderer.empty() && mod.name != preferredRenderer) {
+          spdlog::debug("Skipping renderer module: {} from plugin: {} as it "
+                        "does not match preferred renderer: {}",
+                        mod.name, name, preferredRenderer);
+          continue;
+        }
         rendererModuleRaw = mod.instance.get();
         spdlog::info("Using display module: {} from plugin: {}", mod.name,
                      name);
