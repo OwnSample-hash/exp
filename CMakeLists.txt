@@ -1,17 +1,24 @@
 cmake_minimum_required(VERSION 4.3)
 
+include(cmake/Options.cmake OPTIONAL RESULT_VARIABLE OPTIONS_INCLUDED)
+
+if(NOT OPTIONS_INCLUDED)
+  message(FATAL_ERROR "Failed to include Options.cmake")
+endif()
+
 option(ENABLE_TESTS "Enable tests" ON)
 
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(exp LANGUAGES C CXX VERSION 0.0.1 SPDX_LICENSE "GPL-3.0-or-later")
 
 include(cmake/CPM.cmake)
 CPMUsePackageLock("cpm-package-lock.cmake")
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 
 set(SPDLOG_BUILD_SHARED ON)
 

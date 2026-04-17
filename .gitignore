@@ -1,10 +1,10 @@
 build
 .cache
 .config
-autoconf.h
 log
 include/plugins.hpp
 *config.hpp
 conf_debug.log
 docs
 __pycache__
+cmake/Options.cmake

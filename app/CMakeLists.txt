@@ -3,7 +3,7 @@ file(GLOB_RECURSE main_app_SOURCE src/*.cpp)
 add_executable(main_app 
   ${main_app_SOURCE}
 )
-target_link_libraries(main_app PRIVATE spdlog::spdlog argparse::argparse)
+target_link_libraries(main_app PRIVATE spdlog::spdlog)
 target_include_directories(main_app PRIVATE ../include ./include)
 
 target_sources(main_app PUBLIC)

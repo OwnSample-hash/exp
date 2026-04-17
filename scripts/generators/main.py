@@ -16,7 +16,7 @@ def dump_entry(f, entry, prefix="CONFIG_"):
             f.write(f"#define {prefix}{entry.name} {entry.value}\n")
         case ConfigType.MENU | ConfigType.DYNAMICMENU:
             for e in entry.children:
-                dump_entry(f, e, prefix=prefix+entry.name+"_")
+                dump_entry(f, e, prefix=prefix + entry.name + "_")
         case ConfigType.TRISTATE:
             f.write(
                 f"#define {prefix}{entry.name} {2 if entry.value == 'm' else 1 if entry.value == 'y' else 0}\n"
@@ -41,8 +41,8 @@ def generate_func(opt: list[ConfigOption]) -> list[str]:
 @register_generator
 def gen():
     return Generator(
-        name="test",
-        description="A test generator",
+        name="Main config header generator",
+        description="Generate a header file for main config",
         gen=generate_func,
     )
 

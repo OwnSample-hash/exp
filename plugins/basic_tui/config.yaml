@@ -1,5 +1,24 @@
+- name: ENABLE
+  prompt: Enable Plugin
+  type: bool
+  default: true
+  help_text: Enable or disable the plugin.
+  cmake_export: true
+
 - name: BASIC_TUI
   prompt: basic_tui Configuration
   type: string
   default: basic_tui
   help_text: Placeholder option.
+
+- name: MAX_DEPTH
+  prompt: Maximum Depth
+  type: int
+  default: 5
+  help_text: Maximum depth for recursive operations.
+
+- name: ENABLE_ALT_TERMINAL_BUFFER
+  prompt: Enable Alternate Terminal Buffer
+  type: bool
+  default: true
+  help_text: Whether to use the alternate terminal buffer for better display.

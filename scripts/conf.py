@@ -50,6 +50,8 @@ class ConfigOption:
     value: Any = None
     source_file: str = ""
     editable: bool = False
+    cmake_export: bool = False
+    cmake_help: Optional[str] = None
 
     def __post_init__(self):
         if self.value is None:
@@ -1146,6 +1148,8 @@ class MenuConfig:
                         else []
                     ),
                     editable=editable,
+                    cmake_export=opt_dict.get("cmake_export", False),
+                    cmake_help=opt_dict.get("cmake_help","Enable {plugin_name} plugin" ),
                 )
             elif opt_type == ConfigType.DYNAMICMENU:
                 old_cwd = os.getcwd()
@@ -1171,6 +1175,8 @@ class MenuConfig:
                             ),
                             show_if=opt_dict.get("show_if", None),
                             editable=False,  # Dynamic submenus are not editable since they are generated from files
+                            cmake_export=opt_dict.get("cmake_export", False),
+                            cmake_help=opt_dict.get("cmake_help", "Enable {plugin_name} plugin"),
                         )
                     )
                 os.chdir(old_cwd)
@@ -1185,6 +1191,8 @@ class MenuConfig:
                     show_if=opt_dict.get("show_if", None),
                     children=children,
                     editable=editable,
+                    cmake_export=opt_dict.get("cmake_export", False),
+                    cmake_help=opt_dict.get("cmake_help", "Enable {plugin_name} plugin"),
                 )
             return ConfigOption(
                 name=opt_dict["name"],
@@ -1196,8 +1204,10 @@ class MenuConfig:
                 choices=opt_dict.get("choices", []),
                 range=opt_dict.get("range", None),
                 show_if=opt_dict.get("show_if", None),
-                source_file=opt_dict.get("source", ""),
+                source_file=opt_dict.get("source", filename),
                 editable=editable,
+                cmake_export=opt_dict.get("cmake_export", False),
+                cmake_help=opt_dict.get("cmake_help", "Enable {plugin_name} plugin"),
             )
 
         tmp = [parse_option(opt) for opt in data]
