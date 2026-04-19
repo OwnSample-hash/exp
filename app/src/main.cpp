@@ -14,6 +14,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
+#include <stdexcept>
 #include <string.hpp>
 #include <ui.hpp>
 #include <unordered_map>
@@ -263,27 +264,10 @@ int main(int argc, const char **argv, const char **envp) {
         }
         ss << "Current commands:\n";
         for (const auto &cmd : cp.getContext(false)->commands()) {
-          ss << "  - " << cmd.name << " " << cmd.description << "\n";
+          ss << "  - " << std::setw(15) << cmd.name << std::setw(15)
+             << cmd.description << "\n";
         }
         return ss.str();
-      };
-      cp.registerGlobalCommand(c);
-    }
-    {
-      cmd::CommandDef c;
-      c.name = "mods";
-      c.description = "List loaded modules";
-      c.variadic = false;
-      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
-        std::stringstream result;
-        result << "Loaded modules:\n";
-        for (const auto &[plugin, args] : pluginInitArgs) {
-          result << "Plugin: " << plugin << "\n";
-          for (const auto &mod : *args.modules) {
-            result << "  - " << mod.name << "\n";
-          }
-        }
-        return result.str();
       };
       cp.registerGlobalCommand(c);
     }
@@ -319,7 +303,8 @@ int main(int argc, const char **argv, const char **envp) {
         for (const auto &[plugin, args] : pluginInitArgs) {
           result << "Plugin: " << plugin << "\n";
           for (const auto &mod : *args.modules) {
-            result << "  - " << mod.name << "\n";
+            result << "  - " << mod.instance->getName() << " "
+                   << mod.instance->getVersion() << "\n";
           }
         }
         return result.str();
