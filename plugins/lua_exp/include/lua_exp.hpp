@@ -1,10 +1,13 @@
 #pragma once
+#include <memory>
 #include <module.hpp>
 #include <plugin_interface.hpp>
 
 using namespace explo;
 
-class PL_lua_exp : public IPlugin {
+class PL_lua_exp final : public IPlugin {
+  std::shared_ptr<spdlog::logger> logger;
+
 public:
   PL_lua_exp() = default;
   ~PL_lua_exp() = default;

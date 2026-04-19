@@ -1,3 +1,5 @@
+#include "module.hpp"
+#include <loader.hpp>
 #include <lua_exp.hpp>
 
 const char *PL_lua_exp::getName() const { return "lua_exp"; }
@@ -5,7 +7,12 @@ const char *PL_lua_exp::getName() const { return "lua_exp"; }
 const char *PL_lua_exp::getVersion() const { return "0.0.1"; }
 
 void PL_lua_exp::initialize(initArgs &args) {
-  // Register the modules
+  logger = args.logger;
+  logger->info("Initializing plugin: {}", getName());
+
+  args.modules->emplace_back(
+      "loader", ModuleType::TOOLPROVIDER,
+      std::make_unique<luaLoader>(logger->clone(logger->name() + "::loader")));
 }
 
 static PluginRegistry::Add<PL_lua_exp> lua_expRegister("lua_exp");
