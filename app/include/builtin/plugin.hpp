@@ -5,7 +5,7 @@
 namespace explo {
 namespace builtin {
 
-class BuiltinPlugin : public IPlugin {
+class BuiltinPlugin final : public IPlugin {
   std::shared_ptr<spdlog::logger> logger;
 
 public:

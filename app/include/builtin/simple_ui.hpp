@@ -4,7 +4,7 @@
 namespace explo {
 namespace builtin {
 
-class UI : public IRenderer {
+class UI final : public IRenderer {
   static void printHelp(const std::vector<std::string> &options);
   static void printAutocomplete(const std::string &buf, bool unique);
   static void printResult(const cmd::ExecutionResult &r);
@@ -16,7 +16,7 @@ class UI : public IRenderer {
 public:
   UI() = default;
   UI(std::shared_ptr<spdlog::logger> logger) : logger(logger) {};
-  ~UI() = default;
+  ~UI() override = default;
 
   const char *getName() const override { return "simple_ui"; }
   const char *getVersion() const override { return "1.0.0"; }
