@@ -9,13 +9,13 @@
 #pragma once
 
 #include <args.hxx>
-#include <list>
 #include <memory>
 #include <module.hpp>
 #include <registry.hpp>
+#include <vector>
 
 struct initArgs {
-  std::shared_ptr<std::list<explo::Module>> modules;
+  std::shared_ptr<std::vector<explo::Module>> modules;
   std::shared_ptr<args::Group> parser;
   std::shared_ptr<spdlog::logger> logger;
 };

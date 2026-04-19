@@ -157,8 +157,8 @@ int main(int argc, const char **argv, const char **envp) {
   std::unordered_map<std::string, initArgs> pluginInitArgs;
 
   for (const auto &plugin : get_loaded_plugins()) {
-    std::shared_ptr<std::list<explo::Module>> plModules =
-        std::make_shared<std::list<explo::Module>>();
+    std::shared_ptr<std::vector<explo::Module>> plModules =
+        std::make_shared<std::vector<explo::Module>>();
     std::shared_ptr<args::Group> pluginGroup =
         std::make_shared<args::Group>(parser, plugin->getName());
     std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
