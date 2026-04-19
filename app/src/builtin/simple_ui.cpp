@@ -1,9 +1,11 @@
 #include <builtin/simple_ui.hpp>
 #include <cmd.hpp>
 #include <csignal>
+#include <fcntl.h>
 #include <iostream>
 #include <string>
 #include <termios.h>
+#include <unistd.h>
 #include <vector>
 
 namespace explo {
@@ -47,7 +49,8 @@ void UI::printError(const std::string &msg) {
 inline int UI::getch() {
   int r = 0;
   unsigned char c = 0;
-  if ((r = read(0, &c, sizeof(c))) < 0) {
+  if ((r = read(STDIN_FILENO, &c, sizeof(c))) < 0) {
+    logger->error("Error reading from stdin: {}", strerror(errno));
     return r;
   } else {
     return c;

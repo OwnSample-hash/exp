@@ -37,7 +37,7 @@ void NC::initialize() {
         this->config.port = htons(port);
         spdlog::debug("Configured nc to connect to {}:{}", host, port);
         this->execute();
-        return "";
+        return "nc execution completed";
       };
       ctx->registerCommand(c);
     }
@@ -143,13 +143,22 @@ void NC::execute() {
     }
     if (fds[1].revents & (POLLHUP | POLLERR)) {
       done = true;
-      logger->error("Error on socket: {}", strerror(errno));
+      if (errno == 0) {
+        std::cout << "Connection closed by remote host." << std::endl;
+      } else {
+        logger->error("Error on socket: {}", strerror(errno));
+      }
     }
   }
 
   ::close(sockfd);
 
   tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  if (fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+    logger->error("Failed to restore blocking mode on stdin: {}",
+                  strerror(errno));
+  }
   logger->debug("Restored original terminal settings");
 }
 

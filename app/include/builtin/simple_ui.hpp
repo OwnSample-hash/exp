@@ -9,7 +9,7 @@ class UI final : public IRenderer {
   static void printAutocomplete(const std::string &buf, bool unique);
   static void printResult(const cmd::ExecutionResult &r);
   static void printError(const std::string &msg);
-  static inline int getch();
+  inline int getch();
 
   std::shared_ptr<spdlog::logger> logger;
 
