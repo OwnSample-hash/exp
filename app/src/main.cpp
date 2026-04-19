@@ -12,7 +12,6 @@
 #include <plugins.hpp>
 #include <spdlog/common.h>
 #include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <string.hpp>
@@ -126,12 +125,12 @@ int main(int argc, const char **argv, const char **envp) {
 
   std::filesystem::create_directories(std::filesystem::path(logDir.Get()));
   spdlog::set_default_logger(spdlog::basic_logger_mt(
-      "main", logDir.Get() + "/" + normalizePath(logFile.Get())));
+      "main", logDir.Get() + "/" + normalizePath(logFile.Get()), true));
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
-  const auto now = std::chrono::system_clock::now();
-  const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
-  spdlog::info("Starting application at {}", std::ctime(&t_c));
+  // const auto now = std::chrono::system_clock::now();
+  // const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
+  // spdlog::info("Starting application at {}", std::ctime(&t_c));
 
   PluginLoader &loader = PluginLoader::instance();
 
@@ -161,13 +160,15 @@ int main(int argc, const char **argv, const char **envp) {
         std::make_shared<std::vector<explo::Module>>();
     std::shared_ptr<args::Group> pluginGroup =
         std::make_shared<args::Group>(parser, plugin->getName());
-    std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
-        plugin->getName(), std::string(CONFIG_LOG_DIR "/") +
-                               normalizePath(plugin->getName()) + ".log");
+    std::shared_ptr<spdlog::logger> plLogger =
+        spdlog::basic_logger_mt(plugin->getName(),
+                                std::string(CONFIG_LOG_DIR "/") +
+                                    normalizePath(plugin->getName()) + ".log",
+                                true);
 
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
-    plLogger->info("\nStarting plugin at {} ", std::ctime(&t_c));
+    // const auto now = std::chrono::system_clock::now();
+    // const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
+    // plLogger->info("Starting plugin at {} ", std::ctime(&t_c));
 
     auto iA = initArgs{plModules, pluginGroup, plLogger};
     pluginInitArgs.emplace(plugin->getName(), iA);
