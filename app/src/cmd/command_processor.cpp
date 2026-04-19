@@ -182,6 +182,7 @@ void CommandProcessor::switchContext(const std::string &name) {
   if (it == contexts_.end())
     throw std::runtime_error("ctx: unknown context '" + name + "'");
   currentCtx_ = it->second;
+  currentCtx_->sortCommands();
 }
 
 std::string CommandProcessor::currentContextName() const {

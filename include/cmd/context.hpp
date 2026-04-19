@@ -29,6 +29,8 @@ public:
   // All registered commands (read-only)
   const std::vector<CommandDef> &commands() const { return commands_; }
 
+  void sortCommands();
+
 private:
   std::string name_;
   std::vector<CommandDef> commands_;

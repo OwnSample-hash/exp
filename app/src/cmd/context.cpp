@@ -28,6 +28,15 @@ std::vector<std::string> Context::commandNames() const {
   return out;
 }
 
+void Context::sortCommands() {
+  std::sort(
+      commands_.begin(), commands_.end(),
+      [](const CommandDef &a, const CommandDef &b) { return a.name < b.name; });
+  for (size_t i = 0; i < commands_.size(); ++i) {
+    index_[commands_[i].name] = i;
+  }
+}
+
 } // namespace cmd
 } // namespace explo
 // Vim: set expandtab tabstop=2 shiftwidth=2:
