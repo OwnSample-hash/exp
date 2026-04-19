@@ -11,7 +11,7 @@ Dispatcher::Dispatcher(
   IMod *rendererModuleRaw = nullptr;
   for (const auto &[name, args] : pluginInitArgs) {
     for (const auto &mod : *args.modules) {
-      if (mod.type == explo::ModuleType::MODULE_TYPE_RENDERER) {
+      if (mod.type == explo::ModuleType::RENDERER) {
         if (!preferredRenderer.empty() && mod.name != preferredRenderer) {
           spdlog::debug("Skipping renderer module: {} from plugin: {} as it "
                         "does not match preferred renderer: {}",

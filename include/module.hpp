@@ -5,9 +5,9 @@
 namespace explo {
 
 enum class ModuleType {
-  MODULE_TYPE_RENDERER,
-  MODULE_TYPE_EXPLOIT_PROVIDER,
-  MODULE_TYPE_EXPLOIT,
+  RENDERER,
+  TOOLPROVIDER,
+  TOOL,
 };
 
 struct Module {
