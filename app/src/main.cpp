@@ -309,6 +309,72 @@ int main(int argc, const char **argv, const char **envp) {
         }
         return result.str();
       };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "tools";
+      c.description = "List loaded tools";
+      c.variadic = false;
+      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+        std::stringstream result;
+        result << "Loaded tools:\n";
+        for (const auto &[plugin, args] : pluginInitArgs) {
+          bool has_tools = false;
+          for (const auto &mod : *args.modules) {
+            if (mod.type == explo::ModuleType::TOOL) {
+              if (!has_tools) {
+                result << "Plugin: " << plugin << "\n";
+                has_tools = true;
+              }
+              result << "  - " << mod.instance->getName() << " "
+                     << mod.instance->getVersion() << "\n";
+            }
+          }
+        }
+        return result.str();
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "tool";
+      c.description = "Use tool: tool <tool_name>";
+      c.addDynamic("<tool_name>", R"([^\s]+)", "Name of the tool");
+      c.variadic = false;
+      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+        if (ec.args.size() < 2)
+          throw std::runtime_error("Usage: tool <tool_name>");
+        std::string tool_name = ec.args[1];
+        for (const auto &[plugin, args] : pluginInitArgs) {
+          for (const auto &mod : *args.modules) {
+            if (mod.type == explo::ModuleType::TOOL &&
+                std::strcmp(mod.instance->getName(), tool_name.c_str()) == 0) {
+              spdlog::info("Switching to tool: {} from plugin: {}", tool_name,
+                           plugin);
+              cp.switchContext(tool_name);
+              cp.vars().set("prompt",
+                            cmd::VarValue(std::string("(" + tool_name +
+                                                      ") \33[33m>\33[0m ")));
+              return "Switched to tool: " + tool_name;
+            }
+          }
+        }
+        return "\033[1;31mTool not found: " + tool_name + "\033[0m";
+      };
+      cp.registerGlobalCommand(c);
+    }
+    cp.getContext()->sortCommands();
+  }
+
+  spdlog::info("Initializing tools...");
+  for (const auto &[plugin, args] : pluginInitArgs) {
+    for (const auto &mod : *args.modules) {
+      if (mod.type == explo::ModuleType::TOOL) {
+        spdlog::debug("Tool: {} version: {}", mod.instance->getName(),
+                      mod.instance->getVersion());
+        mod.instance->initialize();
+      }
     }
   }
 
