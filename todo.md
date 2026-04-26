@@ -2,8 +2,13 @@
   - [ ] Alias support
   - [ ] Optional arguments
   - [ ] Overloaded commands
+  - [ ] Make command processor evaluate prompt
+  - [ ] Change clear line to ctrl+l and reenable ctrl+c to interrupt command
 - NC
   - [ ] Server mode
   - [x] Fix bug after close connection
-
+- Lua
+  - [ ] Add lua command to execute lua code
+  - [ ] Add lua command to execute lua file
+  - [ ] Tool provider mod
 <!-- Vim: set expandtab tabstop=2 shiftwidth=2: -->
