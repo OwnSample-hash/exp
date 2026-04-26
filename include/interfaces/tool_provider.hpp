@@ -5,12 +5,20 @@
  */
 #pragma once
 
-#include "interfaces/mod.hpp"
+#include <interfaces/mod.hpp>
+#include <interfaces/tool.hpp>
+#include <map>
+#include <memory>
+#include <string>
+
 namespace explo {
 
 class IToolProvider : public IMod {
 public:
   virtual ~IToolProvider() = default;
+
+  virtual const std::map<std::string, std::shared_ptr<ITool>> &
+  getTools() const = 0;
 };
 
 } // namespace explo

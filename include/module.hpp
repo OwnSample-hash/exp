@@ -13,9 +13,9 @@ enum class ModuleType {
 struct Module {
   const char *name;
   ModuleType type;
-  std::unique_ptr<IMod> instance;
+  std::shared_ptr<IMod> instance;
 
-  Module(const char *name, ModuleType type, std::unique_ptr<IMod> instance)
+  Module(const char *name, ModuleType type, std::shared_ptr<IMod> instance)
       : name(name), type(type), instance(std::move(instance)) {}
   Module(Module &&) = default;
   Module(const Module &) = delete;
