@@ -144,6 +144,7 @@ int main(int argc, const char **argv, const char **envp) {
       } else {
         spdlog::error("Failed to load plugin from: {}", plugin_path);
         spdlog::error("dlsym error: {}", loader.getLastError());
+        throw std::runtime_error("Failed to load plugin: " + plugin_path);
       }
     }
   }
