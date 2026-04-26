@@ -1,11 +1,13 @@
 #pragma once
 
-#include "interfaces/tool_provider.hpp"
-#include <lauxlib.h>
-#include <lua.h>
-#include <lualib.h>
+#include <interfaces/tool_provider.hpp>
 #include <memory>
+#include <multivalue.hpp>
 #include <spdlog/logger.h>
+
+extern "C" {
+#include <lua.h>
+}
 
 #define STR_(x) #x
 #define STR(x) STR_(x)
@@ -14,14 +16,13 @@ using namespace explo;
 
 class luaLoader final : public IToolProvider {
   std::shared_ptr<spdlog::logger> logger;
+  std::map<std::string, std::shared_ptr<ITool>> tools = {};
 
 public:
   luaLoader() = default;
   luaLoader(const luaLoader &) = delete;
   luaLoader(std::shared_ptr<spdlog::logger> logger)
-      : logger(std::move(logger)) {
-    this->logger->info("Initializing loader {}...", getVersion());
-  }
+      : logger(std::move(logger)) {}
   ~luaLoader() = default;
 
   const char *getName() const override { return "loader"; }
@@ -32,25 +33,11 @@ public:
 
   void initialize() override;
   void shutdown() override;
+
+  const std::map<std::string, std::shared_ptr<ITool>> &
+  getTools() const override {
+    return tools;
+  }
 };
 
-class LuaWrapper {
-  lua_State *L;
-
-public:
-  using LuaFunction = std::function<int(lua_State *)>;
-
-  LuaWrapper() {
-    L = luaL_newstate();
-    luaL_openlibs(L);
-  }
-
-  ~LuaWrapper() {
-    if (L) {
-      lua_close(L);
-    }
-  }
-
-  // Add methods to interact with the Lua state as needed
-};
 // Vim: set expandtab tabstop=2 shiftwidth=2:

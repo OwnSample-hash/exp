@@ -5,10 +5,11 @@
   help_text: Enable or disable the plugin.
   cmake_export: true
 
-- name: CONFIG_LUA_EXP
-  prompt: "lua_exp Configuration"
+- name: DIRECTORY
+  prompt: "Directory to recursively scan for Lua files"
   type: string
-  default: "lua_exp"
-  help_text: Placeholder option.
-  show_if: ENABLE
+  default: "./lua"
+  help_text: "The directory that will be scanned for Lua files. The plugin will look for .lua files in this directory and its subdirectories."
+  show_if: 
+    - ENABLE
 

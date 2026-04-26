@@ -4,6 +4,8 @@ if (ENABLE_LUA_EXP)
   set(MOD_SRC 
     src/lua_exp.cpp
     src/loader.cpp
+    src/tool.cpp
+    src/lib.cpp
   )
 
   CPMAddPackage(
@@ -17,25 +19,42 @@ if (ENABLE_LUA_EXP)
     # lua has no CMake support, so we create our own target
   
     FILE(GLOB lua_sources ${lua_SOURCE_DIR}/*.c)
-    list(REMOVE_ITEM lua_sources "${lua_SOURCE_DIR}/lua.c" "${lua_SOURCE_DIR}/luac.c")
+    list(REMOVE_ITEM lua_sources "${lua_SOURCE_DIR}/lua.c" "${lua_SOURCE_DIR}/luac.c"
+     "${lua_SOURCE_DIR}/onelua.c")
     add_library(lua STATIC ${lua_sources})
+    FILE(GLOB lua_headers ${lua_SOURCE_DIR}/*.h)
   
     target_include_directories(lua
-      PUBLIC
-        $<BUILD_INTERFACE:${lua_SOURCE_DIR}>
+      PUBLIC ${lua_headers}
+    )
+
+    target_compile_definitions(lua PRIVATE LUA_USE_LINUX)
+
+    set_target_properties(lua PROPERTIES
+      POSITION_INDEPENDENT_CODE ON
+      C_STANDARD 99
+      C_STANDARD_REQUIRED ON
+      C_EXTENSIONS OFF
     )
   endif()
  
   add_library(${MOD_NAME} SHARED ${MOD_SRC})
   target_sources(${MOD_NAME} PUBLIC ${MOD_SRC})
-  target_sources(${MOD_NAME} PUBLIC ${MOD_SRC})
-  target_include_directories(${MOD_NAME} PUBLIC include ../../include/ ${lua_SOURCE_DIR})
+  target_include_directories(${MOD_NAME} PUBLIC include ../../include/ ${lua_headers})
   target_link_libraries(${MOD_NAME} PRIVATE spdlog::spdlog lua)
-  target_compile_definitions(${MOD_NAME} PRIVATE MODULE_NAME="${MOD_NAME}")
+  target_compile_definitions(${MOD_NAME} PRIVATE MODULE_NAME="${MOD_NAME}" LUA_USE_LINUX)
   set_property(TARGET ${MOD_NAME} PROPERTY PREFIX "")
  
   add_custom_command(TARGET ${MOD_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${MOD_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/../$<TARGET_FILE_NAME:${MOD_NAME}>
+  )
+
+  add_custom_command(TARGET ${MOD_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/lua ${CMAKE_CURRENT_BINARY_DIR}/lua
+  )
+
+  add_custom_command(TARGET ${MOD_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/lua ${CMAKE_CURRENT_BINARY_DIR}/../../lua
   )
  
   if(ENABLE_TESTS)

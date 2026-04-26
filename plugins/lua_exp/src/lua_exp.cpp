@@ -1,6 +1,6 @@
-#include "module.hpp"
 #include <loader.hpp>
 #include <lua_exp.hpp>
+#include <module.hpp>
 
 const char *PL_lua_exp::getName() const { return "lua_exp"; }
 
@@ -12,7 +12,7 @@ void PL_lua_exp::initialize(initArgs &args) {
 
   args.modules->emplace_back(
       "loader", ModuleType::TOOLPROVIDER,
-      std::make_unique<luaLoader>(logger->clone(logger->name() + "::loader")));
+      std::make_shared<luaLoader>(logger->clone(logger->name() + "::loader")));
 }
 
 static PluginRegistry::Add<PL_lua_exp> lua_expRegister("lua_exp");
