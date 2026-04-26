@@ -1,11 +1,15 @@
+#include "interfaces/tool.hpp"
 #include <args.hxx>
 #include <cmd.hpp>
 #include <config.hpp>
 #include <dispatcher.hpp>
 #include <filesystem>
 #include <fstream>
+#include <interfaces/tool_provider.hpp>
 #include <iomanip>
 #include <list>
+#include <map>
+#include <memory>
 #include <module.hpp>
 #include <plugin_interface.hpp>
 #include <plugin_loader.hpp>
@@ -190,6 +194,8 @@ int main(int argc, const char **argv, const char **envp) {
     std::exit(1);
   }
 
+  std::map<std::string, std::shared_ptr<ITool>> tools;
+
   // Command
   {
     spdlog::info("Registering global commands...");
@@ -320,18 +326,8 @@ int main(int argc, const char **argv, const char **envp) {
       c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
         std::stringstream result;
         result << "Loaded tools:\n";
-        for (const auto &[plugin, args] : pluginInitArgs) {
-          bool has_tools = false;
-          for (const auto &mod : *args.modules) {
-            if (mod.type == explo::ModuleType::TOOL) {
-              if (!has_tools) {
-                result << "Plugin: " << plugin << "\n";
-                has_tools = true;
-              }
-              result << "  - " << mod.instance->getName() << " "
-                     << mod.instance->getVersion() << "\n";
-            }
-          }
+        for (const auto &[name, tool] : tools) {
+          result << " - " << name << " version: " << tool->getVersion() << "\n";
         }
         return result.str();
       };
@@ -347,18 +343,12 @@ int main(int argc, const char **argv, const char **envp) {
         if (ec.args.size() < 2)
           throw std::runtime_error("Usage: tool <tool_name>");
         std::string tool_name = ec.args[1];
-        for (const auto &[plugin, args] : pluginInitArgs) {
-          for (const auto &mod : *args.modules) {
-            if (mod.type == explo::ModuleType::TOOL &&
-                std::strcmp(mod.instance->getName(), tool_name.c_str()) == 0) {
-              spdlog::info("Switching to tool: {} from plugin: {}", tool_name,
-                           plugin);
-              cp.switchContext(tool_name);
-              cp.vars().set("prompt",
-                            cmd::VarValue(std::string("(" + tool_name +
-                                                      ") \33[33m>\33[0m ")));
-              return "Switched to tool: " + tool_name;
-            }
+        for (const auto &[name, tool] : tools) {
+          if (name == tool_name) {
+            cp.switchContext(name);
+            cp.vars().set("prompt", cmd::VarValue(std::string(
+                                        "(" + name + ") \33[33m>\33[0m ")));
+            return "Using tool: " + name + "\n";
           }
         }
         return "\033[1;31mTool not found: " + tool_name + "\033[0m";
@@ -375,6 +365,21 @@ int main(int argc, const char **argv, const char **envp) {
         spdlog::debug("Tool: {} version: {}", mod.instance->getName(),
                       mod.instance->getVersion());
         mod.instance->initialize();
+        tools.emplace(mod.instance->getName(),
+                      std::static_pointer_cast<ITool>(mod.instance));
+      }
+      if (mod.type == explo::ModuleType::TOOLPROVIDER) {
+        auto *provider =
+            dynamic_cast<explo::IToolProvider *>(mod.instance.get());
+        spdlog::debug("Tool Provider: {} version: {}", provider->getName(),
+                      provider->getVersion());
+        provider->initialize();
+        for (const auto &[name, tool] : provider->getTools()) {
+          spdlog::debug("  - Tool: {} version: {}", tool->getName(),
+                        tool->getVersion());
+          tool->initialize();
+          tools.emplace(tool->getName(), std::static_pointer_cast<ITool>(tool));
+        }
       }
     }
   }
