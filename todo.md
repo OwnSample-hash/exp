@@ -8,7 +8,7 @@
   - [ ] Server mode
   - [x] Fix bug after close connection
 - Lua
-  - [ ] Add lua command to execute lua code
+  - [x] Add lua command to execute lua code
   - [ ] Add lua command to execute lua file
-  - [ ] Tool provider mod
+  - [x] Tool provider mod
 <!-- Vim: set expandtab tabstop=2 shiftwidth=2: -->
