@@ -387,6 +387,11 @@ int main(int argc, const char **argv, const char **envp) {
   Dispatcher dispatcher = Dispatcher(pluginInitArgs, preferredUI.Get());
   dispatcher.runLoop();
 
+  spdlog::info("Shutting down tools...");
+  for (const auto &[name, tool] : tools) {
+    tool->shutdown();
+  }
+
   return 0;
 }
 // Vim: set expandtab tabstop=2 shiftwidth=2:
