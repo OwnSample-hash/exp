@@ -24,5 +24,9 @@ LuaTool = {
 
 explo = {
   ---@type function
+  ---@param message string
   log = function(message) end,
+  ---@type function
+  ---@param name string
+  var = function(name) end,
 }

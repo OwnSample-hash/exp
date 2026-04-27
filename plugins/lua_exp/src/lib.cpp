@@ -1,3 +1,4 @@
+#include <cmd.hpp>
 #include <lib.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -18,4 +19,16 @@ int log(lua_State *L) {
   logger->info("[Lua] {}", log_msg);
   return 0; // Number of return values
 }
+
+int var(lua_State *L) {
+  const char *env_var = luaL_checkstring(L, 1);
+  auto var = explo::cmd::CommandProcessor::instance().vars().get(env_var);
+  if (var) {
+    lua_pushstring(L, var->toString().c_str());
+  } else {
+    lua_pushnil(L);
+  }
+  return 1;
+}
+
 // Vim: set expandtab tabstop=2 shiftwidth=2:

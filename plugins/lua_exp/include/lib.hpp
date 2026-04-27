@@ -8,7 +8,10 @@ extern "C" {
 
 int log(lua_State *L);
 
+int var(lua_State *L);
+
 const luaL_Reg libs[] = {
     {"log", log},
+    {"var", var},
     {nullptr, nullptr},
 };
