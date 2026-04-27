@@ -20,6 +20,8 @@ LuaTool = {
   initialize = function(args) end,
   ---@type function|string
   shutdown = function() end,
+  ---@type table<string, string|number|boolean|nil>
+  vars = {},
 }
 
 explo = {
