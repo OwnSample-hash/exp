@@ -11,4 +11,5 @@
   - [x] Add lua command to execute lua code
   - [ ] Add lua command to execute lua file
   - [x] Tool provider mod
+  - [ ] Fix arguments pussing to lua command
 <!-- Vim: set expandtab tabstop=2 shiftwidth=2: -->
