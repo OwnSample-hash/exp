@@ -1,4 +1,5 @@
 #include <cmd.hpp>
+#include <filesystem>
 #include <tool.hpp>
 
 using namespace explo;
@@ -20,15 +21,93 @@ void luaTool::initialize() {
     }
     cmd::CommandProcessor::instance().registerContext(ctx);
   }
+  auto vars = this->lua["vars"];
+  if (vars.is<LTW>()) {
+    auto var_table = vars.as<LTW>();
+  }
+  auto init = this->lua["initialize"];
+  if (init.is<LFW>()) {
+    auto func = init.as<LFW>();
+    func();
+  } else if (init.is<std::string>()) {
+    this->logger->debug("{}/{}", this->file, init.as<std::string>());
+    std::filesystem::path p(this->file);
+    p /= init.as<std::string>();
+    if (std::filesystem::exists(p)) {
+      this->logger->info("Executing initialization script: {}", p.string());
+      lua.load("initialize_fn", p.string());
+      auto init_fn = lua["initialize_fn"];
+      if (init_fn.is<LFW>()) {
+        auto func = init_fn.as<LFW>();
+        func();
+      } else {
+        this->logger->warn(
+            "Initialization script does not return a function: {}", p.string());
+      }
+    } else {
+      this->logger->warn("Initialization script not found: {}", p.string());
+    }
+  } else {
+    this->logger->warn("Lua tool {} does not have an 'initialize' function",
+                       name);
+  }
 }
 
 void luaTool::shutdown() {
   this->logger->info("Shutting down Lua tool: {} v{}...", name, version);
-  // Additional cleanup logic can be added here
+  auto shutdown = this->lua["shutdown"];
+  if (shutdown.is<LFW>()) {
+    auto func = shutdown.as<LFW>();
+    func();
+  } else if (shutdown.is<std::string>()) {
+    this->logger->debug("{}/{}", this->file, shutdown.as<std::string>());
+    std::filesystem::path p(this->file);
+    p /= shutdown.as<std::string>();
+    if (std::filesystem::exists(p)) {
+      this->logger->info("Executing shutdown script: {}", p.string());
+      lua.load("shutdown_fn", p.string());
+      auto shutdown_fn = lua["shutdown_fn"];
+      if (shutdown_fn.is<LFW>()) {
+        auto func = shutdown_fn.as<LFW>();
+        func();
+      } else {
+        this->logger->warn("Shutdown script does not return a function: {}",
+                           p.string());
+      }
+    } else {
+      this->logger->warn("Shutdown script not found: {}", p.string());
+    }
+  } else {
+    this->logger->warn("Lua tool {} does not have a 'shutdown' function", name);
+  }
 }
 
 void luaTool::execute() {
   this->logger->info("Executing Lua tool: {} v{}...", name, version);
-  LFW execute = this->lua["execute"].as<LFW>();
-  execute("hello from C++");
+  auto execute = this->lua["execute"];
+  if (execute.is<LFW>()) {
+    auto func = execute.as<LFW>();
+    func("Hello from C++!");
+  } else if (execute.is<std::string>()) {
+    this->logger->debug("{}/{}", this->file, execute.as<std::string>());
+    std::filesystem::path p(this->file);
+    p /= execute.as<std::string>();
+    if (std::filesystem::exists(p)) {
+      this->logger->info("Executing main script: {}", p.string());
+      lua.load("execute_fn", p.string());
+      auto execute_fn = lua["execute_fn"];
+      if (execute_fn.is<LFW>()) {
+        auto func = execute_fn.as<LFW>();
+        func("Hello from C++!");
+      } else {
+        this->logger->warn("Main script does not return a function: {}",
+                           p.string());
+      }
+    } else {
+      this->logger->warn("Main script not found: {}", p.string());
+    }
+  } else {
+    this->logger->warn("Lua tool {} does not have a valid 'execute' function",
+                       name);
+  }
 }
