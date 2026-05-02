@@ -18,6 +18,12 @@ return {
   end,
   execute = function(command)
     explo.log("tool1 executing command: " .. type(command) .. " - " .. tostring(command))
+    local _str = explo.var("str")
+    if _str == nil then
+      explo.log("Variable 'str' is nil")
+    else
+      explo.log("Current value of 'str': " .. type(_str) .. " - " .. _str)
+    end
     return 1
   end,
 }
