@@ -12,7 +12,6 @@ namespace explo {
  * @class IMod
  * @brief Interface for modules, providing methods for module information and
  * lifecycle management.
- *
  */
 class IMod {
 public:

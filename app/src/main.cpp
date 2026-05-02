@@ -133,9 +133,6 @@ int main(int argc, const char **argv, const char **envp) {
       "main", logDir.Get() + "/" + normalizePath(logFile.Get()), true));
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
-  // const auto now = std::chrono::system_clock::now();
-  // const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
-  // spdlog::info("Starting application at {}", std::ctime(&t_c));
 
   PluginLoader &loader = PluginLoader::instance();
 
@@ -171,10 +168,6 @@ int main(int argc, const char **argv, const char **envp) {
                                 std::string(CONFIG_LOG_DIR "/") +
                                     normalizePath(plugin->getName()) + ".log",
                                 true);
-
-    // const auto now = std::chrono::system_clock::now();
-    // const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
-    // plLogger->info("Starting plugin at {} ", std::ctime(&t_c));
 
     auto iA = initArgs{plModules, pluginGroup, plLogger};
     pluginInitArgs.emplace(plugin->getName(), iA);
