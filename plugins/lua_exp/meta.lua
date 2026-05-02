@@ -13,6 +13,10 @@ LuaTool = {
   description = "",
   ---@type string[]
   tags = {},
+  ---@type table<string, string|number|boolean|nil>
+  vars = {},
+  ---@type boolean
+  rootRequired = false,
   ---@type function|string
   execute = function() end,
   ---@type function|string
@@ -20,8 +24,6 @@ LuaTool = {
   initialize = function(args) end,
   ---@type function|string
   shutdown = function() end,
-  ---@type table<string, string|number|boolean|nil>
-  vars = {},
 }
 
 explo = {
