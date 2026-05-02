@@ -330,7 +330,7 @@ int main(int argc, const char **argv, const char **envp) {
     }
     {
       cmd::CommandDef c;
-      c.name = "tool";
+      c.name = "use";
       c.description = "Use tool: tool <tool_name>";
       c.addDynamic("<tool_name>", R"([^\s]+)", "Name of the tool");
       c.variadic = false;
