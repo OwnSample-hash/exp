@@ -24,7 +24,14 @@ set(SPDLOG_BUILD_SHARED ON)
 
 CPMAddPackage("gh:gabime/spdlog@1.17.0")
 
-add_compile_options(-ggdb)
+if(CMAKE_BUILD_TYPE)
+  add_compile_options(-ggdb)
+endif()
+
+if(ENABLE_SANITIZERS)
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address,undefined)
+endif()
 
 # Global modules
 add_subdirectory(plugins)

@@ -5,3 +5,12 @@
   help_text: Enable or disable building tests.
   cmake_export: true
   cmake_help: $help_text$
+
+- name: ENABLE_SANITIZERS
+  prompt: Enable Sanitizers
+  type: bool
+  default: false
+  help_text: Enable or disable building with sanitizers (e.g., AddressSanitizer, UndefinedBehaviorSanitizer).
+  cmake_export: true
+  cmake_help: $help_text$ 
+
