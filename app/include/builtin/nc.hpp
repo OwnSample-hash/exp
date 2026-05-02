@@ -39,6 +39,13 @@ public:
 
   void execute() override;
 
+  void invoke(const std::string &prefix) override;
+
+  void invoke(const char *prefix) override {
+    this->invoke(std::string(prefix));
+  }
+  void suppress() override;
+
   const std::vector<std::string> &getTags() const override {
     static std::vector<std::string> tags = {"network", "utility"};
     return tags;

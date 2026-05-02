@@ -1,9 +1,9 @@
 #pragma once
 
+#include "utils.hpp"
 #include <interfaces/tool.hpp>
 #include <memory>
 #include <spdlog/logger.h>
-#include <utils.hpp>
 
 using namespace explo;
 
@@ -40,4 +40,12 @@ public:
   void shutdown() override;
 
   void execute() override;
+
+  void invoke(const std::string &prefix) override;
+
+  void invoke(const char *prefix) override {
+    this->invoke(std::string(prefix));
+  }
+
+  void suppress() override;
 };

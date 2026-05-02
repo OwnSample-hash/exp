@@ -1,6 +1,8 @@
 #include <cmd.hpp>
+#include <cxxabi.h>
 #include <filesystem>
 #include <tool.hpp>
+#include <variant>
 
 using namespace explo;
 
@@ -21,10 +23,7 @@ void luaTool::initialize() {
     }
     cmd::CommandProcessor::instance().registerContext(ctx);
   }
-  auto vars = this->lua["vars"];
-  if (vars.is<LTW>()) {
-    auto var_table = vars.as<LTW>();
-  }
+
   auto init = this->lua["initialize"];
   if (init.is<LFW>()) {
     auto func = init.as<LFW>();
@@ -50,6 +49,39 @@ void luaTool::initialize() {
   } else {
     this->logger->warn("Lua tool {} does not have an 'initialize' function",
                        name);
+  }
+}
+
+void luaTool::invoke(const std::string &prefix) {
+  this->prefix = prefix;
+  this->logger->info("Invoking Lua tool: {} v{}...", name, version);
+  auto vars = this->lua["vars"];
+  if (vars.is<std::monostate>()) {
+    this->logger->info("Lua tool {} has no 'vars' table", name);
+    return;
+  }
+  if (vars.is<LTW>()) {
+    auto &cpVars = cmd::CommandProcessor::instance().vars();
+    auto var_table = vars.as<LTW>();
+    for (const auto &[key, value] : var_table.iterate()) {
+      if (value.is<std::string>()) {
+        this->logger->info("Lua variable: '{}' = '{}'", key,
+                           value.as<std::string>());
+        cpVars.set(prefix + key, cmd::VarValue(value.as<std::string>()));
+      } else if (value.is<lua_Number>()) {
+        this->logger->info("Lua variable: '{}' = {}", key,
+                           value.as<lua_Number>());
+        cpVars.set(prefix + key, cmd::VarValue(value.as<lua_Number>()));
+      } else if (value.is<bool>()) {
+        this->logger->info("Lua variable: '{}' = {}", key, value.as<bool>());
+        cpVars.set(prefix + key, cmd::VarValue(value.as<bool>()));
+      } else {
+        const char *type_name = abi::__cxa_demangle(typeid(value).name(),
+                                                    nullptr, nullptr, nullptr);
+        this->logger->info("Lua variable: '{}' = '{}'", key, type_name);
+        free((void *)type_name);
+      }
+    }
   }
 }
 
@@ -79,6 +111,32 @@ void luaTool::shutdown() {
     }
   } else {
     this->logger->warn("Lua tool {} does not have a 'shutdown' function", name);
+  }
+}
+
+void luaTool::suppress() {
+  this->logger->info("Suppressing Lua tool: {} v{}...", name, version);
+  auto vars = this->lua["vars"];
+  if (vars.is<std::monostate>()) {
+    this->logger->info("Lua tool {} has no 'vars' table", name);
+    return;
+  }
+  if (vars.is<LTW>()) {
+    auto &cpVars = cmd::CommandProcessor::instance().vars();
+    auto var_table = vars.as<LTW>();
+    for (const auto &[key, value] : var_table.iterate()) {
+      if (value.is<std::string>() || value.is<lua_Number>() ||
+          value.is<bool>()) {
+        this->logger->info("Unsetting Lua variable: '{}'", key);
+        cpVars.unset(key);
+      } else {
+        const char *type_name = abi::__cxa_demangle(typeid(value).name(),
+                                                    nullptr, nullptr, nullptr);
+        this->logger->info("Lua variable: '{}' of type '{}' cannot be unset",
+                           key, type_name);
+        free((void *)type_name);
+      }
+    }
   }
 }
 

@@ -46,8 +46,17 @@ void NC::initialize() {
   cmd::CommandProcessor::instance().registerContext(ctx);
 }
 
+void NC::invoke(const std::string &prefix) {
+  this->prefix = prefix;
+  // Code to run when the nc tool is selected
+}
+
 void NC::shutdown() {
   // Cleanup code for the nc tool
+}
+
+void NC::suppress() {
+  // Code to run when the nc tool is deselected
 }
 
 extern struct termios origTermios;
