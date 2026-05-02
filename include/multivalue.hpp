@@ -54,6 +54,8 @@ template <typename... Types> struct MultiValue {
   template <typename T> const T *try_as() const {
     return std::get_if<T>(&data);
   }
+
+  operator const std::variant<Types...>() const { return data; }
 };
 
 } // namespace explo
