@@ -80,6 +80,8 @@ std::istream &operator>>(std::istream &is, spdlog::level::level_enum &level) {
 } // namespace level
 } // namespace spdlog
 
+std::map<std::string, std::shared_ptr<ITool>> tools;
+
 int main(int argc, const char **argv, const char **envp) {
   args::ArgumentParser parser("Explo - A modular exploitation framework");
   args::CompletionFlag completion(parser, {"complete"});
@@ -187,7 +189,7 @@ int main(int argc, const char **argv, const char **envp) {
     std::exit(1);
   }
 
-  std::map<std::string, std::shared_ptr<ITool>> tools;
+  std::shared_ptr<ITool> currentTool = nullptr;
 
   // Command
   {
@@ -385,6 +387,8 @@ int main(int argc, const char **argv, const char **envp) {
     tool->shutdown();
   }
 
+  // clear tools to release resources before plugins are unloaded
+  tools.clear();
   return 0;
 }
 // Vim: set expandtab tabstop=2 shiftwidth=2:
