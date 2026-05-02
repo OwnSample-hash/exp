@@ -56,7 +56,15 @@ struct LTW {
     lua_setglobal(L, "explo");
   }
   LTW(lua_State *L) : L(L) {}
-  ~LTW() { lua_close(L); }
+
+  void close() {
+    if (L) {
+      lua_close(L);
+      L = nullptr;
+    }
+  }
+
+  int insert(auto value, const char *field);
 
   auto operator[](const char *field, bool failIfNotFound = true);
 

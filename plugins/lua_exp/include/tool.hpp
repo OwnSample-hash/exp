@@ -17,7 +17,7 @@ class luaTool final : public ITool {
   LTW lua;
 
 public:
-  ~luaTool() {}
+  ~luaTool() { lua.close(); }
 
   luaTool() = delete;
   luaTool(const luaTool &) = delete;
