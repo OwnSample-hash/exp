@@ -340,6 +340,11 @@ int main(int argc, const char **argv, const char **envp) {
         std::string tool_name = ec.args[1];
         for (const auto &[name, tool] : tools) {
           if (name == tool_name) {
+            if (currentTool) {
+              currentTool->suppress();
+            }
+            currentTool = tool;
+            currentTool->invoke(currentTool->getName());
             cp.switchContext(name);
             cp.vars().set("prompt", cmd::VarValue(std::string(
                                         "(" + name + ") \33[33m>\33[0m ")));
