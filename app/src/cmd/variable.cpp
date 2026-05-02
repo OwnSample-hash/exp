@@ -21,6 +21,8 @@ std::string VarValue::toString() const {
     oss << fval;
     return oss.str();
   }
+  case VarType::Bool:
+    return ival ? "true" : "false";
   case VarType::Array: {
     std::string out;
     for (size_t i = 0; i < aval.size(); ++i) {
@@ -40,6 +42,8 @@ long long VarValue::toInt() const {
     return ival;
   case VarType::Float:
     return static_cast<long long>(fval);
+  case VarType::Bool:
+    return ival;
   case VarType::String:
     try {
       return std::stoll(sval);
@@ -60,6 +64,8 @@ bool VarValue::toBool() const {
     return fval != 0.0;
   case VarType::String:
     return !sval.empty() && sval != "0" && sval != "false";
+  case VarType::Bool:
+    return ival != 0;
   case VarType::Array:
     return !aval.empty();
   }

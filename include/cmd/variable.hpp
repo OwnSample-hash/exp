@@ -8,7 +8,7 @@ namespace explo {
 namespace cmd {
 
 // Value types supported by the variable system
-enum class VarType { String, Integer, Float, Array };
+enum class VarType { String, Integer, Float, Array, Bool };
 
 struct VarValue {
   VarType type = VarType::String;
@@ -26,6 +26,7 @@ struct VarValue {
   explicit VarValue(double d) : type(VarType::Float), fval(d) {}
   explicit VarValue(std::vector<std::string> a)
       : type(VarType::Array), aval(std::move(a)) {}
+  explicit VarValue(bool b) : type(VarType::Bool), ival(b ? 1 : 0) {}
 
   // Coercion to string (for expansion)
   std::string toString() const;
