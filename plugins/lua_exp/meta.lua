@@ -26,11 +26,25 @@ LuaTool = {
   shutdown = function() end,
 }
 
+---@type string
+name = ""
+
 explo = {
   ---@type function
   ---@param message string
-  log = function(message) end,
+  logd = function(message) end,
+  ---@type function
+  ---@param message string
+  logi = function(message) end,
+  ---@type function
+  ---@param message string
+  logw = function(message) end,
+  ---@type function
+  ---@param message string
+  loge = function(message) end,
+
   ---@type function
   ---@param name string
+  ---@return string|number|boolean|nil
   var = function(name) end,
 }

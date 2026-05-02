@@ -12,17 +12,23 @@ extern "C" {
 
 extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
 
-#define luaFuncs                                                               \
-  X(log)                                                                       \
-  X(var)                                                                       \
-  X(call)
+#define luaLogFuncs                                                            \
+  X(logd, debug)                                                               \
+  X(logi, info)                                                                \
+  X(logw, warn)                                                                \
+  X(loge, error)
 
-#define X(name) int name(lua_State *L);
+#define luaFuncs                                                               \
+  X(var)                                                                       \
+  X(call)                                                                      \
+  luaLogFuncs
+
+#define X(name, ...) int name(lua_State *L);
 luaFuncs
 #undef X
 
     const luaL_Reg libs[] = {
-#define X(name) {#name, name},
+#define X(name, ...) {#name, name},
         luaFuncs
 #undef X
         {nullptr, nullptr},

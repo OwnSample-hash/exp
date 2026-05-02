@@ -11,18 +11,30 @@ return {
     nop = nil,
   },
   initialize = function()
-    explo.log("Initializing tool1")
+    explo.logi("Initializing tool1")
+    if name == nil then
+      explo.logw("Tool name is nil")
+      for k, v in pairs(_G) do
+        explo.logi("Global variable: " .. k .. " - " .. type(v))
+        explo.logi("Value: " .. tostring(v))
+      end
+    else
+      explo.logi("Tool name: " .. type(name) .. " - " .. name)
+    end
   end,
   shutdown = function()
-    explo.log("Shutting down tool1")
+    explo.logi("Shutting down tool1")
   end,
-  execute = function(command)
-    explo.log("tool1 executing command: " .. type(command) .. " - " .. tostring(command))
+  execute = function()
+    explo.logd("Executing tool1")
+    explo.logi("Executing tool1")
+    explo.logw("Executing tool1")
+    explo.loge("Executing tool1")
     local _str = explo.var("str")
     if _str == nil then
-      explo.log("Variable 'str' is nil")
+      explo.loge("Variable 'str' is nil")
     else
-      explo.log("Current value of 'str': " .. type(_str) .. " - " .. _str)
+      explo.logi("Current value of 'str': " .. type(_str) .. " - " .. _str)
     end
     return 1
   end,
