@@ -4,12 +4,13 @@
   - [ ] Overloaded commands
   - [ ] Make command processor evaluate prompt
   - [ ] Change clear line to ctrl+l and reenable ctrl+c to interrupt command
+  - [ ] Make namespaced vars separated from globals
 - NC
   - [ ] Server mode
   - [x] Fix bug after close connection
 - Lua
   - [x] Add lua command to execute lua code
-  - [ ] Add lua command to execute lua file
+  - [x] Add lua command to execute lua file
   - [x] Tool provider mod
   - [ ] Fix arguments pussing to lua command
 <!-- Vim: set expandtab tabstop=2 shiftwidth=2: -->
