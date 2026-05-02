@@ -53,6 +53,8 @@ public:
    * @return A vector of strings representing the tool tags.
    */
   virtual const std::vector<std::string> &getTags() const = 0;
+
+  virtual bool isShared() const { return false; }
 };
 
 } // namespace explo
