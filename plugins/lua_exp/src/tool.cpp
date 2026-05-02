@@ -67,14 +67,14 @@ void luaTool::invoke(const std::string &prefix) {
       if (value.is<std::string>()) {
         this->logger->info("Lua variable: '{}' = '{}'", key,
                            value.as<std::string>());
-        cpVars.set(prefix + key, cmd::VarValue(value.as<std::string>()));
+        cpVars.set(prefix + "." + key, cmd::VarValue(value.as<std::string>()));
       } else if (value.is<lua_Number>()) {
         this->logger->info("Lua variable: '{}' = {}", key,
                            value.as<lua_Number>());
-        cpVars.set(prefix + key, cmd::VarValue(value.as<lua_Number>()));
+        cpVars.set(prefix + "." + key, cmd::VarValue(value.as<lua_Number>()));
       } else if (value.is<bool>()) {
         this->logger->info("Lua variable: '{}' = {}", key, value.as<bool>());
-        cpVars.set(prefix + key, cmd::VarValue(value.as<bool>()));
+        cpVars.set(prefix + "." + key, cmd::VarValue(value.as<bool>()));
       } else {
         const char *type_name = abi::__cxa_demangle(typeid(value).name(),
                                                     nullptr, nullptr, nullptr);
@@ -128,7 +128,7 @@ void luaTool::suppress() {
       if (value.is<std::string>() || value.is<lua_Number>() ||
           value.is<bool>()) {
         this->logger->info("Unsetting Lua variable: '{}'", key);
-        cpVars.unset(key);
+        cpVars.unset(prefix + "." + key);
       } else {
         const char *type_name = abi::__cxa_demangle(typeid(value).name(),
                                                     nullptr, nullptr, nullptr);
@@ -156,7 +156,7 @@ void luaTool::execute() {
       auto execute_fn = lua["execute_fn"];
       if (execute_fn.is<LFW>()) {
         auto func = execute_fn.as<LFW>();
-        func("Hello from C++!");
+        func();
       } else {
         this->logger->warn("Main script does not return a function: {}",
                            p.string());
