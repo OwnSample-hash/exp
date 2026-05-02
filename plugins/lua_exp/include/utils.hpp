@@ -7,6 +7,7 @@ extern "C" {
 }
 
 #include "lib.hpp"
+#include <iterator.hpp>
 #include <multivalue.hpp>
 #include <random>
 #include <spdlog/spdlog.h>
@@ -14,7 +15,13 @@ extern "C" {
 
 using namespace explo;
 
-// Forward-declare both so they can reference each other
+const std::string base_code = R"(
+local tbl = {{}}
+local status, err = xpcall(function() tbl = {}"{}" end, debug.traceback)
+if not status then error(err) end
+return tbl
+)";
+
 struct LFW;
 struct LTW;
 
@@ -23,13 +30,12 @@ struct LTW;
 // Use a type alias defined after the structs instead, and return it via
 // a deduced / out-of-line definition.
 
-// ── LFW: only declares operator(), defines it after lua_Vartype is complete ──
 struct LFW {
-  LFW(lua_State *L) : L(L) { luaL_checktype(L, -1, LUA_TFUNCTION); }
+  LFW(lua_State *L, int index = -1) : L(L) {
+    luaL_checktype(L, index, LUA_TFUNCTION);
+  }
 
-  // Defined out-of-line below, after lua_Vartype is fully known
-  template <typename... Args>
-  auto operator()(Args &&...args); // return type deduced after definition
+  template <typename... Args> auto operator()(Args &&...args);
 
 private:
   lua_State *L;
@@ -39,7 +45,6 @@ private:
   void pushArg(bool b) { lua_pushboolean(L, b); }
 };
 
-// ── LTW: fully defined, operator[] return type still needs lua_Vartype ──────
 struct LTW {
   LTW() {
     L = luaL_newstate();
@@ -51,28 +56,33 @@ struct LTW {
     lua_setglobal(L, "explo");
   }
   LTW(lua_State *L) : L(L) {}
+  ~LTW() { lua_close(L); }
 
-  // Defined out-of-line below
-  auto operator[](const char *field);
+  auto operator[](const char *field, bool failIfNotFound = true);
 
-  LTW &operator()(const std::string payload, bool isString = false) {
-    std::string base_code = R"(
-      local tbl = {{}}
-      local status, err = xpcall(function() tbl = {}"{}" end, debug.traceback)
-      if not status then error(err) end
-      return tbl
-    )";
-    std::string code;
-    if (isString) [[unlikely]] {
-      code = std::vformat(base_code,
-                          std::make_format_args("loadstring ", payload));
-    } else [[likely]] {
-      code =
-          std::vformat(base_code, std::make_format_args("require ", payload));
-    }
-    auto logger = spdlog::get("lua_exp");
+  void load(const std::string &field, const std::string &file) {
+    static auto logger = spdlog::get("lua_exp");
     if (!logger)
       throw std::runtime_error("Logger not found");
+    std::string code =
+        std::vformat(base_code, std::make_format_args("dofile ", file));
+    if (luaL_dostring(L, code.c_str()) != LUA_OK) {
+      std::string err = lua_tostring(L, -1);
+      logger->error("Lua error: {}", err);
+      throw std::runtime_error("Lua error: " + err);
+    }
+    luaL_checktype(L, -1, LUA_TFUNCTION);
+    lua_getglobal(L, tableName.c_str());
+    lua_pushvalue(L, -2);
+    lua_setfield(L, -2, field.c_str());
+  }
+
+  LTW &operator()(const std::string &payload) {
+    static auto logger = spdlog::get("lua_exp");
+    if (!logger)
+      throw std::runtime_error("Logger not found");
+    std::string code =
+        std::vformat(base_code, std::make_format_args("require ", payload));
     logger->trace("Executing Lua code:\n{}", code);
     if (luaL_dostring(L, code.c_str()) != LUA_OK) {
       std::string err = lua_tostring(L, -1);
@@ -80,13 +90,17 @@ struct LTW {
       throw std::runtime_error("Lua error: " + err);
     }
     luaL_checktype(L, -1, LUA_TTABLE);
+    tableIndex = lua_gettop(L);
     nameTable();
     return *this;
   }
 
+  auto iterate();
+
 private:
   lua_State *L;
   std::string tableName;
+  int tableIndex;
 
   void nameTable() {
     constexpr char allowed_chars[] =
@@ -100,19 +114,49 @@ private:
     lua_setglobal(L, tableName.c_str());
   }
 
-  LTW(lua_State *L, bool) : L(L) {
-    luaL_checktype(L, -1, LUA_TTABLE);
+  LTW(lua_State *L, int index) : L(L) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    tableIndex = index;
     nameTable();
   }
-
-  friend struct LTW; // allow operator[] to construct private ctor
 };
 
-// ── NOW both types are complete — safe to instantiate the variant ────────────
 using lua_Vartype =
     MultiValue<std::monostate, lua_Number, std::string, bool, LFW, LTW>;
 
-// ── Out-of-line definition of LFW::operator() ───────────────────────────────
+inline auto LTW::iterate() {
+  std::vector<std::pair<std::string, lua_Vartype>> result;
+  lua_getglobal(L, tableName.c_str());
+  result.reserve(lua_rawlen(L, -1));
+  lua_pushnil(L);
+  while (lua_next(L, -2) != 0) {
+    std::string k = lua_tostring(L, -2);
+    switch (lua_type(L, -1)) {
+    case LUA_TNUMBER:
+      result.emplace_back(k, lua_Vartype(lua_tonumber(L, -1)));
+      break;
+    case LUA_TSTRING:
+      result.emplace_back(k, lua_Vartype(std::string(lua_tostring(L, -1))));
+      break;
+    case LUA_TBOOLEAN:
+      result.emplace_back(k, lua_Vartype(bool(lua_toboolean(L, -1))));
+      break;
+    case LUA_TTABLE:
+      result.emplace_back(k, lua_Vartype(LTW(this->L, -1)));
+      break;
+    case LUA_TFUNCTION:
+      result.emplace_back(k, lua_Vartype(LFW(L)));
+      break;
+    case LUA_TNIL:
+    default:
+      result.emplace_back(k, lua_Vartype());
+      break;
+    }
+    lua_pop(L, 1);
+  }
+  return result;
+}
+
 template <typename... Args> auto LFW::operator()(Args &&...args) {
   lua_pushvalue(L, -1);
   (pushArg(std::forward<Args>(args)), ...);
@@ -126,8 +170,7 @@ template <typename... Args> auto LFW::operator()(Args &&...args) {
   return lua_Vartype{};
 }
 
-// ── Out-of-line definition of LTW::operator[] ───────────────────────────────
-inline auto LTW::operator[](const char *field) {
+inline auto LTW::operator[](const char *field, bool failIfNotFound) {
   assert(!tableName.empty());
   lua_getglobal(L, tableName.c_str());
   lua_getfield(L, -1, field);
@@ -140,7 +183,7 @@ inline auto LTW::operator[](const char *field) {
   case LUA_TBOOLEAN:
     return lua_Vartype(bool(lua_toboolean(L, -1)));
   case LUA_TTABLE:
-    return lua_Vartype(LTW(this->L, true));
+    return lua_Vartype(LTW(this->L, -1));
   case LUA_TFUNCTION:
     return lua_Vartype(LFW(L));
   case LUA_TNIL:
@@ -148,3 +191,4 @@ inline auto LTW::operator[](const char *field) {
     return lua_Vartype();
   }
 }
+// Vim: set expandtab tabstop=2 shiftwidth=2:
