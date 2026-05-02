@@ -132,6 +132,32 @@ private:
 using lua_Vartype =
     MultiValue<std::monostate, lua_Number, std::string, bool, LFW, LTW>;
 
+inline int LTW::insert(auto value, const char *field) {
+  static_assert(std::is_same<decltype(value), lua_Vartype>::value,
+                "Value must be of type lua_Vartype");
+  // int type = lua_getglobal(L, tableName.c_str());
+  // if (type != LUA_TNIL) {
+  //   lua_pop(L, 1);
+  //   return 1;
+  // }
+  lua_Vartype v = value;
+  if (v.is<lua_Number>()) {
+    lua_pushnumber(L, v.as<lua_Number>());
+  } else if (v.is<std::string>()) {
+    lua_pushstring(L, v.as<std::string>().c_str());
+  } else if (v.is<bool>()) {
+    lua_pushboolean(L, v.as<bool>());
+  } else if (v.is<LFW>()) {
+    return 2;
+  } else if (v.is<LTW>()) {
+    return 3;
+  } else {
+    lua_pushnil(L);
+  }
+  lua_setglobal(L, field);
+  return 0;
+}
+
 inline auto LTW::iterate() {
   std::vector<std::pair<std::string, lua_Vartype>> result;
   lua_getglobal(L, tableName.c_str());
