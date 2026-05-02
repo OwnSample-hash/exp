@@ -197,8 +197,11 @@ int main(int argc, const char **argv, const char **envp) {
     auto &cp = cmd::CommandProcessor::instance();
 
     {
-      cp.vars().set("version", cmd::VarValue(std::string("1.0.0")));
-      cp.vars().set("prompt", cmd::VarValue(std::string("\33[33m>\33[0m ")));
+      auto &vars = cp.vars();
+      vars.set("version", cmd::VarValue(std::string("1.0.0")));
+      vars.set("current_tool", cmd::VarValue(std::string("none")));
+      vars.set("prompt",
+               cmd::VarValue(std::string("${current_tool} \33[33m>\33[0m ")));
     }
     {
       cmd::CommandDef c;
