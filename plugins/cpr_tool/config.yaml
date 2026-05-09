@@ -1,0 +1,6 @@
+- name: ENABLE
+  prompt: Enable Plugin
+  type: bool
+  default: true
+  help_text: Enable or disable the plugin.
+  cmake_export: true
