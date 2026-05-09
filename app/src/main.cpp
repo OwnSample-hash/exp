@@ -199,7 +199,7 @@ int main(int argc, const char **argv, const char **envp) {
     {
       auto &vars = cp.vars();
       vars.set("version", cmd::VarValue(std::string("1.0.0")));
-      vars.set("current_tool", cmd::VarValue(std::string("none")));
+      vars.set("current_tool", cmd::VarValue(std::string("no tool")));
       vars.set("prompt",
                cmd::VarValue(std::string("${current_tool} \33[33m>\33[0m ")));
     }
@@ -358,6 +358,70 @@ int main(int argc, const char **argv, const char **envp) {
       };
       cp.registerGlobalCommand(c);
     }
+    {
+      cmd::CommandDef c;
+      c.name = "script";
+      c.description = "Execute a script: script <script_path>";
+      c.addDynamic("<script_path>", R"([^\s]+)", "Path to the script");
+      c.variadic = false;
+      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+        if (ec.args.size() < 2)
+          throw std::runtime_error("Usage: script <script_path>");
+        std::string script_path = ec.args[1];
+        if (!std::filesystem::exists(script_path)) {
+          return "\033[1;31mScript not found: " + script_path + "\033[0m";
+        }
+        cp.executeScript(script_path);
+        return "Executed script: " + script_path + "\n";
+      };
+      cp.registerGlobalCommand(c);
+    }
+    {
+      cmd::CommandDef c;
+      c.name = "rset";
+      c.description = "Set a variable without of evaling as an expr. Supports "
+                      "% style typing. rset "
+                      "<var_name> %s<var_value>";
+      c.addDynamic("<var_name>", R"([^\s]+)", "Name of the variable");
+      c.addDynamic("<var_value>", R"(.+)", "Value of the variable");
+      c.variadic = false;
+      c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+        if (ec.args.size() < 3)
+          throw std::runtime_error("Usage: rset <var_name> <var_value>");
+        std::string var_name = ec.args[1];
+        std::string var_value = ec.args[2];
+        if (var_value.size() > 2 && var_value[0] == '%') {
+          if (var_value[1] == 's')
+            var_value = var_value.substr(2);
+          else if (var_value[1] == 'd')
+            var_value = std::to_string(std::stol(var_value.substr(2)));
+          else if (var_value[1] == 'f')
+            var_value = std::to_string(std::stod(var_value.substr(2)));
+          else if (var_value[1] == 'b') {
+            std::string val = var_value.substr(2);
+            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+            if (val == "true" || val == "1")
+              var_value = "true";
+            else if (val == "false" || val == "0")
+              var_value = "false";
+            else
+              return "\033[1;31mInvalid boolean value: " + val + "\033[0m";
+          } else {
+            return "\033[1;31mInvalid type specifier: %" +
+                   std::string(1, var_value[1]) +
+                   "\033[0m\n"
+                   "Supported type specifiers: %s (string), %d (integer), %f "
+                   "(float), %b (bool)";
+          }
+          cp.vars().set(var_name, cmd::VarValue(var_value));
+          return "";
+        } else {
+          cp.vars().set(var_name, cmd::VarValue(var_value));
+          return "";
+        }
+      };
+      cp.registerGlobalCommand(c);
+    }
     cp.getContext()->sortCommands();
   }
 
@@ -391,8 +455,17 @@ int main(int argc, const char **argv, const char **envp) {
   dispatcher.runLoop();
 
   spdlog::info("Shutting down tools...");
-  for (const auto &[name, tool] : tools) {
-    tool->shutdown();
+  for (const auto &[name, arg] : pluginInitArgs) {
+    for (const auto &mod : *arg.modules) {
+      if (mod.type == explo::ModuleType::TOOLPROVIDER) {
+        auto *provider =
+            dynamic_cast<explo::IToolProvider *>(mod.instance.get());
+        for (const auto &[name, tool] : provider->getTools()) {
+          tool->shutdown();
+        }
+      } else
+        mod.instance->shutdown();
+    }
   }
 
   // clear tools to release resources before plugins are unloaded
