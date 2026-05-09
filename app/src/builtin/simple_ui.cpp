@@ -151,7 +151,7 @@ void UI::initialize() {
   std::memcpy(&newTermios, &origTermios, sizeof(newTermios));
   newTermios.c_lflag &= ~(ICANON | ECHO);
   tcsetattr(STDIN_FILENO, TCSANOW, &newTermios);
-  signal(SIGINT, SIG_IGN);
+  // signal(SIGINT, SIG_IGN);
   logger->debug("Terminal set to raw mode.");
   logger->debug("Registering command callbacks...");
   cmd::CommandProcessor &cp = cmd::CommandProcessor::instance();
