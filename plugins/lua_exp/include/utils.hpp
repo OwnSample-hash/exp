@@ -31,6 +31,8 @@ struct LTW;
 // a deduced / out-of-line definition.
 
 struct LFW {
+  friend struct LTW;
+
   LFW(lua_State *L, int index = -1) : L(L) {
     luaL_checktype(L, index, LUA_TFUNCTION);
   }
@@ -46,6 +48,8 @@ private:
 };
 
 struct LTW {
+  friend struct LFW;
+
   LTW() {
     L = luaL_newstate();
     if (!L)
@@ -56,6 +60,12 @@ struct LTW {
     lua_setglobal(L, "explo");
   }
   LTW(lua_State *L) : L(L) {}
+  LTW(lua_State *L, int index) : L(L) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    tableIndex = lua_absindex(L, index);
+    lua_pushvalue(L, tableIndex);
+    nameTable();
+  }
 
   void close() {
     if (L) {
@@ -98,16 +108,18 @@ struct LTW {
       throw std::runtime_error("Lua error: " + err);
     }
     luaL_checktype(L, -1, LUA_TTABLE);
-    tableIndex = lua_gettop(L);
-    nameTable();
+    tableIndex = lua_absindex(L, -1);
+    logger->trace("Lua code executed successfully, table index: {}",
+                  tableIndex);
+    lua_setglobal(L, "tool");
     return *this;
   }
 
-  auto iterate();
+  const auto iterate() const;
 
 private:
   lua_State *L;
-  std::string tableName;
+  std::string tableName = "tool";
   int tableIndex;
 
   void nameTable() {
@@ -122,9 +134,10 @@ private:
     lua_setglobal(L, tableName.c_str());
   }
 
-  LTW(lua_State *L, int index) : L(L) {
+  LTW(lua_State *L, int index, bool) : L(L) {
     luaL_checktype(L, index, LUA_TTABLE);
-    tableIndex = index;
+    tableIndex = lua_absindex(L, index);
+    lua_pushvalue(L, tableIndex);
     nameTable();
   }
 };
@@ -135,11 +148,6 @@ using lua_Vartype =
 inline int LTW::insert(auto value, const char *field) {
   static_assert(std::is_same<decltype(value), lua_Vartype>::value,
                 "Value must be of type lua_Vartype");
-  // int type = lua_getglobal(L, tableName.c_str());
-  // if (type != LUA_TNIL) {
-  //   lua_pop(L, 1);
-  //   return 1;
-  // }
   lua_Vartype v = value;
   if (v.is<lua_Number>()) {
     lua_pushnumber(L, v.as<lua_Number>());
@@ -158,54 +166,94 @@ inline int LTW::insert(auto value, const char *field) {
   return 0;
 }
 
-inline auto LTW::iterate() {
-  std::vector<std::pair<std::string, lua_Vartype>> result;
+inline const auto LTW::iterate() const {
+  static auto logger = spdlog::get("lua_exp")->clone("lua_exp::lua::iter");
+  logger->flush_on(spdlog::level::trace);
+  std::unordered_map<std::string, lua_Vartype> result;
   lua_getglobal(L, tableName.c_str());
+  int idx = lua_absindex(L, -1);
   result.reserve(lua_rawlen(L, -1));
   lua_pushnil(L);
-  while (lua_next(L, -2) != 0) {
+  logger->trace("Iterating over table '{}'", tableName);
+  while (lua_next(L, idx) != 0) {
     std::string k = lua_tostring(L, -2);
+    logger->trace("Iterating key: {}", k);
     switch (lua_type(L, -1)) {
     case LUA_TNUMBER:
-      result.emplace_back(k, lua_Vartype(lua_tonumber(L, -1)));
+      result.emplace(k, lua_Vartype(lua_tonumber(L, -1)));
+      logger->trace("Value is number: {}", result.at(k).as<lua_Number>());
       break;
     case LUA_TSTRING:
-      result.emplace_back(k, lua_Vartype(std::string(lua_tostring(L, -1))));
+      result.emplace(k, lua_Vartype(std::string(lua_tostring(L, -1))));
+      logger->trace("Value is string: '{}'", result.at(k).as<std::string>());
       break;
     case LUA_TBOOLEAN:
-      result.emplace_back(k, lua_Vartype(bool(lua_toboolean(L, -1))));
+      result.emplace(k, lua_Vartype(bool(lua_toboolean(L, -1))));
+      logger->trace("Value is boolean: {}",
+                    result.at(k).as<bool>() ? "true" : "false");
       break;
     case LUA_TTABLE:
-      result.emplace_back(k, lua_Vartype(LTW(this->L, -1)));
+      result.emplace(k, lua_Vartype(LTW(this->L, -1)));
+      logger->trace("Value is table (LTW)");
       break;
     case LUA_TFUNCTION:
-      result.emplace_back(k, lua_Vartype(LFW(L)));
+      result.emplace(k, lua_Vartype(LFW(L)));
+      logger->trace("Value is function (LFW)");
       break;
     case LUA_TNIL:
     default:
-      result.emplace_back(k, lua_Vartype());
+      result.emplace(k, lua_Vartype());
+      logger->trace("Value is nil or unknown type");
       break;
     }
     lua_pop(L, 1);
+    logger->trace("Finished processing key: {}", k);
   }
   return result;
+}
+
+static int traceback_handler(lua_State *L) {
+  const char *msg = lua_tostring(L, 1);
+  if (msg) {
+    luaL_traceback(L, L, msg, 1);
+  } else {
+    lua_pushliteral(L, "(error object is not a string)");
+  }
+  return 1;
 }
 
 template <typename... Args> auto LFW::operator()(Args &&...args) {
   lua_pushvalue(L, -1);
   (pushArg(std::forward<Args>(args)), ...);
-  if (lua_pcall(L, sizeof...(Args), 1, 0) != LUA_OK) {
+  int handler_index = lua_gettop(L) - sizeof...(Args) - 1;
+  lua_pushcfunction(L, traceback_handler);
+  lua_insert(L, handler_index);
+  if (lua_pcall(L, sizeof...(Args), 1, handler_index) != LUA_OK) {
     std::string err = lua_tostring(L, -1);
+    spdlog::get("lua_exp")->error("Lua function call error: {}", err);
     lua_pop(L, 1);
     throw std::runtime_error("Lua function call error: " + err);
   }
-  // Optionally inspect the return value here; for now return monostate
-  lua_pop(L, 1);
+  lua_remove(L, handler_index);
+  switch (lua_type(L, -1)) {
+  case LUA_TNUMBER:
+    return lua_Vartype(lua_tonumber(L, -1));
+  case LUA_TSTRING:
+    return lua_Vartype(std::string(lua_tostring(L, -1)));
+  case LUA_TBOOLEAN:
+    return lua_Vartype(bool(lua_toboolean(L, -1)));
+  case LUA_TTABLE:
+    return lua_Vartype(LTW(this->L, -1, true));
+  case LUA_TFUNCTION:
+    return lua_Vartype(LFW(L));
+  case LUA_TNIL:
+  default:
+    return lua_Vartype{};
+  }
   return lua_Vartype{};
 }
 
 inline auto LTW::operator[](const char *field, bool failIfNotFound) {
-  assert(!tableName.empty());
   lua_getglobal(L, tableName.c_str());
   lua_getfield(L, -1, field);
   lua_remove(L, -2);
@@ -217,7 +265,7 @@ inline auto LTW::operator[](const char *field, bool failIfNotFound) {
   case LUA_TBOOLEAN:
     return lua_Vartype(bool(lua_toboolean(L, -1)));
   case LUA_TTABLE:
-    return lua_Vartype(LTW(this->L, -1));
+    return lua_Vartype(LTW(this->L, -1, true));
   case LUA_TFUNCTION:
     return lua_Vartype(LFW(L));
   case LUA_TNIL:

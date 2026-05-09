@@ -15,6 +15,7 @@ class luaTool final : public ITool {
   std::string version;
   std::vector<std::string> tags;
   LTW lua;
+  int lastStatus = 0;
 
 public:
   ~luaTool() { lua.close(); }

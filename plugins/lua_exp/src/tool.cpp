@@ -17,6 +17,10 @@ void luaTool::initialize() {
       c.variadic = false;
       c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
         this->execute();
+        if (this->lastStatus != 0) {
+          return "\033[1;31mLua tool execution failed with status: " +
+                 std::to_string(this->lastStatus) + "\033[0m";
+        }
         return "Lua tool execution completed";
       };
       ctx->registerCommand(c);
@@ -78,7 +82,7 @@ void luaTool::invoke(const std::string &prefix) {
       } else {
         const char *type_name = abi::__cxa_demangle(typeid(value).name(),
                                                     nullptr, nullptr, nullptr);
-        this->logger->info("Lua variable: '{}' = '{}'", key, type_name);
+        this->logger->info("Unused lua variable: '{}' = '{}'", key, type_name);
         free((void *)type_name);
       }
     }
@@ -145,7 +149,21 @@ void luaTool::execute() {
   auto execute = this->lua["execute"];
   if (execute.is<LFW>()) {
     auto func = execute.as<LFW>();
-    func("Hello from C++!");
+    auto status = func();
+    if (status.is<std::string>()) {
+      this->logger->info("Main script returned: {}", status.as<std::string>());
+    } else if (status.is<lua_Number>()) {
+      this->logger->info("Main script returned: {}", status.as<lua_Number>());
+      this->lastStatus = static_cast<int>(status.as<lua_Number>());
+    } else if (status.is<bool>()) {
+      this->logger->info("Main script returned: {}", status.as<bool>());
+      this->lastStatus = status.as<bool>() ? 1 : 0;
+    } else {
+      const char *type_name =
+          abi::__cxa_demangle(typeid(status).name(), nullptr, nullptr, nullptr);
+      this->logger->info("Main script returned value of type '{}'", type_name);
+      free((void *)type_name);
+    }
   } else if (execute.is<std::string>()) {
     this->logger->debug("{}/{}", this->file, execute.as<std::string>());
     std::filesystem::path p(this->file);
@@ -156,7 +174,24 @@ void luaTool::execute() {
       auto execute_fn = lua["execute_fn"];
       if (execute_fn.is<LFW>()) {
         auto func = execute_fn.as<LFW>();
-        func();
+        auto status = func();
+        if (status.is<std::string>()) {
+          this->logger->info("Main script returned: {}",
+                             status.as<std::string>());
+        } else if (status.is<lua_Number>()) {
+          this->logger->info("Main script returned: {}",
+                             status.as<lua_Number>());
+          this->lastStatus = static_cast<int>(status.as<lua_Number>());
+        } else if (status.is<bool>()) {
+          this->logger->info("Main script returned: {}", status.as<bool>());
+          this->lastStatus = status.as<bool>() ? 1 : 0;
+        } else {
+          const char *type_name = abi::__cxa_demangle(
+              typeid(status).name(), nullptr, nullptr, nullptr);
+          this->logger->info("Main script returned value of type '{}'",
+                             type_name);
+          free((void *)type_name);
+        }
       } else {
         this->logger->warn("Main script does not return a function: {}",
                            p.string());

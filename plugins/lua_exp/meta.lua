@@ -1,8 +1,5 @@
 ---@meta
 
----@class InitArgs
-InitArgs = {}
-
 ---@class LuaTool
 LuaTool = {
   ---@type string
@@ -20,10 +17,11 @@ LuaTool = {
   ---@type function|string
   execute = function() end,
   ---@type function|string
-  ---@param args InitArgs
-  initialize = function(args) end,
+  initialize = function() end,
   ---@type function|string
   shutdown = function() end,
+  ---@type table<string, function<...>>
+  commands = {},
 }
 
 ---@type string
@@ -47,4 +45,44 @@ explo = {
   ---@param name string
   ---@return string|number|boolean|nil
   var = function(name) end,
+
+  ---@type function
+  ---@param tool string
+  ---@param args table<string, string|number|boolean|nil>
+  call = function(tool, args) end,
+
+  ---@type function
+  ---@param ms number
+  sleep = function(ms) end,
+
+  ---@type function
+  ---@return number
+  socket = function() end,
+
+  ---@type function
+  ---@param fd number
+  ---@param host string
+  ---@param port number
+  ---@return boolean
+  connect = function(fd, host, port) end,
+
+  ---@type function
+  ---@param fd number
+  ---@param data string
+  ---@return number
+  write = function(fd, data) end,
+
+  ---@type function
+  ---@param fd number
+  ---@param size number
+  ---@return string
+  read = function(fd, size) end,
+}
+
+---@class HTTPConfig
+HTTPConfig = {
+  url = "",
+  method = "",
+  params = {},
+  headers = {},
 }
