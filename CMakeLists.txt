@@ -21,8 +21,13 @@ CPMUsePackageLock("cpm-package-lock.cmake")
 
 
 set(SPDLOG_BUILD_SHARED ON)
+set(YAML_CPP_BUILD_TESTS OFF)
+set(YAML_CPP_BUILD_CONTRIB OFF)
+set(YAML_CPP_BUILD_TOOLS OFF)
 
 CPMAddPackage("gh:gabime/spdlog@1.17.0")
+CPMAddPackage("gh:nlohmann/json@3.12.0")
+CPMAddPackage("gh:jbeder/yaml-cpp#yaml-cpp-0.9.0")
 
 if(CMAKE_BUILD_TYPE)
   add_compile_options(-ggdb)
