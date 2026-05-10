@@ -1161,7 +1161,9 @@ class MenuConfig:
                     ),
                     editable=editable,
                     cmake_export=opt_dict.get("cmake_export", False),
-                    cmake_help=opt_dict.get("cmake_help","Enable {plugin_name} plugin" ),
+                    cmake_help=opt_dict.get(
+                        "cmake_help", "Enable {plugin_name} plugin"
+                    ),
                 )
             elif opt_type == ConfigType.DYNAMICMENU:
                 old_cwd = os.getcwd()
@@ -1188,7 +1190,9 @@ class MenuConfig:
                             show_if=opt_dict.get("show_if", None),
                             editable=False,  # Dynamic submenus are not editable since they are generated from files
                             cmake_export=opt_dict.get("cmake_export", False),
-                            cmake_help=opt_dict.get("cmake_help", "Enable {plugin_name} plugin"),
+                            cmake_help=opt_dict.get(
+                                "cmake_help", "Enable {plugin_name} plugin"
+                            ),
                         )
                     )
                 os.chdir(old_cwd)
@@ -1204,7 +1208,9 @@ class MenuConfig:
                     children=children,
                     editable=editable,
                     cmake_export=opt_dict.get("cmake_export", False),
-                    cmake_help=opt_dict.get("cmake_help", "Enable {plugin_name} plugin"),
+                    cmake_help=opt_dict.get(
+                        "cmake_help", "Enable {plugin_name} plugin"
+                    ),
                 )
             return ConfigOption(
                 name=opt_dict["name"],
