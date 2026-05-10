@@ -5,6 +5,7 @@
 #include <dispatcher.hpp>
 #include <filesystem>
 #include <fstream>
+#include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
 #include <iomanip>
 #include <list>
@@ -13,7 +14,6 @@
 #include <module.hpp>
 #include <plugin_interface.hpp>
 #include <plugin_loader.hpp>
-#include <plugins.hpp>
 #include <spdlog/common.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -22,6 +22,8 @@
 #include <string.hpp>
 #include <ui.hpp>
 #include <unordered_map>
+
+using namespace explo;
 
 void load_module_dynamic(const char *name) {}
 

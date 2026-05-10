@@ -1,8 +1,10 @@
 CONFIG_FILE := ".config"
+.SHELLFLAGS += -o pipefail -e -x
 
 all: flow
 
-@flow = menuconfig gen_plugins_inc build
+#@flow = menuconfig gen_plugins_inc build
+@flow = menuconfig build
 include chains.mk
 
 flow: @flow
@@ -16,7 +18,7 @@ menuconfig menuconfig@flow:
 newmodules:
 	@scripts/conf.py --config configs/new_module.yaml --output "/tmp/new_mod.json" --header "/tmp/new_mod.h" --debug -vv
 	@scripts/new_module.py --config /tmp/new_mod.json
-	@${MAKE} gen_modules_inc
+	# @${MAKE} gen_plugins_inc
 
 gen_plugins_inc gen_plugins_inc@flow:
 	@mkdir -p include
@@ -24,7 +26,9 @@ gen_plugins_inc gen_plugins_inc@flow:
 	@echo "#pragma once" >> include/plugins.hpp
 	@for i in $$(find plugins/ -type f -wholename "*/include/*.hpp"); do \
 		if [[ "$$i" == *"template"* ]]; then continue; fi; \
-		echo "#include \"../$$i\"" >> include/plugins.hpp; \
+		if [[ $$(echo $$i | grep -E ".+/include/.+\.hpp" | sed -E "s#.+/(.+/include/.+)#\1#" | tr "/" "\n" | tr "." "\n" | grep  -E "include|hpp" -v | uniq | wc -l ) == 1 ]]; then \
+			echo "#include \"../$$i\"" >> include/plugins.hpp; \
+		fi \
 	done
 
 build build@flow:
