@@ -70,11 +70,16 @@ def load_fargs(name: str, config_data: dict) -> list[str]:
     return [x.replace(",", "").strip() for x in raw_list]
 
 
+def to_bool(_:str, config_data: dict) -> list[str]:
+    return ["true" if config_data["CONFIG_NEW_MODULE_ENABLED"] else "false"]
+
+
 def generate_templates() -> list[FileTemplate]:
     return [
         FileTemplate(
             name="CMakeLists.txt",
             fargs=[
+                "CONFIG_NEW_MODULE_UP_NAME",
                 "CONFIG_NEW_MODULE_NAME",
                 "CONFIG_NEW_MODULE_NAME",
             ],
@@ -132,11 +137,7 @@ def generate_templates() -> list[FileTemplate]:
         ),
         FileTemplate(
             name="config.yaml",
-            fargs=[
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-            ],
+            fargs=to_bool, # pyright: ignore
             skip_first_line=False,
             template_file="templates/config.yaml",
         ),

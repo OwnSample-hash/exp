@@ -227,17 +227,27 @@ class MenuConfig:
     def _apply_values(self, options: List[ConfigOption], saved: dict):
         """Recursively apply saved values to options"""
         logger.verbose_1("Applying saved configuration values")  # pyright: ignore
-        for opt in options:
-            if opt.name in saved:
-                opt.value = saved[opt.name]
-            if opt.children:
-                self._apply_values(opt.children, saved)
+        logger.verbose_2(f"{options=}")  # pyright: ignore
+        logger.verbose_2(f"{saved=}")  # pyright: ignore
+        for k, v in saved.items():
+            if type(v) == dict:
+                for opt in options:
+                    if opt.name.upper() == k and opt.children:
+                        self._apply_values(opt.children, v)
+                        break
+            else:
+                for opt in options:
+                    if opt.name == k:
+                        opt.value = v
+                        break
 
     def save_config(self):
         """Save current configuration to file"""
         logger.debug("Saving configuration to file")
         config_dict = {}
         self._collect_values(self.config, config_dict)
+        logger.verbose_2(f"{self.config=}")  # pyright: ignore
+        logger.verbose_2(f"{config_dict=}")  # pyright: ignore
         with open(self.config_file, "w") as f:
             json.dump(config_dict, f, indent=2)
 
@@ -245,10 +255,12 @@ class MenuConfig:
         """Recursively collect all configuration values"""
         logger.verbose_1("Collecting configuration values")  # pyright: ignore
         for opt in options:
-            if opt.type != ConfigType.MENU:
+            if opt.type != ConfigType.MENU and opt.type != ConfigType.DYNAMICMENU:
                 config_dict[opt.name] = opt.value
             if opt.children:
-                self._collect_values(opt.children, config_dict)
+                tmp = {}
+                self._collect_values(opt.children, tmp)
+                config_dict[opt.name.upper()] = tmp
 
     def get_visible_items(self) -> List[ConfigOption]:
         """Get currently visible menu items"""

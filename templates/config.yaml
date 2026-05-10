@@ -1,6 +1,6 @@
-- name: CONFIG_%s
-  prompt: "%s Configuration"
-  type: string
-  default: "%s"
-  help_text: Placeholder option.
-
+- name: ENABLE
+  prompt: Enable Plugin
+  type: bool
+  help_text: Enable or disable the plugin.
+  cmake_export: true
+  default: %s

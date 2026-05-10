@@ -1,6 +1,5 @@
 // clang-format off
 #pragma once
-#include <color.hpp>
 #include <functional>
 #include <interfaces/display.hpp>
 #include <list>
@@ -10,7 +9,7 @@
 
 using namespace explo;
 
-class PL_%s : public IPlugin {
+class PL_%s final : public IPlugin {
 public:
   PL_%s() = default;
   ~PL_%s() = default;
@@ -20,7 +19,7 @@ public:
   void execute() override;
 };
 
-class %s : public IDisplay {
+class %s final : public IDisplay {
 public:
   %s();
   ~%s() override;

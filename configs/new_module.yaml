@@ -8,12 +8,14 @@
   prompt: New Module Type
   type: choice
   help_text: Select the type of the new module.
-  default: Script
+  default: Tool
   choices:
     - name: BasicPlugin
       description: basic plugin with no modul 
-    - name: Script
-      description: script-based module
+    - name: Tool
+      description: Tool module
+    - name: ToolProvider
+      description: Tool provider module
     - name: Display
       description: display module
 
