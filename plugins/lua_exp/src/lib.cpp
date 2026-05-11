@@ -5,14 +5,18 @@
 #include <lua.h>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <ratio>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <tls.hpp>
 #include <utils.hpp>
 
 using json = nlohmann::json;
 
 auto &getLogger() {
-  static auto logger = spdlog::get("lua_exp")->clone("lua_exp::lua::lib");
+  static std::shared_ptr<spdlog::logger> logger;
+  if (!logger)
+    logger = spdlog::get("lua_exp")->clone("lua_exp::lua::lib");
   return logger;
 }
 
@@ -222,8 +226,7 @@ int write_(lua_State *L) {
   size_t data_len;
   const char *data = luaL_checklstring(L, 2, &data_len);
 
-  getLogger()->trace("Lua is writing to fd {}: '{}'", fd,
-                     std::string(data, data_len));
+  getLogger()->trace("Lua is writing to fd {}", fd);
 
   ssize_t bytes_sent = write(fd, data, data_len);
   if (bytes_sent < 0) {
@@ -249,8 +252,7 @@ int read_(lua_State *L) {
     lua_pushnil(L);
     return 1;
   }
-  getLogger()->trace("Read {} bytes from fd {}: '{}'", bytes_read, fd,
-                     buffer.substr(0, bytes_read));
+  getLogger()->trace("Read {} bytes from fd {}", bytes_read, fd);
   lua_pushlstring(L, buffer.data(), bytes_read);
   return 1;
 }

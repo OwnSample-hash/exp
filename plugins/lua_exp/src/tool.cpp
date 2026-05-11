@@ -1,3 +1,4 @@
+#include "utils.hpp"
 #include <cmd.hpp>
 #include <cxxabi.h>
 #include <filesystem>
