@@ -4,6 +4,7 @@
 #include <config.hpp>
 #include <dispatcher.hpp>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
@@ -21,6 +22,7 @@
 #include <stdexcept>
 #include <string.hpp>
 #include <ui.hpp>
+#include <unistd.h>
 #include <unordered_map>
 
 using namespace explo;
@@ -172,6 +174,8 @@ int main(int argc, const char **argv, const char **envp) {
                                 std::string(CONFIG_LOG_DIR "/") +
                                     normalizePath(plugin->getName()) + ".log",
                                 true);
+    plLogger->set_level(logLevel.Get());
+    plLogger->flush_on(spdlog::level::debug);
 
     auto iA = initArgs{plModules, pluginGroup, plLogger};
     pluginInitArgs.emplace(plugin->getName(), iA);
@@ -225,14 +229,13 @@ int main(int argc, const char **argv, const char **envp) {
           }
         }
         int dc = 0;
-        int page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // Get page size in KB
-        rss *= page_size_kb; // Convert RSS from pages to KB
+        rss *= sysconf(_SC_PAGE_SIZE); // Convert RSS from pages to B
         while (rss > 1024) {
           rss /= 1024;
           dc++;
         }
-        const char *units[] = {"KB", "MB", "GB", "TB"};
-        return "Memory usage: " + std::to_string(rss) + " " + units[dc];
+        const char *units[] = {"B", "KB", "MB", "GB", "TB"};
+        return std::format("Memory usage: {} {}", rss, units[dc]);
       };
       cp.registerGlobalCommand(c);
     }
@@ -394,18 +397,20 @@ int main(int argc, const char **argv, const char **envp) {
         std::string var_value = ec.args[2];
         if (var_value.size() > 2 && var_value[0] == '%') {
           if (var_value[1] == 's')
-            var_value = var_value.substr(2);
+            cp.vars().set(var_name, cmd::VarValue(var_value.substr(2)));
           else if (var_value[1] == 'd')
-            var_value = std::to_string(std::stol(var_value.substr(2)));
+            cp.vars().set(var_name,
+                          cmd::VarValue(std::stoll(var_value.substr(2))));
           else if (var_value[1] == 'f')
-            var_value = std::to_string(std::stod(var_value.substr(2)));
+            cp.vars().set(var_name,
+                          cmd::VarValue(std::stod(var_value.substr(2))));
           else if (var_value[1] == 'b') {
             std::string val = var_value.substr(2);
             std::transform(val.begin(), val.end(), val.begin(), ::tolower);
             if (val == "true" || val == "1")
-              var_value = "true";
+              cp.vars().set(var_name, cmd::VarValue(true));
             else if (val == "false" || val == "0")
-              var_value = "false";
+              cp.vars().set(var_name, cmd::VarValue(false));
             else
               return "\033[1;31mInvalid boolean value: " + val + "\033[0m";
           } else {
@@ -415,7 +420,6 @@ int main(int argc, const char **argv, const char **envp) {
                    "Supported type specifiers: %s (string), %d (integer), %f "
                    "(float), %b (bool)";
           }
-          cp.vars().set(var_name, cmd::VarValue(var_value));
           return "";
         } else {
           cp.vars().set(var_name, cmd::VarValue(var_value));
