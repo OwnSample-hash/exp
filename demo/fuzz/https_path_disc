@@ -1,0 +1,12 @@
+use fuzz
+rset fuzz.dict ../common.txt
+rset fuzz.ext_dict ../ws-file.txt
+rset fuzz.host quantum-lab.dev
+rset fuzz.target https://mail.quantum-lab.dev/FUZZ
+rset fuzz.type_ path
+rset fuzz.kind GET
+rset fuzz.header "Connection: Keep-Alive|Keep-Alive: timeout=5, max=20000|User-Agent: fuzz-tool||Accept: */*"
+rset fuzz.wrong_status_code %d404
+run
+mem
+exit

@@ -1,0 +1,11 @@
+use fuzz
+rset fuzz.dict ../common.txt
+rset fuzz.host FUZZ.quantum-lab.dev
+rset fuzz.target https://quantum-lab.dev/
+rset fuzz.type_ host
+rset fuzz.kind GET
+rset fuzz.header "Connection: Close|User-Agent: fuzz-tool||Accept: */*|X-Here: example.com"
+rset fuzz.wrong_status_code %d444
+run
+mem
+exit

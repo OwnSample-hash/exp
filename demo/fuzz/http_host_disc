@@ -1,0 +1,9 @@
+use fuzz
+rset fuzz.dict ../wls.dict
+rset fuzz.host FUZZ.localhost:9000
+rset fuzz.target http://127.0.0.1:9000/login
+rset fuzz.type_ host
+rset fuzz.kind GET
+run
+mem
+exit
