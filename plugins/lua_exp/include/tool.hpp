@@ -31,7 +31,7 @@ public:
         lua["description"].as<std::string>("No description provided.");
     this->logger->info("Initialized Lua tool: {} v{}", name, version);
     int res;
-    if ((res = lua.insert(lua_Vartype{name}, "name"))) {
+    if ((res = lua.insert("name", luaVartype{name}))) {
       this->logger->warn("Failed to insert 'name' into Lua table for tool '{}' "
                          "with error code {}",
                          name, res);
