@@ -2,6 +2,7 @@
 #include <module.hpp>
 #include <spdlog/spdlog.h>
 #include <sys/select.h>
+#include <unistd.h>
 
 namespace explo {
 

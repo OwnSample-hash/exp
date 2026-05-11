@@ -1,6 +1,8 @@
 #include <cctype>
 #include <cmd.hpp>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 
 namespace explo {
 namespace cmd {

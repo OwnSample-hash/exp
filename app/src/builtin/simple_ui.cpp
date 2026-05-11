@@ -1,6 +1,5 @@
 #include <builtin/simple_ui.hpp>
 #include <cmd.hpp>
-#include <csignal>
 #include <fcntl.h>
 #include <iostream>
 #include <string>

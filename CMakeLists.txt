@@ -31,6 +31,7 @@ CPMAddPackage("gh:jbeder/yaml-cpp#yaml-cpp-0.9.0")
 
 if(CMAKE_BUILD_TYPE)
   add_compile_options(-ggdb)
+  add_link_options(-ggdb)
 endif()
 
 if(ENABLE_SANITIZERS)
