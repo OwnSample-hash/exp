@@ -58,25 +58,44 @@ explo = {
   ---@type function
   ---@return number
   socket = function() end,
-
   ---@type function
   ---@param fd number
   ---@param host string
   ---@param port number
   ---@return boolean
   connect = function(fd, host, port) end,
-
   ---@type function
   ---@param fd number
   ---@param data string
   ---@return number
   write = function(fd, data) end,
-
   ---@type function
   ---@param fd number
   ---@param size number
   ---@return string
   read = function(fd, size) end,
+
+  ---@type function
+  ---@param fd number
+  ---@param host string
+  ---@param port number
+  ---@return boolean
+  sconnect = function(fd, host, port) end,
+  ---@type function
+  ---@param data string
+  ---@return number
+  swrite = function(data) end,
+  ---@type function
+  ---@param max_size number
+  ---@return string
+  sread = function(max_size) end,
+  ---@type function
+  ---@return boolean
+  sclose = function() end,
+
+  ---@type function
+  ---@return number
+  clock = function() end,
 }
 
 ---@class HTTPConfig
@@ -85,4 +104,11 @@ HTTPConfig = {
   method = "",
   params = {},
   headers = {},
+}
+
+---@class HTTPResponse
+HTTPResponse = {
+  status_code = 0,
+  headers = {},
+  body = "",
 }

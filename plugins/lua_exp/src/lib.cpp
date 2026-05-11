@@ -270,4 +270,114 @@ int close_(lua_State *L) {
   return 1;
 }
 
+int sconnect(lua_State *L) {
+  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
+  TLSClient *tlsClient_ = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  if (tlsClient_) {
+    getLogger()->warn(
+        "Lua attempted to establish a new TLS connection while an existing "
+        "TLS client is still active. This may indicate a resource leak or "
+        "mismanagement. Previous TLS client will be overwritten.");
+  }
+
+  int sockfd = luaL_checkinteger(L, 1);
+  const char *host = luaL_checkstring(L, 2);
+  int port = luaL_checkinteger(L, 3);
+
+  TLSClient *tlsClient = new TLSClient();
+  tlsClient->logger->trace("Lua is connecting socket {} to {}:{}", sockfd, host,
+                           port);
+
+  if (!tlsClient->connect(host, port)) {
+    tlsClient->logger->error("Failed to establish TLS connection to {}:{}",
+                             host, port);
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  tlsClient->logger->trace("TLS connection established successfully to {}:{}",
+                           host, port);
+  lua_pushlightuserdata(L, tlsClient);
+  lua_setfield(L, LUA_REGISTRYINDEX, "tlsClient");
+
+  lua_pushboolean(L, true);
+  return 1;
+}
+
+int swrite(lua_State *L) {
+  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
+  TLSClient *tlsClient = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  if (!tlsClient) {
+    getLogger()->error("No TLS client found in registry for swrite");
+    lua_pushnil(L);
+    return 1;
+  }
+  size_t data_len;
+  const char *data = luaL_checklstring(L, 1, &data_len);
+
+  tlsClient->logger->trace("Lua is writing to TLS connection");
+
+  int sent = tlsClient->send_data(std::string(data, data_len));
+  if (sent < 0) {
+    tlsClient->logger->error("Failed to send data over TLS connection");
+    tlsClient->logger->error("Error details: {}", tlsClient->getLastError());
+    lua_pushnil(L);
+    return 1;
+  }
+  tlsClient->logger->trace("Data sent over TLS connection successfully");
+  lua_pushnumber(L, sent);
+  return 1;
+}
+
+int sread(lua_State *L) {
+  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
+  TLSClient *tlsClient = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  if (!tlsClient) {
+    getLogger()->error("No TLS client found in registry for sread");
+    lua_pushnil(L);
+    return 1;
+  }
+  int max_len = luaL_checkinteger(L, 1);
+
+  tlsClient->logger->trace("Lua is reading up to {} bytes from TLS connection",
+                           max_len);
+
+  std::string data = tlsClient->recv_data(max_len);
+  if (data.empty()) {
+    tlsClient->logger->warn("Failed to read data from TLS connection");
+    tlsClient->logger->warn("Error details: {}", tlsClient->getLastError());
+  }
+  tlsClient->logger->trace("Data received from TLS connection: '{}' bytes",
+                           data.size());
+  lua_pushlstring(L, data.c_str(), data.size());
+  return 1;
+}
+
+int sclose(lua_State *L) {
+  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
+  TLSClient *tlsClient = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  if (!tlsClient) {
+    getLogger()->error("No TLS client found in registry for sclose");
+    lua_pushboolean(L, false);
+    return 1;
+  }
+
+  tlsClient->logger->trace("Lua is closing TLS connection");
+
+  lua_pushlightuserdata(L, nullptr);
+  lua_setfield(L, LUA_REGISTRYINDEX, "tlsClient");
+  tlsClient->logger->trace("TLS connection closed successfully");
+  delete tlsClient;
+
+  lua_pushboolean(L, true);
+  return 1;
+}
+
+int clock(lua_State *L) {
+  auto now = std::chrono::high_resolution_clock::now();
+  auto epoch = now.time_since_epoch();
+  auto nanos =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
+  lua_pushnumber(L, nanos);
+  return 1;
+}
 // Vim: set expandtab tabstop=2 shiftwidth=2:

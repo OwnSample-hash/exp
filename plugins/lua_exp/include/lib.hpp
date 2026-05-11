@@ -24,12 +24,17 @@ extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
   X(connect_, connect)                                                         \
   X(write_, write)                                                             \
   X(read_, read)                                                               \
-  X(close_, close)
+  X(close_, close)                                                             \
+  X(sconnect, sconnect)                                                        \
+  X(swrite, swrite)                                                            \
+  X(sread, sread)                                                              \
+  X(sclose, sclose)
 
 #define luaFuncs                                                               \
   X(var)                                                                       \
   X(call)                                                                      \
   X(sleep)                                                                     \
+  X(clock)                                                                     \
   luaLogFuncs luaSocketFuncs
 
 #define X(name, ...) int name(lua_State *L);
