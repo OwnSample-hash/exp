@@ -1,0 +1,5 @@
+use dnet
+rset dnet.target 159.69.60.234
+run
+mem
+exit
