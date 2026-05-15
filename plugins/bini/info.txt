@@ -1,0 +1,13 @@
+Info about the variables:
+
+  target: The target that you want to analyze. Defaults to "a.out" if not 
+  specified.
+
+  type: The type of analysis you want to perform. Can be one of the following:
+
+        summary: Provides a summary of the analysis results. Includes NX, ASLR,
+        PIE, stack canaries.
+
+        fucntions: Lists the functions found in the target.
+
+        strings: Extracts and lists the strings found in the target.
