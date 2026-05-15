@@ -22,6 +22,7 @@ struct VarValue {
   VarValue() = default;
   explicit VarValue(std::string s)
       : type(VarType::String), sval(std::move(s)) {}
+  explicit VarValue(const char *s) : type(VarType::String), sval(s) {}
   explicit VarValue(long long i) : type(VarType::Integer), ival(i) {}
   explicit VarValue(double d) : type(VarType::Float), fval(d) {}
   explicit VarValue(std::vector<std::string> a)
