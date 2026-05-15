@@ -11,11 +11,9 @@ flow: @flow
 	@printf "Done!\n"
 
 menuconfig menuconfig@flow:
-	@if [[ ! -f ${CONFIG_FILE} ]]; then \
-		scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "include/config.h" --rm --debug -vv --enable-editor; \
-	fi
+	scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "include/config.hpp" --debug -vv --enable-editor -gd scripts/generators
 
-newmodules:
+newplugin:
 	@scripts/conf.py --config configs/new_module.yaml --output "/tmp/new_mod.json" --header "/tmp/new_mod.h" --debug -vv
 	@scripts/new_module.py --config /tmp/new_mod.json
 	# @${MAKE} gen_plugins_inc
