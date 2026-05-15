@@ -77,6 +77,8 @@ public:
   // ── Direct buffer access (read-only) ─────────────────────────────────
   const std::string &buffer() const { return buffer_; }
 
+  const std::size_t cursorPos() const { return cursorPos_; }
+
   const std::vector<std::string> &history() const { return history_; }
 
   // ── Script execution (multi-line with flow control) ───────────────────
@@ -89,6 +91,7 @@ public:
 
 private:
   std::string buffer_, bufferBackup_;
+  std::size_t cursorPos_ = 0;
   std::fstream historyFile;
   std::vector<std::string> history_;
   size_t historyIndex_ = 0;

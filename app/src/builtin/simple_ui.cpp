@@ -87,6 +87,7 @@ void UI::runLoop() {
       auto res = cp.feed(ch);
       while (res == cmd::InputResult::Escape) {
         ch = getch();
+        logger->trace("ch: {}", ch);
         res = cp.feed(ch);
       }
       auto vars = cp.vars();
@@ -94,7 +95,15 @@ void UI::runLoop() {
                            ? vars.get("prompt")->toString()
                            : "> ";
       std::string prompt = vars.expand(rawPrompt);
-      std::cout << "\r\033[K" << prompt << cp.buffer() << std::flush;
+      std::cout << "\r\033[K" << prompt << cp.buffer();
+      if (ch == 'D') {
+        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D"
+                  << std::flush;
+      } else if (ch == 'C') {
+        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "C"
+                  << std::flush;
+      }
+
       break;
     }
 
@@ -122,6 +131,16 @@ void UI::runLoop() {
         std::cout << cp.buffer() << std::flush;
       } else {
         std::cout << (char)ch << std::flush;
+        if (cp.cursorPos() < cp.buffer().size()) {
+          auto vars = cp.vars();
+          auto rawPrompt = vars.get("prompt").has_value()
+                               ? vars.get("prompt")->toString()
+                               : "> ";
+          std::string prompt = vars.expand(rawPrompt);
+          std::cout << "\r\033[K" << prompt << cp.buffer();
+          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D"
+                    << std::flush;
+        }
       }
       break;
     case cmd::InputResult::Cleared:
@@ -142,6 +161,8 @@ void UI::runLoop() {
 struct termios origTermios = {};
 
 void UI::initialize() {
+  logger->set_level(spdlog::level::trace);
+  logger->flush_on(spdlog::level::trace);
   logger->info("Initializing simple UI...");
   logger->debug("Setting terminal to raw mode...");
   struct termios newTermios;

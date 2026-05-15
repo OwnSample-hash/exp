@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmd.hpp>
 #include <fstream>
 #include <stdexcept>
@@ -469,6 +470,12 @@ InputResult CommandProcessor::feed(char c) {
                       ? history_[++historyIndex_]
                       : "";
       }
+    } else if (c == 'D') {
+      if (cursorPos_ > 0)
+        cursorPos_--;
+    } else if (c == 'C') {
+      if (cursorPos_ < buffer_.size())
+        cursorPos_++;
     }
     return InputResult::Consumed;
   }
@@ -482,7 +489,7 @@ InputResult CommandProcessor::feed(char c) {
   // Backspace
   if (c == '\b' || c == 127) {
     if (!buffer_.empty())
-      buffer_.pop_back();
+      buffer_.erase(buffer_.begin() + cursorPos_ - 1), cursorPos_--;
     return InputResult::Consumed;
   }
 
@@ -520,6 +527,7 @@ InputResult CommandProcessor::feed(char c) {
   if (c == '\n' || c == '\r') {
     std::string line = buffer_;
     buffer_.clear();
+    cursorPos_ = buffer_.size();
     auto result = executeLine(line);
     if (executeCb_)
       executeCb_(result);
@@ -532,7 +540,9 @@ InputResult CommandProcessor::feed(char c) {
   }
 
   // Ordinary character
-  buffer_ += c;
+
+  buffer_.insert(buffer_.begin() + cursorPos_, c);
+  cursorPos_++;
   return InputResult::Consumed;
 }
 
