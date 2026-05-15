@@ -9,6 +9,7 @@ extern "C" {
 #include <map>
 #include <memory>
 #include <string>
+#include <sys/socket.h>
 
 extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
 
@@ -36,6 +37,10 @@ extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
   X(sleep)                                                                     \
   X(clock)                                                                     \
   luaLogFuncs luaSocketFuncs
+
+#define enumData                                                               \
+  X(SOCK_STREAM, number)                                                       \
+  X(SOCK_DGRAM, number)
 
 #define X(name, ...) int name(lua_State *L);
 luaFuncs

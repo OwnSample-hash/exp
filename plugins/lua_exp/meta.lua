@@ -56,8 +56,9 @@ explo = {
   sleep = function(ms) end,
 
   ---@type function
+  ---@param type number
   ---@return number
-  socket = function() end,
+  socket = function(type) end,
   ---@type function
   ---@param fd number
   ---@param host string
@@ -112,3 +113,6 @@ HTTPResponse = {
   headers = {},
   body = "",
 }
+
+SOCK_STREAM = 1
+SOCK_DGRAM = 2

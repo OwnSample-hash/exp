@@ -62,6 +62,11 @@ struct LTW {
     luaL_newlibtable(L, libs);
     luaL_setfuncs(L, libs, 0);
     lua_setglobal(L, "explo");
+#define X(name, type)                                                          \
+  lua_push##type(L, name);                                                     \
+  lua_setglobal(L, #name);
+    enumData
+#undef X
   }
   LTW(lua_State *L) : L(L) {}
   LTW(lua_State *L, int index) : L(L) {

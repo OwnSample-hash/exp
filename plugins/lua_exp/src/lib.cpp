@@ -5,7 +5,6 @@
 #include <lua.h>
 #include <memory>
 #include <nlohmann/json.hpp>
-#include <ratio>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <tls.hpp>
@@ -180,8 +179,9 @@ int sleep(lua_State *L) {
 }
 
 int socket_(lua_State *L) {
-  getLogger()->trace("Lua is creating a new socket");
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  int type = luaL_checkinteger(L, 1);
+  getLogger()->trace("Lua is creating a new socket with type {}", type);
+  int sockfd = socket(AF_INET, type, 0);
   if (sockfd < 0) {
     getLogger()->error("Failed to create socket: {}", strerror(errno));
     lua_pushnil(L);

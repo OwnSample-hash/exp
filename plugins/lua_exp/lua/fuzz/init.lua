@@ -201,7 +201,7 @@ end
 ---@param data HTTPConfig
 ---@return HTTPResponse|number
 function SendHttp(data)
-  local fd = explo.socket()
+  local fd = explo.socket(SOCK_STREAM)
   if not fd then
     explo.loge("Failed to create socket")
     return -1
@@ -270,7 +270,7 @@ function SendHttps(data)
     explo.logi("Using TLS client from registry for HTTPS connection")
     goto existing_client
   end
-  fd = explo.socket()
+  fd = explo.socket(SOCK_STREAM)
   if not fd then
     explo.loge("Failed to create socket")
     return -1
