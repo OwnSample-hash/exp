@@ -1,0 +1,7 @@
+use bini
+rset bini.target app/main_app
+run
+rset bini.target plugins/bini.so
+run
+mem
+exit
