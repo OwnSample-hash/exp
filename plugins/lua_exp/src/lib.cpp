@@ -1,13 +1,16 @@
 #include <arpa/inet.h>
 #include <cmd.hpp>
 #include <cmd/variable.hpp>
+#include <fcntl.h>
 #include <lib.hpp>
 #include <lua.h>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <sys/select.h>
 #include <tls.hpp>
+#include <unistd.h>
 #include <utils.hpp>
 
 using json = nlohmann::json;
@@ -187,6 +190,16 @@ int socket_(lua_State *L) {
     lua_pushnil(L);
     return 1;
   }
+
+  int optval = 1;
+  if (fcntl(sockfd, F_SETFD, O_NONBLOCK) < 0) {
+    getLogger()->error("Failed to set socket {} to non-blocking mode: {}",
+                       sockfd, strerror(errno));
+    close(sockfd);
+    lua_pushnil(L);
+    return 1;
+  }
+
   getLogger()->trace("Socket created with file descriptor {}", sockfd);
   lua_pushinteger(L, sockfd);
   return 1;
@@ -209,15 +222,42 @@ int connect_(lua_State *L) {
     return 1;
   }
 
+  struct timeval timeout;
+  timeout.tv_sec = 1; // 1 seconds timeout
+  timeout.tv_usec = 0;
+  fd_set write_fds;
+  FD_ZERO(&write_fds);
+  FD_SET(sockfd, &write_fds);
+
   if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
-      0) {
-    getLogger()->error("Failed to connect socket {}: {}", sockfd,
+          0 &&
+      errno != EINPROGRESS) {
+    getLogger()->error("Failed to initiate connection on socket {}: {}", sockfd,
                        strerror(errno));
     lua_pushboolean(L, false);
     return 1;
   }
-  getLogger()->trace("Socket {} connected successfully", sockfd);
-  lua_pushboolean(L, true);
+  if (select(sockfd + 1, nullptr, &write_fds, nullptr, &timeout) == 1) {
+    int so_err;
+    socklen_t len = sizeof(so_err);
+    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &so_err, &len) < 0 ||
+        so_err != 0) {
+      getLogger()->error("Failed to connect socket {}: {}", sockfd,
+                         strerror(so_err));
+      lua_pushboolean(L, false);
+      return 1;
+    }
+    if (so_err == 0) {
+      getLogger()->trace("Socket {} connected successfully", sockfd);
+      lua_pushboolean(L, true);
+      return 1;
+    }
+  } else {
+    getLogger()->error("Connection timed out for socket {}", sockfd);
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  lua_pushboolean(L, false);
   return 1;
 }
 
