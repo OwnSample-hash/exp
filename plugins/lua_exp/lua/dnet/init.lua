@@ -99,9 +99,9 @@ function NetworkScan(target)
   end
   explo.logi("IP: " .. ip .. ", Mask: " .. mask)
 
-  local function ipToNum(ip)
+  local function ipToNum(ip_)
     local num = 0
-    for octet in string.gmatch(ip, "%d+") do
+    for octet in string.gmatch(ip_, "%d+") do
       num = num * 256 + tonumber(octet)
     end
     return num
@@ -173,7 +173,7 @@ return {
     if #port > 0 then
       result = PortScan(target, port, method)
     else
-      result = NetworkScan(target, method)
+      result = NetworkScan(target)
     end
 
     return result
