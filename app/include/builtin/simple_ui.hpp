@@ -24,14 +24,7 @@ public:
   void initialize() override;
   void shutdown() override {};
 
-  void clearScreen() override {};
-  int getWidth() const override { return -1; };
-  int getHeight() const override { return -1; };
-  void render(const UIWidget &widget, unsigned int depth = 0) override {};
-  bool fireEvent(UIEvent ev, const EventData &ed) override { return false; };
   void runLoop() override;
-  UIRenderType getRenderType() const override { return UIRenderType::Loop; }
-  bool shouldQuit() const override { return false; }
 };
 
 } // namespace builtin

@@ -1,11 +1,10 @@
-#include "interfaces/tool.hpp"
 #include <args.hxx>
 #include <cmd.hpp>
 #include <config.hpp>
-#include <dispatcher.hpp>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <interfaces/renderer.hpp>
 #include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
 #include <iomanip>
@@ -457,9 +456,48 @@ int main(int argc, const char **argv, const char **envp) {
     }
   }
 
-  Dispatcher dispatcher = Dispatcher(pluginInitArgs, preferredUI.Get());
-  dispatcher.runLoop();
+  std::string_view preferredRenderer = preferredUI.Get();
+  IMod *rendererModuleRaw = nullptr;
+  for (const auto &[name, args] : pluginInitArgs) {
+    for (const auto &mod : *args.modules) {
+      if (mod.type == explo::ModuleType::RENDERER) {
+        if (!preferredRenderer.empty() && mod.name != preferredRenderer) {
+          spdlog::debug("Skipping renderer module: {} from plugin: {} as it "
+                        "does not match preferred renderer: {}",
+                        mod.name, name, preferredRenderer);
+          continue;
+        }
+        rendererModuleRaw = mod.instance.get();
+        spdlog::info("Using display module: {} from plugin: {}", mod.name,
+                     name);
+        break;
+      } else {
+        spdlog::debug("Module: {} from plugin: {} is not a display module",
+                      mod.name, name);
+      }
+    }
+    if (rendererModuleRaw) {
+      break;
+    }
+  }
 
+  IRenderer *rendererModule = nullptr;
+
+  try {
+    rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
+    if (!rendererModule) {
+      throw std::runtime_error("No valid display module found");
+    }
+  } catch (const std::exception &e) {
+    spdlog::error("Error initializing display module: {}", e.what());
+    goto quit;
+  }
+
+  rendererModule->initialize();
+  rendererModule->runLoop();
+  rendererModule->shutdown();
+
+quit:
   spdlog::info("Shutting down tools...");
   for (const auto &[name, arg] : pluginInitArgs) {
     for (const auto &mod : *arg.modules) {
