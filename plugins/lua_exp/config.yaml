@@ -10,6 +10,6 @@
   type: string
   default: "./lua"
   help_text: "The directory that will be scanned for Lua files. The plugin will look for .lua files in this directory and its subdirectories."
-  show_if: 
+  show_if:
     - ENABLE
 
