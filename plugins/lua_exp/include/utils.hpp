@@ -32,12 +32,9 @@ struct LTW;
 
 struct LFW {
   friend struct LTW;
-  std::shared_ptr<spdlog::logger> logger =
-      spdlog::get("lua_exp")->clone("lua_exp::lua::LFW");
+  std::shared_ptr<spdlog::logger> logger = spdlog::get("lua_exp")->clone("lua_exp::lua::LFW");
 
-  LFW(lua_State *L, int index = -1) : L(L) {
-    luaL_checktype(L, index, LUA_TFUNCTION);
-  }
+  LFW(lua_State *L, int index = -1) : L(L) { luaL_checktype(L, index, LUA_TFUNCTION); }
 
   template <typename... Args> auto operator()(Args &&...args);
 
@@ -51,8 +48,7 @@ private:
 
 struct LTW {
   friend struct LFW;
-  std::shared_ptr<spdlog::logger> logger =
-      spdlog::get("lua_exp")->clone("lua_exp::lua::LTW");
+  std::shared_ptr<spdlog::logger> logger = spdlog::get("lua_exp")->clone("lua_exp::lua::LTW");
 
   LTW() {
     L = luaL_newstate();
@@ -62,8 +58,8 @@ struct LTW {
     luaL_newlibtable(L, libs);
     luaL_setfuncs(L, libs, 0);
     lua_setglobal(L, "explo");
-#define X(name, type)                                                          \
-  lua_push##type(L, name);                                                     \
+#define X(name, type)                                                                                                  \
+  lua_push##type(L, name);                                                                                             \
   lua_setglobal(L, #name);
     enumData
 #undef X
@@ -91,8 +87,7 @@ struct LTW {
     static auto logger = spdlog::get("lua_exp");
     if (!logger)
       throw std::runtime_error("Logger not found");
-    std::string code =
-        std::vformat(base_code, std::make_format_args("dofile ", file));
+    std::string code = std::vformat(base_code, std::make_format_args("dofile ", file));
     if (luaL_dostring(L, code.c_str()) != LUA_OK) {
       std::string err = lua_tostring(L, -1);
       logger->error("Lua error: {}", err);
@@ -105,8 +100,7 @@ struct LTW {
   }
 
   LTW &operator()(const std::string &payload) {
-    std::string code =
-        std::vformat(base_code, std::make_format_args("require ", payload));
+    std::string code = std::vformat(base_code, std::make_format_args("require ", payload));
     logger->trace("Executing Lua code:\n{}", code);
     if (luaL_dostring(L, code.c_str()) != LUA_OK) {
       std::string err = lua_tostring(L, -1);
@@ -115,8 +109,7 @@ struct LTW {
     }
     luaL_checktype(L, -1, LUA_TTABLE);
     tableIndex = lua_absindex(L, -1);
-    logger->trace("Lua code executed successfully, table index: {}",
-                  tableIndex);
+    logger->trace("Lua code executed successfully, table index: {}", tableIndex);
     lua_setglobal(L, "tool");
     return *this;
   }
@@ -129,8 +122,7 @@ private:
   int tableIndex;
 
   void nameTable() {
-    constexpr char allowed_chars[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
+    constexpr char allowed_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
     std::random_device rd;
     std::mt19937 mt;
     mt.seed(rd());
@@ -148,12 +140,10 @@ private:
   }
 };
 
-using luaVartype =
-    MultiValue<std::monostate, lua_Number, std::string, bool, LFW, LTW>;
+using luaVartype = MultiValue<std::monostate, lua_Number, std::string, bool, LFW, LTW>;
 
 inline int LTW::insert(const char *field, auto value) {
-  static_assert(std::is_same<decltype(value), luaVartype>::value,
-                "Value must be of type lua_Vartype");
+  static_assert(std::is_same<decltype(value), luaVartype>::value, "Value must be of type lua_Vartype");
   luaVartype v = value;
   logger->trace("Inserting field '{}'", field);
   if (v.is<lua_Number>()) {
@@ -197,8 +187,7 @@ inline const auto LTW::iterate() const {
       break;
     case LUA_TBOOLEAN:
       result.emplace(k, luaVartype(bool(lua_toboolean(L, -1))));
-      logger->trace("Value is boolean: {}",
-                    result.at(k).as<bool>() ? "true" : "false");
+      logger->trace("Value is boolean: {}", result.at(k).as<bool>() ? "true" : "false");
       break;
     case LUA_TTABLE:
       result.emplace(k, luaVartype(LTW(this->L, -1)));

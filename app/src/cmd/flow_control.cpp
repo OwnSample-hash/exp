@@ -56,9 +56,7 @@ static std::vector<ExprToken> lexExpr(const std::string &src) {
         if (i < src.size())
           ++i;
       } else {
-        while (
-            i < src.size() &&
-            (std::isalnum(static_cast<unsigned char>(src[i])) || src[i] == '_'))
+        while (i < src.size() && (std::isalnum(static_cast<unsigned char>(src[i])) || src[i] == '_'))
           varName += src[i++];
       }
       toks.push_back({ExprToken::Var, 0, varName});
@@ -152,9 +150,7 @@ static std::vector<ExprToken> lexExpr(const std::string &src) {
     default:
       if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
         std::string name;
-        while (
-            i < src.size() &&
-            (std::isalnum(static_cast<unsigned char>(src[i])) || src[i] == '_'))
+        while (i < src.size() && (std::isalnum(static_cast<unsigned char>(src[i])) || src[i] == '_'))
           name += src[i++];
         if (name == "true")
           toks.push_back({ExprToken::Num, 1, {}});
@@ -163,8 +159,7 @@ static std::vector<ExprToken> lexExpr(const std::string &src) {
         else
           toks.push_back({ExprToken::Var, 0, name});
       } else {
-        throw std::runtime_error(std::string("Expression: unexpected char '") +
-                                 c + "'");
+        throw std::runtime_error(std::string("Expression: unexpected char '") + c + "'");
       }
     }
   }
@@ -198,13 +193,10 @@ static int exprPrec(ExprToken::Kind k) {
   }
 }
 
-static long long parsePrimary(const std::vector<ExprToken> &toks, size_t &pos,
-                              const VariableStore &vars);
-static long long parseExprPrec(const std::vector<ExprToken> &toks, size_t &pos,
-                               const VariableStore &vars, int minPrec);
+static long long parsePrimary(const std::vector<ExprToken> &toks, size_t &pos, const VariableStore &vars);
+static long long parseExprPrec(const std::vector<ExprToken> &toks, size_t &pos, const VariableStore &vars, int minPrec);
 
-static long long parsePrimary(const std::vector<ExprToken> &toks, size_t &pos,
-                              const VariableStore &vars) {
+static long long parsePrimary(const std::vector<ExprToken> &toks, size_t &pos, const VariableStore &vars) {
   const ExprToken &t = toks[pos];
   if (t.kind == ExprToken::Num) {
     ++pos;
@@ -234,8 +226,8 @@ static long long parsePrimary(const std::vector<ExprToken> &toks, size_t &pos,
   throw std::runtime_error("Expression: unexpected token in primary");
 }
 
-static long long parseExprPrec(const std::vector<ExprToken> &toks, size_t &pos,
-                               const VariableStore &vars, int minPrec) {
+static long long parseExprPrec(const std::vector<ExprToken> &toks, size_t &pos, const VariableStore &vars,
+                               int minPrec) {
   long long lhs = parsePrimary(toks, pos, vars);
   while (true) {
     int prec = exprPrec(toks[pos].kind);
@@ -363,8 +355,7 @@ StatementList FlowParser::parse(const std::vector<std::string> &lines) const {
   return out;
 }
 
-size_t FlowParser::parseBlock(const std::vector<std::string> &lines,
-                              size_t start, StatementList &out) const {
+size_t FlowParser::parseBlock(const std::vector<std::string> &lines, size_t start, StatementList &out) const {
   size_t i = start + 1;
   while (i < lines.size()) {
     std::string line = trimLine(lines[i]);
@@ -380,8 +371,7 @@ size_t FlowParser::parseBlock(const std::vector<std::string> &lines,
   throw std::runtime_error("FlowParser: unterminated block (missing '}')");
 }
 
-Statement FlowParser::parseStatement(const std::vector<std::string> &lines,
-                                     size_t &i) const {
+Statement FlowParser::parseStatement(const std::vector<std::string> &lines, size_t &i) const {
   std::string line = trimLine(lines[i]);
   std::string kw = firstWord(line);
   Statement stmt;
@@ -491,16 +481,13 @@ Statement FlowParser::parseStatement(const std::vector<std::string> &lines,
 // FlowController
 // ─────────────────────────────────────────────────────────────────────────────
 
-FlowSignal FlowController::run(const std::vector<std::string> &lines,
-                               VariableStore &vars, const LineExecutor &exec) {
+FlowSignal FlowController::run(const std::vector<std::string> &lines, VariableStore &vars, const LineExecutor &exec) {
   FlowParser parser;
   auto stmts = parser.parse(lines);
   return execute(stmts, vars, exec);
 }
 
-FlowSignal FlowController::execute(const StatementList &stmts,
-                                   VariableStore &vars,
-                                   const LineExecutor &exec) {
+FlowSignal FlowController::execute(const StatementList &stmts, VariableStore &vars, const LineExecutor &exec) {
   for (auto &s : stmts) {
     auto sig = execStatement(*s, vars, exec, 0);
     if (sig != FlowSignal::None)
@@ -509,9 +496,8 @@ FlowSignal FlowController::execute(const StatementList &stmts,
   return FlowSignal::None;
 }
 
-FlowSignal FlowController::execStatement(const Statement &stmt,
-                                         VariableStore &vars,
-                                         const LineExecutor &exec, int depth) {
+FlowSignal FlowController::execStatement(const Statement &stmt, VariableStore &vars, const LineExecutor &exec,
+                                         int depth) {
   if (depth > kMaxLoopDepth)
     throw std::runtime_error("FlowController: maximum loop depth exceeded");
 

@@ -7,8 +7,7 @@ namespace cmd {
 void Context::registerCommand(CommandDef cmd) {
   const std::string name = cmd.name;
   if (index_.count(name))
-    throw std::runtime_error("Context '" + name_ + "': command '" + name +
-                             "' already registered");
+    throw std::runtime_error("Context '" + name_ + "': command '" + name + "' already registered");
   index_[name] = commands_.size();
   commands_.push_back(std::move(cmd));
 }
@@ -29,9 +28,8 @@ std::vector<std::string> Context::commandNames() const {
 }
 
 void Context::sortCommands() {
-  std::sort(
-      commands_.begin(), commands_.end(),
-      [](const CommandDef &a, const CommandDef &b) { return a.name < b.name; });
+  std::sort(commands_.begin(), commands_.end(),
+            [](const CommandDef &a, const CommandDef &b) { return a.name < b.name; });
   for (size_t i = 0; i < commands_.size(); ++i) {
     index_[commands_[i].name] = i;
   }

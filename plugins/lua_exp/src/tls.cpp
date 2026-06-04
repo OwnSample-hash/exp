@@ -26,8 +26,7 @@ bool TLSClient::connect(const std::string &host, int port) {
   addrinfo hints{}, *res;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  if (getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &res) !=
-      0)
+  if (getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &res) != 0)
     return false;
 
   // 2. Create TCP socket
@@ -61,9 +60,7 @@ bool TLSClient::connect(const std::string &host, int port) {
   return true;
 }
 
-int TLSClient::send_data(const std::string &data) {
-  return SSL_write(ssl, data.c_str(), data.size());
-}
+int TLSClient::send_data(const std::string &data) { return SSL_write(ssl, data.c_str(), data.size()); }
 
 std::string TLSClient::recv_data(int buf_size) {
   std::stringstream ss;

@@ -4,7 +4,7 @@
 //
 // #ifdef MODULE_BINI_STATIC
 //
-// TEST_CASE("bini module loads as static") { 
+// TEST_CASE("bini module loads as static") {
 //   REQUIRE_NOTHROW(module_entry_bini());
 // }
 //

@@ -8,8 +8,7 @@ const char *PL_cpr::getVersion() const { return "0.0.1"; }
 void PL_cpr::initialize(initArgs &args) {
   logger = args.logger;
   logger->info("Initializing CPR plugin");
-  args.modules->emplace_back("cpr", explo::ModuleType::TOOL,
-                             std::make_shared<CPR>(logger));
+  args.modules->emplace_back("cpr", explo::ModuleType::TOOL, std::make_shared<CPR>(logger));
 }
 
 static PluginRegistry::Add<PL_cpr> cprRegister("cpr");

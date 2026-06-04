@@ -151,16 +151,14 @@ CommandProcessor::CommandProcessor() {
     globalCtx_->registerCommand(std::move(c));
   }
 
-  historyFile.open(".cmd_history",
-                   std::ios::in | std::ios::out | std::ios::app);
+  historyFile.open(".cmd_history", std::ios::in | std::ios::out | std::ios::app);
   if (!historyFile.is_open())
     return;
   std::string line;
   while (std::getline(historyFile, line)) {
     history_.push_back(line);
   }
-  history_.erase(std::remove_if(history_.begin(), history_.end(),
-                                [](const std::string &s) { return s.empty(); }),
+  history_.erase(std::remove_if(history_.begin(), history_.end(), [](const std::string &s) { return s.empty(); }),
                  history_.end());
   history_.shrink_to_fit();
   historyIndex_ = history_.size();
@@ -186,20 +184,15 @@ void CommandProcessor::switchContext(const std::string &name) {
   currentCtx_->sortCommands();
 }
 
-std::string CommandProcessor::currentContextName() const {
-  return currentCtx_ ? currentCtx_->name() : "__global__";
-}
+std::string CommandProcessor::currentContextName() const { return currentCtx_ ? currentCtx_->name() : "__global__"; }
 
-void CommandProcessor::registerGlobalCommand(CommandDef cmd) {
-  globalCtx_->registerCommand(std::move(cmd));
-}
+void CommandProcessor::registerGlobalCommand(CommandDef cmd) { globalCtx_->registerCommand(std::move(cmd)); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tokenizer (respects double/single quotes and backslash escapes)
 // ─────────────────────────────────────────────────────────────────────────────
 
-std::vector<std::string>
-CommandProcessor::tokenize(const std::string &line) const {
+std::vector<std::string> CommandProcessor::tokenize(const std::string &line) const {
   std::vector<std::string> tokens;
   std::string cur;
   bool inDouble = false, inSingle = false;
@@ -232,23 +225,19 @@ CommandProcessor::tokenize(const std::string &line) const {
   return tokens;
 }
 
-std::string CommandProcessor::expandVariables(const std::string &token) const {
-  return vars_.expand(token);
-}
+std::string CommandProcessor::expandVariables(const std::string &token) const { return vars_.expand(token); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Candidate collection for help/autocomplete
 // ─────────────────────────────────────────────────────────────────────────────
 
-std::vector<std::string>
-CommandProcessor::collectCandidates(const std::string &partial) const {
+std::vector<std::string> CommandProcessor::collectCandidates(const std::string &partial) const {
   std::vector<std::string> result;
 
   // Tokenize the current buffer to determine what stage we're at
   auto tokens = tokenize(partial);
 
-  auto addCommandCandidates = [&](const Context *ctx,
-                                  const std::string &prefix) {
+  auto addCommandCandidates = [&](const Context *ctx, const std::string &prefix) {
     for (auto &cmd : ctx->commands()) {
       if (cmd.name.substr(0, prefix.size()) == prefix)
         result.push_back(cmd.name);
@@ -302,8 +291,7 @@ CommandProcessor::collectCandidates(const std::string &partial) const {
 
   // Sub-commands at this position
   if (!def->subCommands.empty()) {
-    std::string prefix =
-        (atSpace || tokens.size() <= argStart) ? "" : tokens.back();
+    std::string prefix = (atSpace || tokens.size() <= argStart) ? "" : tokens.back();
     for (auto &sub : def->subCommands)
       if (sub.name.substr(0, prefix.size()) == prefix)
         result.push_back(sub.name);
@@ -333,8 +321,7 @@ CommandProcessor::collectCandidates(const std::string &partial) const {
   return result;
 }
 
-std::string
-CommandProcessor::commonPrefix(const std::vector<std::string> &v) const {
+std::string CommandProcessor::commonPrefix(const std::vector<std::string> &v) const {
   if (v.empty())
     return {};
   std::string prefix = v[0];
@@ -410,8 +397,7 @@ ExecutionResult CommandProcessor::executeLine(const std::string &line) {
     for (size_t i = 1; i < args.size() && (i - 1) < def->options.size(); ++i) {
       if (!matchOption(def->options[i - 1], args[i])) {
         res.success = false;
-        res.message = "Invalid argument '" + args[i] + "' for option " +
-                      std::to_string(i) + " of '" + cmdName + "'";
+        res.message = "Invalid argument '" + args[i] + "' for option " + std::to_string(i) + " of '" + cmdName + "'";
         res.exitCode = 1;
         return res;
       }
@@ -466,9 +452,7 @@ InputResult CommandProcessor::feed(char c) {
       // Down arrow – clear line
       if (historyIndex_ < history_.size()) {
         bufferBackup_ = buffer_;
-        buffer_ = (historyIndex_ < history_.size() - 1)
-                      ? history_[++historyIndex_]
-                      : "";
+        buffer_ = (historyIndex_ < history_.size() - 1) ? history_[++historyIndex_] : "";
       }
     } else if (c == 'D') {
       if (cursorPos_ > 0)
@@ -513,9 +497,7 @@ InputResult CommandProcessor::feed(char c) {
     // Replace the last token with the completion
     // Find the start of the last word in the buffer
     size_t lastSpace = buffer_.rfind(' ');
-    std::string base = (lastSpace == std::string::npos)
-                           ? ""
-                           : buffer_.substr(0, lastSpace + 1);
+    std::string base = (lastSpace == std::string::npos) ? "" : buffer_.substr(0, lastSpace + 1);
     buffer_ = base + prefix;
 
     if (autocompleteCb_)

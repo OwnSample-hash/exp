@@ -24,9 +24,7 @@ public:
 
   void invoke(const std::string &prefix) override;
 
-  void invoke(const char *prefix) override {
-    this->invoke(std::string(prefix));
-  }
+  void invoke(const char *prefix) override { this->invoke(std::string(prefix)); }
 
   void shutdown() override;
 

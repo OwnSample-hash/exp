@@ -10,9 +10,8 @@ void PL_lua_exp::initialize(initArgs &args) {
   logger = args.logger;
   logger->info("Initializing plugin: {}", getName());
 
-  args.modules->emplace_back(
-      "loader", ModuleType::TOOLPROVIDER,
-      std::make_shared<luaLoader>(logger->clone(logger->name() + "::loader")));
+  args.modules->emplace_back("loader", ModuleType::TOOLPROVIDER,
+                             std::make_shared<luaLoader>(logger->clone(logger->name() + "::loader")));
 }
 
 static PluginRegistry::Add<PL_lua_exp> lua_expRegister("lua_exp");

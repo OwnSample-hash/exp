@@ -24,8 +24,7 @@ void UI::printHelp(const std::vector<std::string> &options) {
 void UI::printAutocomplete(const std::string &buf, bool unique) {
   auto &cp = cmd::CommandProcessor::instance();
   auto vars = cp.vars();
-  auto rawPrompt =
-      vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
+  auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
   std::string prompt = vars.expand(rawPrompt);
   if (unique)
     std::cout << "\r\033[K" << prompt << buf;
@@ -42,9 +41,7 @@ void UI::printResult(const cmd::ExecutionResult &r) {
     std::cout << "[exit " << r.exitCode << "]\n";
 }
 
-void UI::printError(const std::string &msg) {
-  std::cerr << "\033[31m[error] " << msg << "\033[0m\n";
-}
+void UI::printError(const std::string &msg) { std::cerr << "\033[31m[error] " << msg << "\033[0m\n"; }
 
 inline int UI::getch() {
   int r = 0;
@@ -63,8 +60,7 @@ void UI::runLoop() {
   std::cout << "Type '?' for help, TAB to autocomplete.\n";
 
   auto vars = cp.vars();
-  auto rawPrompt =
-      vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
+  auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
   std::string prompt = vars.expand(rawPrompt);
   std::cout << prompt << std::flush;
 
@@ -91,17 +87,13 @@ void UI::runLoop() {
         res = cp.feed(ch);
       }
       auto vars = cp.vars();
-      auto rawPrompt = vars.get("prompt").has_value()
-                           ? vars.get("prompt")->toString()
-                           : "> ";
+      auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
       std::cout << "\r\033[K" << prompt << cp.buffer();
       if (ch == 'D') {
-        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D"
-                  << std::flush;
+        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
       } else if (ch == 'C') {
-        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "C"
-                  << std::flush;
+        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "C" << std::flush;
       }
 
       break;
@@ -109,9 +101,7 @@ void UI::runLoop() {
 
     case cmd::InputResult::Help: {
       auto vars = cp.vars();
-      auto rawPrompt = vars.get("prompt").has_value()
-                           ? vars.get("prompt")->toString()
-                           : "> ";
+      auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
       std::cout << prompt << cp.buffer() << std::flush;
       break;
@@ -122,9 +112,7 @@ void UI::runLoop() {
     case cmd::InputResult::Consumed:
       if (ch == '\b' || ch == 127) {
         auto vars = cp.vars();
-        auto rawPrompt = vars.get("prompt").has_value()
-                             ? vars.get("prompt")->toString()
-                             : "> ";
+        auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
         std::string prompt = vars.expand(rawPrompt);
         std::cout << prompt << std::flush;
         std::cout << "\r\033[K" << prompt << std::flush;
@@ -133,13 +121,10 @@ void UI::runLoop() {
         std::cout << (char)ch << std::flush;
         if (cp.cursorPos() < cp.buffer().size()) {
           auto vars = cp.vars();
-          auto rawPrompt = vars.get("prompt").has_value()
-                               ? vars.get("prompt")->toString()
-                               : "> ";
+          auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
           std::string prompt = vars.expand(rawPrompt);
           std::cout << "\r\033[K" << prompt << cp.buffer();
-          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D"
-                    << std::flush;
+          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
         }
       }
       break;
@@ -148,9 +133,7 @@ void UI::runLoop() {
       break;
     case cmd::InputResult::Executed:
       auto vars = cp.vars();
-      auto rawPrompt = vars.get("prompt").has_value()
-                           ? vars.get("prompt")->toString()
-                           : "> ";
+      auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
       std::cout << prompt << std::flush;
       break;

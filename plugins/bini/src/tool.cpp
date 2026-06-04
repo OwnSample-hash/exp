@@ -60,29 +60,23 @@ void bini::execute() {
 
   auto BufferOrErr = MemoryBuffer::getFile(target);
   if (!BufferOrErr) {
-    logger->error("Failed to open file: " + target + ": " +
-                  BufferOrErr.getError().message());
-    std::cerr << "Error opening file: " << BufferOrErr.getError().message()
-              << "\n";
+    logger->error("Failed to open file: " + target + ": " + BufferOrErr.getError().message());
+    std::cerr << "Error opening file: " << BufferOrErr.getError().message() << "\n";
     return;
   }
 
-  auto objOrErr =
-      ObjectFile::createObjectFile(BufferOrErr->get()->getMemBufferRef());
+  auto objOrErr = ObjectFile::createObjectFile(BufferOrErr->get()->getMemBufferRef());
   if (!objOrErr) {
-    logger->error("Failed to create object file: " +
-                  llvm::toString(objOrErr.takeError()));
+    logger->error("Failed to create object file: " + llvm::toString(objOrErr.takeError()));
     std::cerr << "Error opening file: " << BufferOrErr.getError().message();
     return;
   }
 
   std::unique_ptr<ObjectFile> obj = std::move(*objOrErr);
 
-  if (!(obj->getFileFormatName() == "elf32-x86-64" ||
-        obj->getFileFormatName() == "elf64-x86-64")) {
+  if (!(obj->getFileFormatName() == "elf32-x86-64" || obj->getFileFormatName() == "elf64-x86-64")) {
     logger->error("Unsupported file format: " + obj->getFileFormatName().str());
-    std::cerr << "Unsupported file format: " << obj->getFileFormatName().str()
-              << "\n";
+    std::cerr << "Unsupported file format: " << obj->getFileFormatName().str() << "\n";
     return;
   }
 
@@ -97,8 +91,7 @@ void bini::execute() {
     else if (auto E = dyn_cast<ELFObjectFile<ELF64BE>>(obj))
       sum = analyzeELF(*E);
     else {
-      logger->error("Unsupported ELF format: " +
-                    obj->getFileFormatName().str());
+      logger->error("Unsupported ELF format: " + obj->getFileFormatName().str());
       return;
     }
 
@@ -129,12 +122,8 @@ void bini::execute() {
     std::cout << "  RPATH:  " << toStr(sum.RPATH) << "\n";
     std::cout << "  RunPath: " << toStr(sum.RunPath) << "\n";
     std::cout << "  Total symbols checked: " << sum.symbolCount << "\n";
-    std::cout << "  Fortified symbols: " << sum.FortifiedCount << "/"
-              << sum.symbolCount << " ("
-              << (sum.symbolCount > 0
-                      ? (sum.FortifiedCount * 100 / sum.symbolCount)
-                      : 0)
-              << "%)\n";
+    std::cout << "  Fortified symbols: " << sum.FortifiedCount << "/" << sum.symbolCount << " ("
+              << (sum.symbolCount > 0 ? (sum.FortifiedCount * 100 / sum.symbolCount) : 0) << "%)\n";
   } else {
     llvm::outs() << "Detailed information not implemented yet.\n";
   }

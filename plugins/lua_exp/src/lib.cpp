@@ -22,21 +22,21 @@ auto &getLogger() {
   return logger;
 }
 
-#define X(name, level)                                                         \
-  int name(lua_State *L) {                                                     \
-    int nargs = lua_gettop(L);                                                 \
-    std::string log_msg;                                                       \
-    for (int i = 1; i <= nargs; i++) {                                         \
-      if (lua_isstring(L, i)) {                                                \
-        log_msg += lua_tostring(L, i);                                         \
-      } else {                                                                 \
-        log_msg += "<non-string argument>";                                    \
-      }                                                                        \
-      if (i < nargs)                                                           \
-        log_msg += " ";                                                        \
-    }                                                                          \
-    getLogger()->level("[Lua] {}", log_msg);                                   \
-    return 0;                                                                  \
+#define X(name, level)                                                                                                 \
+  int name(lua_State *L) {                                                                                             \
+    int nargs = lua_gettop(L);                                                                                         \
+    std::string log_msg;                                                                                               \
+    for (int i = 1; i <= nargs; i++) {                                                                                 \
+      if (lua_isstring(L, i)) {                                                                                        \
+        log_msg += lua_tostring(L, i);                                                                                 \
+      } else {                                                                                                         \
+        log_msg += "<non-string argument>";                                                                            \
+      }                                                                                                                \
+      if (i < nargs)                                                                                                   \
+        log_msg += " ";                                                                                                \
+    }                                                                                                                  \
+    getLogger()->level("[Lua] {}", log_msg);                                                                           \
+    return 0;                                                                                                          \
   }
 luaLogFuncs
 #undef X
@@ -51,21 +51,18 @@ int var(lua_State *L) {
   if (tool_name)
     prefix = std::string(tool_name);
   else {
-    getLogger()->warn(
-        "Lua attempted to access variable '{}' without a valid tool "
-        "name in the global 'name' variable. This may indicate a "
-        "misconfiguration or an attempt to access variables outside of "
-        "a tool context.",
-        env_var);
+    getLogger()->warn("Lua attempted to access variable '{}' without a valid tool "
+                      "name in the global 'name' variable. This may indicate a "
+                      "misconfiguration or an attempt to access variables outside of "
+                      "a tool context.",
+                      env_var);
   }
-  auto var = explo::cmd::CommandProcessor::instance().vars().get(prefix + "." +
-                                                                 env_var);
+  auto var = explo::cmd::CommandProcessor::instance().vars().get(prefix + "." + env_var);
   if (!var) {
     lua_pushnil(L);
     return 1;
   }
-  getLogger()->trace("Lua is accessed variable '{}.{}' with type {}", prefix,
-                     env_var, static_cast<int>(var->type));
+  getLogger()->trace("Lua is accessed variable '{}.{}' with type {}", prefix, env_var, static_cast<int>(var->type));
   switch (var->type) {
   case explo::cmd::VarType::String:
     lua_pushstring(L, var->toString().c_str());
@@ -80,10 +77,9 @@ int var(lua_State *L) {
     lua_pushboolean(L, var->toBool());
     break;
   case explo::cmd::VarType::Array: {
-    getLogger()->warn(
-        "Lua attempted to access array variable '{}', which is not "
-        "directly supported. Returning nil.",
-        env_var);
+    getLogger()->warn("Lua attempted to access array variable '{}', which is not "
+                      "directly supported. Returning nil.",
+                      env_var);
     lua_pushnil(L);
     break;
   }
@@ -98,9 +94,8 @@ json convertLuaTable(const LTW &table, int depth = 0) {
   } else {
     recursion_counter++;
     if (recursion_counter > 100) {
-      getLogger()->error(
-          "Excessive recursion detected in Lua table conversion. Possible "
-          "circular reference. Returning null.");
+      getLogger()->error("Excessive recursion detected in Lua table conversion. Possible "
+                         "circular reference. Returning null.");
       getLogger()->debug("Current recursion depth: {}, recursion counter: {}. "
                          "Possibly the table is _G",
                          depth, recursion_counter);
@@ -109,9 +104,8 @@ json convertLuaTable(const LTW &table, int depth = 0) {
   }
   json result;
   if (depth > 10) {
-    getLogger()->warn(
-        "Maximum Lua table conversion depth exceeded. Possible circular "
-        "reference detected. Returning null.");
+    getLogger()->warn("Maximum Lua table conversion depth exceeded. Possible circular "
+                      "reference detected. Returning null.");
     return nullptr;
   }
   for (const auto &[key, value] : table.iterate()) {
@@ -122,18 +116,16 @@ json convertLuaTable(const LTW &table, int depth = 0) {
     } else if (value.is<bool>()) {
       result[key] = value.as<bool>();
     } else if (value.is<LFW>()) {
-      getLogger()->warn(
-          "Lua table contains function at key '{}', which cannot be "
-          "converted to JSON. Skipping this entry.",
-          key);
+      getLogger()->warn("Lua table contains function at key '{}', which cannot be "
+                        "converted to JSON. Skipping this entry.",
+                        key);
     } else if (value.is<LTW>()) {
       getLogger()->trace("Converting nested Lua table at key '{}'", key);
       result[key] = convertLuaTable(value.as<LTW>(), depth + 1);
     } else {
-      getLogger()->warn(
-          "Lua table contains unsupported type at key '{}'. Skipping this "
-          "entry.",
-          key);
+      getLogger()->warn("Lua table contains unsupported type at key '{}'. Skipping this "
+                        "entry.",
+                        key);
     }
   }
   return result;
@@ -147,8 +139,7 @@ int call(lua_State *L) {
   LTW wrapper(L, 2);
 
   json args = convertLuaTable(wrapper);
-  getLogger()->trace("Lua is calling command '{}' with arguments: {}", toolName,
-                     args.dump());
+  getLogger()->trace("Lua is calling command '{}' with arguments: {}", toolName, args.dump());
 
   auto it = tools.find(toolName);
   if (it == tools.end()) {
@@ -160,8 +151,7 @@ int call(lua_State *L) {
   auto &cpVars = cmd::CommandProcessor::instance().vars();
   try {
     tool->invoke(tool->getName());
-    cpVars.set(tool->getName() + std::string(".args"),
-               cmd::VarValue(args.dump()));
+    cpVars.set(tool->getName() + std::string(".args"), cmd::VarValue(args.dump()));
     tool->execute();
     tool->suppress();
   } catch (const std::exception &e) {
@@ -193,8 +183,7 @@ int socket_(lua_State *L) {
 
   int optval = 1;
   if (fcntl(sockfd, F_SETFD, O_NONBLOCK) < 0) {
-    getLogger()->error("Failed to set socket {} to non-blocking mode: {}",
-                       sockfd, strerror(errno));
+    getLogger()->error("Failed to set socket {} to non-blocking mode: {}", sockfd, strerror(errno));
     close(sockfd);
     lua_pushnil(L);
     return 1;
@@ -229,21 +218,16 @@ int connect_(lua_State *L) {
   FD_ZERO(&write_fds);
   FD_SET(sockfd, &write_fds);
 
-  if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
-          0 &&
-      errno != EINPROGRESS) {
-    getLogger()->error("Failed to initiate connection on socket {}: {}", sockfd,
-                       strerror(errno));
+  if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0 && errno != EINPROGRESS) {
+    getLogger()->error("Failed to initiate connection on socket {}: {}", sockfd, strerror(errno));
     lua_pushboolean(L, false);
     return 1;
   }
   if (select(sockfd + 1, nullptr, &write_fds, nullptr, &timeout) == 1) {
     int so_err;
     socklen_t len = sizeof(so_err);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &so_err, &len) < 0 ||
-        so_err != 0) {
-      getLogger()->error("Failed to connect socket {}: {}", sockfd,
-                         strerror(so_err));
+    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &so_err, &len) < 0 || so_err != 0) {
+      getLogger()->error("Failed to connect socket {}: {}", sockfd, strerror(so_err));
       lua_pushboolean(L, false);
       return 1;
     }
@@ -316,10 +300,9 @@ int sconnect(lua_State *L) {
   lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
   TLSClient *tlsClient_ = static_cast<TLSClient *>(lua_touserdata(L, -1));
   if (tlsClient_) {
-    getLogger()->warn(
-        "Lua attempted to establish a new TLS connection while an existing "
-        "TLS client is still active. This may indicate a resource leak or "
-        "mismanagement. Previous TLS client will be overwritten.");
+    getLogger()->warn("Lua attempted to establish a new TLS connection while an existing "
+                      "TLS client is still active. This may indicate a resource leak or "
+                      "mismanagement. Previous TLS client will be overwritten.");
   }
 
   int sockfd = luaL_checkinteger(L, 1);
@@ -327,17 +310,14 @@ int sconnect(lua_State *L) {
   int port = luaL_checkinteger(L, 3);
 
   TLSClient *tlsClient = new TLSClient();
-  tlsClient->logger->trace("Lua is connecting socket {} to {}:{}", sockfd, host,
-                           port);
+  tlsClient->logger->trace("Lua is connecting socket {} to {}:{}", sockfd, host, port);
 
   if (!tlsClient->connect(host, port)) {
-    tlsClient->logger->error("Failed to establish TLS connection to {}:{}",
-                             host, port);
+    tlsClient->logger->error("Failed to establish TLS connection to {}:{}", host, port);
     lua_pushboolean(L, false);
     return 1;
   }
-  tlsClient->logger->trace("TLS connection established successfully to {}:{}",
-                           host, port);
+  tlsClient->logger->trace("TLS connection established successfully to {}:{}", host, port);
   lua_pushlightuserdata(L, tlsClient);
   lua_setfield(L, LUA_REGISTRYINDEX, "tlsClient");
 
@@ -380,16 +360,14 @@ int sread(lua_State *L) {
   }
   int max_len = luaL_checkinteger(L, 1);
 
-  tlsClient->logger->trace("Lua is reading up to {} bytes from TLS connection",
-                           max_len);
+  tlsClient->logger->trace("Lua is reading up to {} bytes from TLS connection", max_len);
 
   std::string data = tlsClient->recv_data(max_len);
   if (data.empty()) {
     tlsClient->logger->warn("Failed to read data from TLS connection");
     tlsClient->logger->warn("Error details: {}", tlsClient->getLastError());
   }
-  tlsClient->logger->trace("Data received from TLS connection: '{}' bytes",
-                           data.size());
+  tlsClient->logger->trace("Data received from TLS connection: '{}' bytes", data.size());
   lua_pushlstring(L, data.c_str(), data.size());
   return 1;
 }
@@ -417,8 +395,7 @@ int sclose(lua_State *L) {
 int clock(lua_State *L) {
   auto now = std::chrono::high_resolution_clock::now();
   auto epoch = now.time_since_epoch();
-  auto nanos =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
+  auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
   lua_pushnumber(L, nanos);
   return 1;
 }

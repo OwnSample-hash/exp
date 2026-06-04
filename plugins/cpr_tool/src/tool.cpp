@@ -22,8 +22,7 @@ void CPR::initialize() {
       c.name = "run";
       c.description = "Run the cpr main function";
       c.variadic = false;
-      c.addDynamic("<json-encoded-data>", R"(^.+$)",
-                   "JSON-encoded data to pass to the CPR tool");
+      c.addDynamic("<json-encoded-data>", R"(^.+$)", "JSON-encoded data to pass to the CPR tool");
       c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
         if (ec.args.size() < 2) {
           return "\033[1;31mError: Missing required argument "
@@ -33,8 +32,7 @@ void CPR::initialize() {
         this->logger->trace("Received command with payload: {}", this->payload);
         this->execute();
         if (this->status != 0) {
-          return "\033[1;31mCPR tool execution failed with status: " +
-                 std::to_string(this->status) + "\033[0m";
+          return "\033[1;31mCPR tool execution failed with status: " + std::to_string(this->status) + "\033[0m";
         }
         return "CPR tool execution completed";
       };

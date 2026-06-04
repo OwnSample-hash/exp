@@ -75,8 +75,7 @@ void NC::execute() {
   addrinfo *res = nullptr;
   const std::string port_str = std::to_string(port_host);
 
-  if (getaddrinfo(config.host.c_str(), port_str.c_str(), &hints, &res) != 0 ||
-      !res) {
+  if (getaddrinfo(config.host.c_str(), port_str.c_str(), &hints, &res) != 0 || !res) {
     logger->error("Failed to resolve host {}:{}", config.host, port_host);
     throw std::runtime_error("getaddrinfo failed for host: " + config.host);
   }
@@ -89,15 +88,13 @@ void NC::execute() {
 
   int sockfd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (sockfd < 0) {
-    logger->error("Failed to create socket for {}:{} - {}", config.host,
-                  port_host, strerror(errno));
+    logger->error("Failed to create socket for {}:{} - {}", config.host, port_host, strerror(errno));
     throw std::runtime_error(std::string("socket(): ") + strerror(errno));
   }
 
   if (::connect(sockfd, res->ai_addr, res->ai_addrlen) < 0) {
     ::close(sockfd);
-    logger->error("Failed to connect to {}:{} - {}", config.host, port_host,
-                  strerror(errno));
+    logger->error("Failed to connect to {}:{} - {}", config.host, port_host, strerror(errno));
     throw std::runtime_error(std::string("connect(): ") + strerror(errno));
   }
 
@@ -112,8 +109,8 @@ void NC::execute() {
   pollfd fds[2];
   fds[0] = {STDIN_FILENO, POLLIN, 0};
   fds[1] = {sockfd, POLLIN, 0};
-  std::cout << "Connected to " << config.host << ":" << port_host
-            << ". Type Ctrl+D to end input and close connection." << std::endl;
+  std::cout << "Connected to " << config.host << ":" << port_host << ". Type Ctrl+D to end input and close connection."
+            << std::endl;
 
   while (!done) {
     int n = poll(fds, 2, -1 /*block forever*/);
@@ -165,8 +162,7 @@ void NC::execute() {
   tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
   int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
   if (fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK) < 0) {
-    logger->error("Failed to restore blocking mode on stdin: {}",
-                  strerror(errno));
+    logger->error("Failed to restore blocking mode on stdin: {}", strerror(errno));
   }
   logger->debug("Restored original terminal settings");
 }

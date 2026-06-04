@@ -4,7 +4,7 @@
 //
 // #ifdef MODULE_LUA_EXP_STATIC
 //
-// TEST_CASE("lua_exp module loads as static") { 
+// TEST_CASE("lua_exp module loads as static") {
 //   REQUIRE_NOTHROW(module_entry_lua_exp());
 // }
 //

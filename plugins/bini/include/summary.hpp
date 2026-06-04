@@ -58,15 +58,12 @@ struct RPATHInfo {
 
 // Known pairs: unfortified -> fortified name
 static const std::map<std::string, std::string> FortifyPairs = {
-    {"memcpy", "__memcpy_chk"},     {"memmove", "__memmove_chk"},
-    {"mempcpy", "__mempcpy_chk"},   {"memset", "__memset_chk"},
-    {"stpcpy", "__stpcpy_chk"},     {"stpncpy", "__stpncpy_chk"},
-    {"strcpy", "__strcpy_chk"},     {"strncpy", "__strncpy_chk"},
-    {"strcat", "__strcat_chk"},     {"strncat", "__strncat_chk"},
-    {"sprintf", "__sprintf_chk"},   {"snprintf", "__snprintf_chk"},
-    {"vsprintf", "__vsprintf_chk"}, {"vsnprintf", "__vsnprintf_chk"},
-    {"fprintf", "__fprintf_chk"},   {"printf", "__printf_chk"},
-    {"vfprintf", "__vfprintf_chk"}, {"vprintf", "__vprintf_chk"},
+    {"memcpy", "__memcpy_chk"},     {"memmove", "__memmove_chk"},     {"mempcpy", "__mempcpy_chk"},
+    {"memset", "__memset_chk"},     {"stpcpy", "__stpcpy_chk"},       {"stpncpy", "__stpncpy_chk"},
+    {"strcpy", "__strcpy_chk"},     {"strncpy", "__strncpy_chk"},     {"strcat", "__strcat_chk"},
+    {"strncat", "__strncat_chk"},   {"sprintf", "__sprintf_chk"},     {"snprintf", "__snprintf_chk"},
+    {"vsprintf", "__vsprintf_chk"}, {"vsnprintf", "__vsnprintf_chk"}, {"fprintf", "__fprintf_chk"},
+    {"printf", "__printf_chk"},     {"vfprintf", "__vfprintf_chk"},   {"vprintf", "__vprintf_chk"},
 };
 
 FortifyInfo checkFortification(const llvm::object::ObjectFile &Obj);
@@ -92,8 +89,7 @@ template <typename ELFT> StringRef getDynStrTab(const ELFFile<ELFT> &ELF) {
     if (!ContentsOrErr)
       continue;
 
-    return StringRef(reinterpret_cast<const char *>(ContentsOrErr->data()),
-                     ContentsOrErr->size());
+    return StringRef(reinterpret_cast<const char *>(ContentsOrErr->data()), ContentsOrErr->size());
   }
   return {};
 }
@@ -152,9 +148,7 @@ template <typename ELFT> summary analyzeELF(const ELFObjectFile<ELFT> &Obj) {
   for (const auto &Phdr : *PhdrsOrErr) {
     if (Phdr.p_type == ELF::PT_GNU_STACK) {
       // NX enabled when stack segment is NOT executable
-      result.NX = !(Phdr.p_flags & ELF::PF_X)
-                      ? Status::Full
-                      : Status::None; // Stack is executable, so no NX
+      result.NX = !(Phdr.p_flags & ELF::PF_X) ? Status::Full : Status::None; // Stack is executable, so no NX
       break;
     }
   }
@@ -247,8 +241,7 @@ template <typename ELFT> summary analyzeELF(const ELFObjectFile<ELFT> &Obj) {
   result.CFI = cfiInfo.HasCFI ? Status::Full : Status::None;
   result.ICallCFI = cfiInfo.HasICallCFI ? Status::Full : Status::None;
   result.VCallCFI = cfiInfo.HasVCallCFI ? Status::Full : Status::None;
-  result.ShadowCallStack =
-      cfiInfo.HasShadowCallStack ? Status::Full : Status::None;
+  result.ShadowCallStack = cfiInfo.HasShadowCallStack ? Status::Full : Status::None;
   result.SafeStack = cfiInfo.HasSafeStack ? Status::Full : Status::None;
 
   RPATHInfo rpathInfo = checkRPATH(ELF);

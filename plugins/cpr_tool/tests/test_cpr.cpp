@@ -4,7 +4,7 @@
 //
 // #ifdef MODULE_CPR_STATIC
 //
-// TEST_CASE("cpr module loads as static") { 
+// TEST_CASE("cpr module loads as static") {
 //   REQUIRE_NOTHROW(module_entry_cpr());
 // }
 //

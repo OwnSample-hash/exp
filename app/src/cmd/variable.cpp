@@ -76,22 +76,19 @@ VarValue VarValue::add(const VarValue &rhs) const {
   if (type == VarType::String || rhs.type == VarType::String)
     return VarValue(toString() + rhs.toString());
   if (type == VarType::Float || rhs.type == VarType::Float)
-    return VarValue(static_cast<double>(toInt()) +
-                    static_cast<double>(rhs.toInt()));
+    return VarValue(static_cast<double>(toInt()) + static_cast<double>(rhs.toInt()));
   return VarValue(toInt() + rhs.toInt());
 }
 
 VarValue VarValue::sub(const VarValue &rhs) const {
   if (type == VarType::Float || rhs.type == VarType::Float)
-    return VarValue(static_cast<double>(toInt()) -
-                    static_cast<double>(rhs.toInt()));
+    return VarValue(static_cast<double>(toInt()) - static_cast<double>(rhs.toInt()));
   return VarValue(toInt() - rhs.toInt());
 }
 
 VarValue VarValue::mul(const VarValue &rhs) const {
   if (type == VarType::Float || rhs.type == VarType::Float)
-    return VarValue(static_cast<double>(toInt()) *
-                    static_cast<double>(rhs.toInt()));
+    return VarValue(static_cast<double>(toInt()) * static_cast<double>(rhs.toInt()));
   return VarValue(toInt() * rhs.toInt());
 }
 
@@ -100,8 +97,7 @@ VarValue VarValue::div(const VarValue &rhs) const {
   if (d == 0)
     throw std::runtime_error("Division by zero");
   if (type == VarType::Float || rhs.type == VarType::Float)
-    return VarValue(static_cast<double>(toInt()) /
-                    static_cast<double>(rhs.toInt()));
+    return VarValue(static_cast<double>(toInt()) / static_cast<double>(rhs.toInt()));
   return VarValue(toInt() / d);
 }
 
@@ -109,8 +105,7 @@ bool VarValue::eq(const VarValue &rhs) const {
   if (type == VarType::String || rhs.type == VarType::String)
     return toString() == rhs.toString();
   if (type == VarType::Float || rhs.type == VarType::Float)
-    return std::abs(static_cast<double>(toInt()) -
-                    static_cast<double>(rhs.toInt())) < 1e-9;
+    return std::abs(static_cast<double>(toInt()) - static_cast<double>(rhs.toInt())) < 1e-9;
   return toInt() == rhs.toInt();
 }
 
@@ -139,9 +134,7 @@ void VariableStore::set(const std::string &name, VarValue val) {
   scopes_.back()[name] = std::move(val);
 }
 
-void VariableStore::setGlobal(const std::string &name, VarValue val) {
-  scopes_[0][name] = std::move(val);
-}
+void VariableStore::setGlobal(const std::string &name, VarValue val) { scopes_[0][name] = std::move(val); }
 
 std::optional<VarValue> VariableStore::get(const std::string &name) const {
   for (int i = static_cast<int>(scopes_.size()) - 1; i >= 0; --i) {
@@ -169,8 +162,7 @@ std::string VariableStore::expand(const std::string &s) const {
           ++i; // skip '}'
       } else {
         // $VAR form (alphanumeric + underscore)
-        while (i < s.size() &&
-               (std::isalnum(static_cast<unsigned char>(s[i])) || s[i] == '_'))
+        while (i < s.size() && (std::isalnum(static_cast<unsigned char>(s[i])) || s[i] == '_'))
           varName += s[i++];
       }
       if (!varName.empty()) {
@@ -211,9 +203,7 @@ void VariableStore::popScope() {
     scopes_.pop_back();
 }
 
-void VariableStore::exportVar(const std::string &name) {
-  exported_[name] = true;
-}
+void VariableStore::exportVar(const std::string &name) { exported_[name] = true; }
 
 bool VariableStore::isExported(const std::string &name) const {
   auto it = exported_.find(name);
@@ -241,8 +231,7 @@ void VariableStore::unset(const std::string &name) {
   }
 }
 
-std::optional<VarValue> VariableStore::getElement(const std::string &name,
-                                                  size_t idx) const {
+std::optional<VarValue> VariableStore::getElement(const std::string &name, size_t idx) const {
   auto v = get(name);
   if (!v || v->type != VarType::Array)
     return std::nullopt;
@@ -251,8 +240,7 @@ std::optional<VarValue> VariableStore::getElement(const std::string &name,
   return VarValue(v->aval[idx]);
 }
 
-void VariableStore::setElement(const std::string &name, size_t idx,
-                               VarValue val) {
+void VariableStore::setElement(const std::string &name, size_t idx, VarValue val) {
   auto v = get(name);
   VarValue arr;
   if (v && v->type == VarType::Array)

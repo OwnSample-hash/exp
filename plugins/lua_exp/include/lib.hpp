@@ -13,33 +13,33 @@ extern "C" {
 
 extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
 
-#define luaLogFuncs                                                            \
-  X(logt, trace)                                                               \
-  X(logd, debug)                                                               \
-  X(logi, info)                                                                \
-  X(logw, warn)                                                                \
+#define luaLogFuncs                                                                                                    \
+  X(logt, trace)                                                                                                       \
+  X(logd, debug)                                                                                                       \
+  X(logi, info)                                                                                                        \
+  X(logw, warn)                                                                                                        \
   X(loge, error)
 
-#define luaSocketFuncs                                                         \
-  X(socket_, socket)                                                           \
-  X(connect_, connect)                                                         \
-  X(write_, write)                                                             \
-  X(read_, read)                                                               \
-  X(close_, close)                                                             \
-  X(sconnect, sconnect)                                                        \
-  X(swrite, swrite)                                                            \
-  X(sread, sread)                                                              \
+#define luaSocketFuncs                                                                                                 \
+  X(socket_, socket)                                                                                                   \
+  X(connect_, connect)                                                                                                 \
+  X(write_, write)                                                                                                     \
+  X(read_, read)                                                                                                       \
+  X(close_, close)                                                                                                     \
+  X(sconnect, sconnect)                                                                                                \
+  X(swrite, swrite)                                                                                                    \
+  X(sread, sread)                                                                                                      \
   X(sclose, sclose)
 
-#define luaFuncs                                                               \
-  X(var)                                                                       \
-  X(call)                                                                      \
-  X(sleep)                                                                     \
-  X(clock)                                                                     \
+#define luaFuncs                                                                                                       \
+  X(var)                                                                                                               \
+  X(call)                                                                                                              \
+  X(sleep)                                                                                                             \
+  X(clock)                                                                                                             \
   luaLogFuncs luaSocketFuncs
 
-#define enumData                                                               \
-  X(SOCK_STREAM, number)                                                       \
+#define enumData                                                                                                       \
+  X(SOCK_STREAM, number)                                                                                               \
   X(SOCK_DGRAM, number)
 
 #define X(name, ...) int name(lua_State *L);

@@ -5,14 +5,11 @@
 
 void luaLoader::initialize() {
   this->logger->info("Initializing Loader v{}...", getVersion());
-  this->logger->info("Scanning for Lua scripts at \"{}\"",
-                     CONFIG_LUA_EXP_DIRECTORY);
+  this->logger->info("Scanning for Lua scripts at \"{}\"", CONFIG_LUA_EXP_DIRECTORY);
 
-  for (const auto &entry :
-       std::filesystem::directory_iterator(CONFIG_LUA_EXP_DIRECTORY)) {
+  for (const auto &entry : std::filesystem::directory_iterator(CONFIG_LUA_EXP_DIRECTORY)) {
     if ((entry.is_regular_file() && entry.path().extension() == ".lua") ||
-        (entry.is_directory() &&
-         std::filesystem::exists(entry.path() / "init.lua"))) {
+        (entry.is_directory() && std::filesystem::exists(entry.path() / "init.lua"))) {
       this->logger->info("Found Lua script: {}", entry.path().string());
       auto path = entry.path();
       path.replace_extension("");

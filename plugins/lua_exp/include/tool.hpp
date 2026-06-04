@@ -22,13 +22,11 @@ public:
 
   luaTool() = delete;
   luaTool(const luaTool &) = delete;
-  luaTool(std::shared_ptr<spdlog::logger> logger, const std::string &file)
-      : logger(std::move(logger)), file(file) {
+  luaTool(std::shared_ptr<spdlog::logger> logger, const std::string &file) : logger(std::move(logger)), file(file) {
     lua(file);
     name = lua["name"].as<std::string>("Unnamed Lua Tool");
     version = lua["version"].as<std::string>("0.1");
-    description =
-        lua["description"].as<std::string>("No description provided.");
+    description = lua["description"].as<std::string>("No description provided.");
     this->logger->info("Initialized Lua tool: {} v{}", name, version);
     int res;
     if ((res = lua.insert("name", luaVartype{name}))) {
@@ -50,9 +48,7 @@ public:
 
   void invoke(const std::string &prefix) override;
 
-  void invoke(const char *prefix) override {
-    this->invoke(std::string(prefix));
-  }
+  void invoke(const char *prefix) override { this->invoke(std::string(prefix)); }
 
   void suppress() override;
 };
