@@ -447,12 +447,14 @@ InputResult CommandProcessor::feed(char c) {
         bufferBackup_ = buffer_;
         if (historyIndex_ > 0)
           buffer_ = history_[--historyIndex_];
+        cursorPos_ = buffer_.size();
       }
     } else if (c == 'B') {
       // Down arrow – clear line
       if (historyIndex_ < history_.size()) {
         bufferBackup_ = buffer_;
         buffer_ = (historyIndex_ < history_.size() - 1) ? history_[++historyIndex_] : "";
+        cursorPos_ = buffer_.size();
       }
     } else if (c == 'D') {
       if (cursorPos_ > 0)
@@ -473,7 +475,7 @@ InputResult CommandProcessor::feed(char c) {
   // Backspace
   if (c == '\b' || c == 127) {
     if (!buffer_.empty())
-      buffer_.erase(buffer_.begin() + cursorPos_ - 1), cursorPos_--;
+      buffer_.erase(buffer_.begin() + --cursorPos_);
     return InputResult::Consumed;
   }
 

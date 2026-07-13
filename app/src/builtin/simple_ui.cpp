@@ -77,6 +77,7 @@ void UI::runLoop() {
       std::cout << "\n" << std::flush;
     }
 
+    logger->trace("Pre  feed cursor pos: {}, buffer size: {} '{}'", cp.cursorPos(), cp.buffer().size(), cp.buffer());
     switch (cp.feed(ch)) {
     case cmd::InputResult::Escape: {
       int ch = getch();
@@ -90,10 +91,14 @@ void UI::runLoop() {
       auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
       std::cout << "\r\033[K" << prompt << cp.buffer();
-      if (ch == 'D') {
-        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
+      if (ch == 'A') {
+        std::cout << "\r\033[K" << prompt << cp.buffer() << std::flush;
+      } else if (ch == 'B') {
+        std::cout << "\r\033[K" << prompt << cp.buffer() << std::flush;
       } else if (ch == 'C') {
         std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "C" << std::flush;
+      } else if (ch == 'D') {
+        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
       }
 
       break;
@@ -109,25 +114,25 @@ void UI::runLoop() {
     case cmd::InputResult::Autocompleted:
     case cmd::InputResult::Error:
       break;
-    case cmd::InputResult::Consumed:
+    case cmd::InputResult::Consumed: {
+      auto vars = cp.vars();
+      auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
+      std::string prompt = vars.expand(rawPrompt);
       if (ch == '\b' || ch == 127) {
-        auto vars = cp.vars();
-        auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
-        std::string prompt = vars.expand(rawPrompt);
-        std::cout << prompt << std::flush;
-        std::cout << "\r\033[K" << prompt << std::flush;
-        std::cout << cp.buffer() << std::flush;
-      } else {
-        std::cout << (char)ch << std::flush;
-        if (cp.cursorPos() < cp.buffer().size()) {
-          auto vars = cp.vars();
-          auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
-          std::string prompt = vars.expand(rawPrompt);
-          std::cout << "\r\033[K" << prompt << cp.buffer();
-          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
+        std::cout << "\r\033[0K" << prompt << cp.buffer();
+        if (cp.cursorPos() != cp.buffer().size()) {
+          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D";
         }
+      } else {
+        if (cp.cursorPos() != cp.buffer().size()) {
+          std::cout << "\r\033[0K" << prompt << cp.buffer();
+          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D";
+        } else
+          std::cout << (char)ch << std::flush;
       }
+      std::cout << std::flush;
       break;
+    }
     case cmd::InputResult::Cleared:
       std::cout << "\r\033[K" << prompt << std::flush;
       break;
@@ -138,6 +143,7 @@ void UI::runLoop() {
       std::cout << prompt << std::flush;
       break;
     }
+    logger->trace("Post feed cursor pos: {}, buffer size: {} '{}'", cp.cursorPos(), cp.buffer().size(), cp.buffer());
   }
 }
 
