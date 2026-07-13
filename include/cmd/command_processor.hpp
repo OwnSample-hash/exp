@@ -6,7 +6,10 @@
 #include <fstream>
 #include <functional>
 #include <memory>
+#include <spdlog/fmt/std.h>
+#include <spdlog/spdlog.h>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -30,10 +33,8 @@ struct ExecutionResult {
 };
 
 // Callback types
-using HelpCallback =
-    std::function<void(const std::vector<std::string> &options)>;
-using AutocompleteCallback =
-    std::function<void(const std::string &completed, bool unique)>;
+using HelpCallback = std::function<void(const std::vector<std::string> &options)>;
+using AutocompleteCallback = std::function<void(const std::string &completed, bool unique)>;
 using ExecuteCallback = std::function<void(const ExecutionResult &)>;
 using ErrorCallback = std::function<void(const std::string &message)>;
 
@@ -65,9 +66,7 @@ public:
 
   // ── Callbacks (no I/O done internally) ───────────────────────────────
   void onHelp(HelpCallback cb) { helpCb_ = std::move(cb); }
-  void onAutocomplete(AutocompleteCallback cb) {
-    autocompleteCb_ = std::move(cb);
-  }
+  void onAutocomplete(AutocompleteCallback cb) { autocompleteCb_ = std::move(cb); }
   void onExecute(ExecuteCallback cb) { executeCb_ = std::move(cb); }
   void onError(ErrorCallback cb) { errorCb_ = std::move(cb); }
 
@@ -117,3 +116,4 @@ private:
 
 } // namespace cmd
 } // namespace explo
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
