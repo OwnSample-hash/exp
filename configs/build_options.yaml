@@ -14,3 +14,10 @@
   cmake_export: true
   cmake_help: $help_text$ 
 
+- name: ENABLE_PCH
+  prompt: Enable Precompiled Headers
+  type: bool
+  default: true
+  help_text: Enable or disable the use of precompiled headers to speed up compilation.
+  cmake_export: true
+  cmake_help: $help_text$
