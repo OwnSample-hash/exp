@@ -19,7 +19,6 @@ project(exp LANGUAGES C CXX VERSION 0.0.1 SPDX_LICENSE "GPL-3.0-or-later")
 include(cmake/CPM.cmake)
 CPMUsePackageLock("cpm-package-lock.cmake")
 
-
 set(SPDLOG_BUILD_SHARED ON)
 set(YAML_CPP_BUILD_TESTS OFF)
 set(YAML_CPP_BUILD_CONTRIB OFF)
@@ -54,16 +53,12 @@ if (ENABLE_PCH)
     list(APPEND PCH_FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer)
   endif()
   add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/pch${PCH_SUFFIX}
+    OUTPUT ${CMAKE_BINARY_DIR}/pch/pch.PIC${PCH_SUFFIX}
+    OUTPUT ${CMAKE_BINARY_DIR}/pch/pch.PIE${PCH_SUFFIX}
     COMMAND ${CMAKE_CXX_COMPILER} ${PCH_FLAGS} -fPIC -o ${CMAKE_BINARY_DIR}/pch/pch.PIC${PCH_SUFFIX} ${CMAKE_SOURCE_DIR}/pch/pch.hpp
-    DEPENDS ${CMAKE_SOURCE_DIR}/pch/pch.hpp
-    COMMENT "Generating precompiled header (-fPIC)"
-  )
-  add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/pch${PCH_SUFFIX}
     COMMAND ${CMAKE_CXX_COMPILER} ${PCH_FLAGS} -fPIE -o ${CMAKE_BINARY_DIR}/pch/pch.PIE${PCH_SUFFIX} ${CMAKE_SOURCE_DIR}/pch/pch.hpp
     DEPENDS ${CMAKE_SOURCE_DIR}/pch/pch.hpp
-    COMMENT "Generating precompiled header (-fPIE)"
+    COMMENT "Generating precompiled header (-fPIC/E)"
   )
   add_custom_target(pch ALL DEPENDS
     ${CMAKE_BINARY_DIR}/pch/pch.PIC${PCH_SUFFIX}
@@ -85,7 +80,7 @@ function(add_pch target)
     return()
   endif()
   message(STATUS "Adding precompiled header to target ${target}")
-  is_executable_target(${target} is_executable)
+  is_executable_target(is_executable ${target})
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if(is_executable)
       target_compile_options(${target} BEFORE PRIVATE -include-pch ${CMAKE_BINARY_DIR}/pch/pch.PIE${PCH_SUFFIX})
