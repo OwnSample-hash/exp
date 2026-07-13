@@ -39,14 +39,19 @@ using ExecuteCallback = std::function<void(const ExecutionResult &)>;
 using ErrorCallback = std::function<void(const std::string &message)>;
 
 class CommandProcessor {
+
+protected:
   CommandProcessor();
 
 public:
   ~CommandProcessor();
+  CommandProcessor(const CommandProcessor &) = delete;
+  CommandProcessor &operator=(const CommandProcessor &) = delete;
 
   static CommandProcessor &instance() {
-    static CommandProcessor cp;
-    return cp;
+    spdlog::debug("CommandProcessor instance for thread '{}' requested", std::this_thread::get_id());
+    static thread_local CommandProcessor instance;
+    return instance;
   }
 
   // ── Context management ────────────────────────────────────────────────
