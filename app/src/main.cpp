@@ -43,8 +43,7 @@ const std::list<std::unique_ptr<IPlugin>> &get_loaded_plugins() {
 }
 
 std::string normalizePath(const std::string &path) {
-  constexpr char allowed_chars[] =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-";
+  constexpr char allowed_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-";
   std::string normalized;
   for (char c : path) {
     if (std::strchr(allowed_chars, c)) {
@@ -90,59 +89,43 @@ int main(int argc, const char **argv, const char **envp) {
   args::CompletionFlag completion(parser, {"complete"});
   parser.Prog(argv[0]);
 
-  args::ValueFlag<spdlog::level::level_enum> logLevel(
-      parser, "log-level",
-      "Set log level (trace, debug, info, warn, error, critical)",
-      {'l', "log-level"}, spdlog::level::info);
+  args::ValueFlag<spdlog::level::level_enum> logLevel(parser, "log-level",
+                                                      "Set log level (trace, debug, info, warn, error, critical)",
+                                                      {'l', "log-level"}, spdlog::level::info);
 
-  args::ValueFlag<std::string> logFile(
-      parser, "log-file", "Set log file path (default: explo.log)",
-      {'f', "log-file"}, std::string("explo.log"));
+  args::ValueFlag<std::string> logFile(parser, "log-file", "Set log file path (default: explo.log)", {'f', "log-file"},
+                                       std::string("explo.log"));
 
-  args::ValueFlag<std::string> logDir(
-      parser, "log-dir", "Set log directory (default: " CONFIG_LOG_DIR ")",
-      {'d', "log-dir"}, std::string(CONFIG_LOG_DIR));
+  args::ValueFlag<std::string> logDir(parser, "log-dir", "Set log directory (default: " CONFIG_LOG_DIR ")",
+                                      {'d', "log-dir"}, std::string(CONFIG_LOG_DIR));
 
-  args::ValueFlag<std::string> pluginDir(
-      parser, "plugin-dir",
-      "Set plugin directory (default: " CONFIG_PLUGIN_INSTALL_DIR ")",
-      {'p', "plugin-dir"}, std::string(CONFIG_PLUGIN_INSTALL_DIR));
+  args::ValueFlag<std::string> pluginDir(parser, "plugin-dir",
+                                         "Set plugin directory (default: " CONFIG_PLUGIN_INSTALL_DIR ")",
+                                         {'p', "plugin-dir"}, std::string(CONFIG_PLUGIN_INSTALL_DIR));
 
-  args::ValueFlag<std::string> configFile(
-      parser, "config-file",
-      "Set configuration file path (default: " CONFIG_DEFAULT_CONFIG_FILE ")",
-      {'c', "config-file"}, std::string(CONFIG_DEFAULT_CONFIG_FILE));
+  args::ValueFlag<std::string> configFile(parser, "config-file",
+                                          "Set configuration file path (default: " CONFIG_DEFAULT_CONFIG_FILE ")",
+                                          {'c', "config-file"}, std::string(CONFIG_DEFAULT_CONFIG_FILE));
 
-  args::ValueFlag<std::string> preferredUI(
-      parser, "preferred-ui",
-      "Set preferred UI (default: " CONFIG_DEFAULT_PREFERRED_UI ")",
-      {'P', "preferred-ui"}, std::string(CONFIG_DEFAULT_PREFERRED_UI));
+  args::ValueFlag<std::string> preferredUI(parser, "preferred-ui",
+                                           "Set preferred UI (default: " CONFIG_DEFAULT_PREFERRED_UI ")",
+                                           {'U', "preferred-ui"}, std::string(CONFIG_DEFAULT_PREFERRED_UI));
 
-  try {
-    parser.ParseCLI(argc, argv);
-  } catch (const std::exception &err) {
-    if (std::strcmp(err.what(), "Flag could not be matched: 'h'") == 0 ||
-        std::strcmp(err.what(), "Flag could not be matched: 'help'") == 0) {
-    } else {
-
-      std::cerr << err.what() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    }
+  auto res = parser.ParseCLI(argc, argv);
+  if (!res) {
+    /* */
   }
 
   args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
 
   std::filesystem::create_directories(std::filesystem::path(logDir.Get()));
-  spdlog::set_default_logger(spdlog::basic_logger_mt(
-      "main", logDir.Get() + "/" + normalizePath(logFile.Get()), true));
+  spdlog::set_default_logger(spdlog::basic_logger_mt("main", logDir.Get() + "/" + normalizePath(logFile.Get()), true));
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
 
   PluginLoader &loader = PluginLoader::instance();
 
-  for (const auto &dir_entry :
-       std::filesystem::directory_iterator(pluginDir.Get())) {
+  for (const auto &dir_entry : std::filesystem::directory_iterator(pluginDir.Get())) {
     if (dir_entry.is_regular_file() && dir_entry.path().extension() == ".so") {
       std::string plugin_path = dir_entry.path().string();
       if (loader.loadPlugin(plugin_path)) {
@@ -157,41 +140,71 @@ int main(int argc, const char **argv, const char **envp) {
 
   spdlog::info("Available plugins:");
   for (const auto &entry : get_loaded_plugins()) {
-    spdlog::info(" - Plugin: {} version: {}", entry->getName(),
-                 entry->getVersion());
+    spdlog::info(" - Plugin: {} version: {}", entry->getName(), entry->getVersion());
   }
 
   std::unordered_map<std::string, initArgs> pluginInitArgs;
 
   for (const auto &plugin : get_loaded_plugins()) {
-    std::shared_ptr<std::vector<explo::Module>> plModules =
-        std::make_shared<std::vector<explo::Module>>();
-    std::shared_ptr<args::Group> pluginGroup =
-        std::make_shared<args::Group>(parser, plugin->getName());
-    std::shared_ptr<spdlog::logger> plLogger =
-        spdlog::basic_logger_mt(plugin->getName(),
-                                std::string(CONFIG_LOG_DIR "/") +
-                                    normalizePath(plugin->getName()) + ".log",
-                                true);
+    std::shared_ptr<std::vector<explo::Module>> plModules = std::make_shared<std::vector<explo::Module>>();
+    std::shared_ptr<args::Group> pluginGroup = std::make_shared<args::Group>(parser, plugin->getName());
+    std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
+        plugin->getName(), std::string(CONFIG_LOG_DIR "/") + normalizePath(plugin->getName()) + ".log", true);
     plLogger->set_level(logLevel.Get());
     plLogger->flush_on(spdlog::level::debug);
 
     auto iA = initArgs{plModules, pluginGroup, plLogger};
-    pluginInitArgs.emplace(plugin->getName(), iA);
-
     plugin->initialize(iA);
+
+    pluginInitArgs.emplace(plugin->getName(), iA);
   }
 
-  try {
-    parser.ParseCLI(argc, argv);
-  } catch (args::Help) {
-    std::cout << parser;
-    std::exit(0);
-  } catch (const std::exception &err) {
-    spdlog::error("Error parsing arguments: {}", err.what());
-    std::cerr << err.what() << std::endl;
-    std::cerr << parser;
-    std::exit(1);
+  res = parser.ParseCLI(argc, argv);
+  spdlog::debug("Parsed command line arguments successfully {}", res);
+  if (!res) {
+    spdlog::error("Error parsing arguments: {}", parser.GetErrorMsg());
+    spdlog::debug("Argument parsing error: {}", static_cast<int>(parser.GetError()));
+    switch (parser.GetError()) {
+    Usage:
+      std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    Parse:
+      std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    Validation:
+      std::cerr << "Error validating arguments: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    Required:
+      std::cerr << "Error: Missing required arguments: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    Map:
+      std::cerr << "Error mapping arguments: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    Extra:
+      std::cerr << "Error: Unrecognized arguments: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    Help:
+      std::cout << parser;
+      std::exit(0);
+    Subparser:
+      std::cerr << "Error parsing subcommand: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    Completion:
+    None:
+      break;
+    default:
+      spdlog::error("Unknown argument parsing error: {}", parser.GetErrorMsg());
+      std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+      std::cerr << parser;
+      std::exit(1);
+    };
   }
 
   std::shared_ptr<ITool> currentTool = nullptr;
@@ -205,8 +218,7 @@ int main(int argc, const char **argv, const char **envp) {
       auto &vars = cp.vars();
       vars.set("version", cmd::VarValue(std::string("1.0.0")));
       vars.set("current_tool", cmd::VarValue(std::string("no tool")));
-      vars.set("prompt",
-               cmd::VarValue(std::string("${current_tool} \33[33m>\33[0m ")));
+      vars.set("prompt", cmd::VarValue(std::string("${current_tool} \33[33m>\33[0m ")));
     }
     {
       cmd::CommandDef c;
@@ -247,8 +259,7 @@ int main(int argc, const char **argv, const char **envp) {
         std::stringstream result;
         result << "Loaded plugins:\n";
         for (const auto &entry : get_loaded_plugins()) {
-          result << " - " << entry->getName()
-                 << " version: " << entry->getVersion() << "\n";
+          result << " - " << entry->getName() << " version: " << entry->getVersion() << "\n";
         }
         return result.str();
       };
@@ -264,8 +275,7 @@ int main(int argc, const char **argv, const char **envp) {
         ss << std::left;
         ss << "Global commands:\n";
         for (const auto &cmd : cp.getContext()->commands()) {
-          ss << "  - " << std::setw(15) << cmd.name << std::setw(15)
-             << cmd.description << "\n";
+          ss << "  - " << std::setw(15) << cmd.name << std::setw(15) << cmd.description << "\n";
         }
         if (cp.getContext(false).get() == nullptr) {
           ss << "Current commands are not available\n";
@@ -273,8 +283,7 @@ int main(int argc, const char **argv, const char **envp) {
         }
         ss << "Current commands:\n";
         for (const auto &cmd : cp.getContext(false)->commands()) {
-          ss << "  - " << std::setw(15) << cmd.name << std::setw(15)
-             << cmd.description << "\n";
+          ss << "  - " << std::setw(15) << cmd.name << std::setw(15) << cmd.description << "\n";
         }
         return ss.str();
       };
@@ -285,9 +294,7 @@ int main(int argc, const char **argv, const char **envp) {
       c.name = "exit";
       c.description = "Exit the application";
       c.variadic = false;
-      c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
-        std::exit(0);
-      };
+      c.handler = [](const cmd::ExecutionContext &ec) -> std::string { std::exit(0); };
       cp.registerGlobalCommand(c);
     }
     {
@@ -312,8 +319,7 @@ int main(int argc, const char **argv, const char **envp) {
         for (const auto &[plugin, args] : pluginInitArgs) {
           result << "Plugin: " << plugin << "\n";
           for (const auto &mod : *args.modules) {
-            result << "  - " << mod.instance->getName() << " "
-                   << mod.instance->getVersion() << "\n";
+            result << "  - " << mod.instance->getName() << " " << mod.instance->getVersion() << "\n";
           }
         }
         return result.str();
@@ -353,8 +359,7 @@ int main(int argc, const char **argv, const char **envp) {
             currentTool = tool;
             currentTool->invoke(currentTool->getName());
             cp.switchContext(name);
-            cp.vars().set("prompt", cmd::VarValue(std::string(
-                                        "(" + name + ") \33[33m>\33[0m ")));
+            cp.vars().set("prompt", cmd::VarValue(std::string("(" + name + ") \33[33m>\33[0m ")));
             return "Using tool: " + name + "\n";
           }
         }
@@ -398,11 +403,9 @@ int main(int argc, const char **argv, const char **envp) {
           if (var_value[1] == 's')
             cp.vars().set(var_name, cmd::VarValue(var_value.substr(2)));
           else if (var_value[1] == 'd')
-            cp.vars().set(var_name,
-                          cmd::VarValue(std::stoll(var_value.substr(2))));
+            cp.vars().set(var_name, cmd::VarValue(std::stoll(var_value.substr(2))));
           else if (var_value[1] == 'f')
-            cp.vars().set(var_name,
-                          cmd::VarValue(std::stod(var_value.substr(2))));
+            cp.vars().set(var_name, cmd::VarValue(std::stod(var_value.substr(2))));
           else if (var_value[1] == 'b') {
             std::string val = var_value.substr(2);
             std::transform(val.begin(), val.end(), val.begin(), ::tolower);
@@ -413,8 +416,7 @@ int main(int argc, const char **argv, const char **envp) {
             else
               return "\033[1;31mInvalid boolean value: " + val + "\033[0m";
           } else {
-            return "\033[1;31mInvalid type specifier: %" +
-                   std::string(1, var_value[1]) +
+            return "\033[1;31mInvalid type specifier: %" + std::string(1, var_value[1]) +
                    "\033[0m\n"
                    "Supported type specifiers: %s (string), %d (integer), %f "
                    "(float), %b (bool)";
@@ -434,21 +436,16 @@ int main(int argc, const char **argv, const char **envp) {
   for (const auto &[plugin, args] : pluginInitArgs) {
     for (const auto &mod : *args.modules) {
       if (mod.type == explo::ModuleType::TOOL) {
-        spdlog::debug("Tool: {} version: {}", mod.instance->getName(),
-                      mod.instance->getVersion());
+        spdlog::debug("Tool: {} version: {}", mod.instance->getName(), mod.instance->getVersion());
         mod.instance->initialize();
-        tools.emplace(mod.instance->getName(),
-                      std::static_pointer_cast<ITool>(mod.instance));
+        tools.emplace(mod.instance->getName(), std::static_pointer_cast<ITool>(mod.instance));
       }
       if (mod.type == explo::ModuleType::TOOLPROVIDER) {
-        auto *provider =
-            dynamic_cast<explo::IToolProvider *>(mod.instance.get());
-        spdlog::debug("Tool Provider: {} version: {}", provider->getName(),
-                      provider->getVersion());
+        auto *provider = dynamic_cast<explo::IToolProvider *>(mod.instance.get());
+        spdlog::debug("Tool Provider: {} version: {}", provider->getName(), provider->getVersion());
         provider->initialize();
         for (const auto &[name, tool] : provider->getTools()) {
-          spdlog::debug("  - Tool: {} version: {}", tool->getName(),
-                        tool->getVersion());
+          spdlog::debug("  - Tool: {} version: {}", tool->getName(), tool->getVersion());
           tool->initialize();
           tools.emplace(tool->getName(), std::static_pointer_cast<ITool>(tool));
         }
@@ -462,18 +459,16 @@ int main(int argc, const char **argv, const char **envp) {
     for (const auto &mod : *args.modules) {
       if (mod.type == explo::ModuleType::RENDERER) {
         if (!preferredRenderer.empty() && mod.name != preferredRenderer) {
-          spdlog::debug("Skipping renderer module: {} from plugin: {} as it "
-                        "does not match preferred renderer: {}",
+          spdlog::debug("Skipping renderer module: '{}' from plugin: {} as it "
+                        "does not match preferred renderer: '{}'",
                         mod.name, name, preferredRenderer);
           continue;
         }
         rendererModuleRaw = mod.instance.get();
-        spdlog::info("Using display module: {} from plugin: {}", mod.name,
-                     name);
+        spdlog::info("Using display module: {} from plugin: {}", mod.name, name);
         break;
       } else {
-        spdlog::debug("Module: {} from plugin: {} is not a display module",
-                      mod.name, name);
+        spdlog::debug("Module: {} from plugin: {} is not a display module", mod.name, name);
       }
     }
     if (rendererModuleRaw) {
@@ -502,8 +497,7 @@ quit:
   for (const auto &[name, arg] : pluginInitArgs) {
     for (const auto &mod : *arg.modules) {
       if (mod.type == explo::ModuleType::TOOLPROVIDER) {
-        auto *provider =
-            dynamic_cast<explo::IToolProvider *>(mod.instance.get());
+        auto *provider = dynamic_cast<explo::IToolProvider *>(mod.instance.get());
         for (const auto &[name, tool] : provider->getTools()) {
           tool->shutdown();
         }
@@ -516,4 +510,4 @@ quit:
   tools.clear();
   return 0;
 }
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
