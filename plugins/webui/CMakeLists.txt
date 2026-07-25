@@ -5,6 +5,7 @@ if(ENABLE_WEBUI)
     src/tool.cpp
     src/ws_loop.cpp
     src/convert.cpp
+    src/b64.cpp
   )
 
   CPMAddPackage("gh:yhirose/cpp-httplib@0.46.1")
