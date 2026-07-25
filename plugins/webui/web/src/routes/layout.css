@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+:root {
+  @apply text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-900;
+}
+
+.term {
+  @apply m-2 dark:border-2 dark:border-solid dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-md p-2 overflow-auto;
+}
