@@ -115,6 +115,7 @@ if(ENABLE_SANITIZERS)
 endif()
 
 # Global modules
+add_subdirectory(tools)
 add_subdirectory(app)
 message(STATUS "Adding global modules")
 add_subdirectory(plugins)

@@ -33,3 +33,10 @@
   source: plugins/*/config.yaml
   help_text: Select module options.
   help_text_fmt: Options for {filename} plugin.
+
+- name: TOOLS
+  prompt: Tool options
+  type: dynamicmenu
+  source: tools/*/config.yaml
+  help_text: Select tool options.
+  help_text_fmt: Options for {filename} tool.

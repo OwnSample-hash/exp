@@ -1,0 +1,13 @@
+- name: MAKE_EXECUTABLE
+  prompt: Make executable
+  type: bool
+  help_text: Make executable for the tool.
+  cmake_export: true
+  default: true
+
+- name: LINK_STATIC
+  prompt: Link static
+  type: bool
+  help_text: Link static for the tool.
+  cmake_export: true
+  default: false
