@@ -25,6 +25,8 @@ if(ENABLE_WEBUI)
     COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${MOD_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/../$<TARGET_FILE_NAME:${MOD_NAME}>
   )
 
+  add_subdirectory(web)
+
   if(ENABLE_TESTS)
    enable_testing()
    add_subdirectory(tests)
