@@ -5,7 +5,6 @@
 #include <tool.hpp>
 
 void bini::initialize() {
-  // Initialize the tool here
   {
     auto &cp = cmd::CommandProcessor::instance();
     auto ctx = std::make_shared<cmd::Context>(this->getName());
@@ -36,6 +35,7 @@ void bini::initialize() {
     }
     cp.registerContext(ctx);
   }
+  logger->info("Tool {} initialized successfully.", this->getName());
 }
 
 void bini::invoke(const std::string &prefix) {
@@ -45,7 +45,7 @@ void bini::invoke(const std::string &prefix) {
   vars.set(prefix + ".type", cmd::VarValue{"summary"});
 }
 
-void bini::shutdown() {}
+void bini::shutdown() { this->logger->info("Shutting down tool: {}", this->getName()); }
 
 void bini::suppress() {
   auto &vars = cmd::CommandProcessor::instance().vars();
