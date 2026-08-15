@@ -32,7 +32,7 @@ def generate_func(opt: list[ConfigOption]) -> list[str]:
         f.write("#pragma once\n")
 
         for entry in opt:
-            if entry.name == "MODULES":
+            if entry.name == "MODULES" or entry.name == "TOOLS":
                 continue
             dump_entry(f, entry)
     return [args.header]
