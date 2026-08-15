@@ -84,6 +84,8 @@ std::unordered_map<std::string, initArgs> pluginInitArgs;
 
 thread_local std::shared_ptr<ITool> currentTool = nullptr;
 
+[[noreturn]] void shutdown(int code = 0);
+
 int main(int argc, const char **argv, const char **envp) {
   args::ArgumentParser parser("Explo - A modular exploitation framework");
   args::CompletionFlag completion(parser, {"complete"});
@@ -272,9 +274,15 @@ int main(int argc, const char **argv, const char **envp) {
   rendererModule->shutdown();
 
 quit:
+  shutdown();
+  return -1;
+}
+
+void shutdown(int code) {
   spdlog::info("Shutting down tools...");
   for (const auto &[name, arg] : pluginInitArgs) {
     for (const auto &mod : *arg.modules) {
+      spdlog::debug("Shutting down module: {} from plugin: {}", mod.name, name);
       if (mod.type == explo::ModuleType::TOOLPROVIDER) {
         auto *provider = dynamic_cast<explo::IToolProvider *>(mod.instance.get());
         for (const auto &[name, tool] : provider->getTools()) {
@@ -283,10 +291,13 @@ quit:
       } else
         mod.instance->shutdown();
     }
+    arg.modules->clear();
   }
+  pluginInitArgs.clear();
 
   // clear tools to release resources before plugins are unloaded
   tools.clear();
-  return 0;
+  std::exit(code);
 }
+
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

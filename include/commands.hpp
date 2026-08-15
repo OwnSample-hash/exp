@@ -92,7 +92,7 @@
     c.name = "exit";
     c.description = "Exit the application";
     c.variadic = false;
-    c.handler = [](const cmd::ExecutionContext &ec) -> std::string { std::exit(0); };
+    c.handler = [](const cmd::ExecutionContext &ec) -> std::string { ::shutdown(); };
     cp.registerGlobalCommand(c);
   }
   if (CHECK(cmds, "clear")) {

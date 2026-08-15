@@ -19,6 +19,7 @@ struct Module {
       : name(name), type(type), instance(std::move(instance)) {}
   Module(Module &&) = default;
   Module(const Module &) = delete;
+  ~Module() = default;
 };
 
 } // namespace explo
