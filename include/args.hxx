@@ -37,10 +37,10 @@
 #undef min
 #undef max
 
-#define ARGS_VERSION "6.4.16"
+#define ARGS_VERSION "6.6.0"
 #define ARGS_VERSION_MAJOR 6
-#define ARGS_VERSION_MINOR 4
-#define ARGS_VERSION_PATCH 16
+#define ARGS_VERSION_MINOR 6
+#define ARGS_VERSION_PATCH 0
 
 #include <algorithm>
 #include <iterator>
@@ -398,13 +398,7 @@ namespace args
             
             if (can_reserve && total > 0)
             {
-                try
-                {
-                    res.reserve(total);
-                }
-                catch (...) {
-                    // Fall back to default allocation
-                }
+                res.reserve(total);
             }
             
             bool first = true;
@@ -1072,6 +1066,11 @@ namespace args
                 return false;
             }
 
+            virtual bool IsFlag() const
+            {
+                return false;
+            }
+
             virtual FlagBase *Match(const EitherFlag &)
             {
                 return nullptr;
@@ -1338,6 +1337,11 @@ namespace args
 
             virtual ~FlagBase() {}
 
+            virtual bool IsFlag() const override
+            {
+                return true;
+            }
+
             virtual FlagBase *Match(const EitherFlag &flag) override
             {
                 if (matcher.Match(flag))
@@ -1410,8 +1414,21 @@ namespace args
 
 #ifdef ARGS_NOEXCEPT
             /// Only for ARGS_NOEXCEPT
+            bool usageError = false;
+            void SetUsageError()
+            {
+                usageError = true;
+            }
+            void ClearUsageError()
+            {
+                usageError = false;
+            }
             virtual Error GetError() const override
             {
+                if(usageError)
+                {
+                    return Error::Usage;
+                }
                 const auto nargs = NumberOfArguments();
                 if (nargs.min > nargs.max)
                 {
@@ -1622,6 +1639,7 @@ namespace args
     class Group : public Base
     {
         private:
+            Group* parent;
             std::vector<Base*> children;
             std::function<bool(const Group &)> validator;
 
@@ -1678,11 +1696,15 @@ namespace args
                 }
             };
             /// If help is empty, this group will not be printed in help output
-            Group(const std::string &help_ = std::string(), const std::function<bool(const Group &)> &validator_ = Validators::DontCare, Options options_ = {}) : Base(help_, options_), validator(validator_) {}
+            Group(const std::string &help_ = std::string(), const std::function<bool(const Group &)> &validator_ = Validators::DontCare, Options options_ = {}) : Base(help_, options_), validator(validator_)
+            {
+                parent = nullptr;
+            }
             /// If help is empty, this group will not be printed in help output
             Group(Group &group_, const std::string &help_ = std::string(), const std::function<bool(const Group &)> &validator_ = Validators::DontCare, Options options_ = {}) : Base(help_, options_), validator(validator_)
             {
                 group_.Add(*this);
+                parent = &group_;
             }
             virtual ~Group() {}
 
@@ -1691,6 +1713,27 @@ namespace args
             void Add(Base &child)
             {
                 children.emplace_back(&child);
+
+                if(child.IsFlag()) {
+#ifndef ARGS_NOEXCEPT
+                    // Detection runs from the child's own constructor, so a
+                    // duplicate throws before that constructor completes and the
+                    // child's storage is released while the stack unwinds. Undo
+                    // the registration first, or a caller that catches the error
+                    // leaves this group holding a pointer to a dead object.
+                    try
+                    {
+                        SignalDetectDuplicates();
+                    }
+                    catch (...)
+                    {
+                        children.pop_back();
+                        throw;
+                    }
+#else
+                    SignalDetectDuplicates();
+#endif
+                }
             }
 
             /** Get all this group's children
@@ -1788,6 +1831,41 @@ namespace args
                         std::count_if(std::begin(Children()), std::end(Children()), [](const Base *child){return child->Matched();}));
             }
 
+            /** Get the list of children which were matched
+             */
+            std::vector<Base *> GetMatchedChildren() const
+            {
+                // Could be replaced by C++ 20 filter, or a custom iterator.
+                std::vector<Base*> matched_children;
+                std::copy_if(children.begin(), children.end(), std::back_inserter(matched_children), [](Base* b){
+                    return b->Matched();
+                });
+                return matched_children;
+            }
+
+            /** Gets the children which are a certain type.
+              * \tparam ChildType The type of child to select. 
+              * \param matching Return only children of the type which matched (default false).
+              * \return Vector of children meeting the criteria.
+             */
+             template <typename ChildType>
+             std::vector<ChildType *> GetFilteredChildren(bool matching = false) const
+             {
+                std::vector<ChildType *> filtered_children;
+                for(Base *child : children) {
+                    if(!matching || child->Matched())
+                    {
+                        ChildType* cast_result = dynamic_cast<ChildType*>(child);
+                        if(cast_result != nullptr)
+                        {
+                            filtered_children.push_back(cast_result);
+                        }
+
+                    }
+                }
+                return filtered_children;
+             }
+
             /** Whether or not this group matches validation
              */
             virtual bool Matched() const noexcept override
@@ -1881,6 +1959,85 @@ namespace args
                 error = Error::None;
                 errorMsg.clear();
 #endif
+            }
+
+            /** Sends a signal to the root of the tree to begin checking for
+              * duplicates. If this is the root, begins checking.
+              */
+            void SignalDetectDuplicates()
+            {
+                if(parent != nullptr) parent->SignalDetectDuplicates();
+                else DetectDuplicateFlags();
+            }
+
+            /** Detect duplicate flags.
+              * In a noexcept context, sets an error on the duplicate flag.
+              * In a normal context, throws a ParseError.
+              */
+            void DetectDuplicateFlags()
+            {
+                std::unordered_set<char> usedShortFlags;
+                std::unordered_set<std::string> usedLongFlags;
+                DetectDuplicateFlags(usedShortFlags, usedLongFlags);
+            }
+        
+            /** Used by parameterless DetectDuplicateFlags.
+              */
+            void DetectDuplicateFlags(std::unordered_set<char> &usedShortFlags, std::unordered_set<std::string> &usedLongFlags)
+            {
+                for (Base *child: Children())
+                {
+                    if(auto flag = dynamic_cast<FlagBase*>(child))
+                    {
+                        // Check for duplicate flags, setting a usage error on the
+                        // flag if a duplicate is detected.
+                        for(EitherFlag flagString: flag->GetMatcher().GetFlagStrings())
+                        {
+                            if(flagString.isShort)
+                            {
+                                if(usedShortFlags.count(flagString.shortFlag))
+                                {
+#ifdef ARGS_NOEXCEPT
+                                    flag->SetUsageError();
+#else
+                                    throw ParseError("duplicate short flag detected");
+#endif
+                                }
+                                else
+                                {
+                                    usedShortFlags.insert(flagString.shortFlag);
+                                }
+                            }
+                            else
+                            {
+                                if(usedLongFlags.count(flagString.longFlag))
+                                {
+#ifdef ARGS_NOEXCEPT
+                                    flag->SetUsageError();
+#else
+                                    throw ParseError("duplicate long flag detected");
+#endif
+                                }
+                                else
+                                {
+                                    usedLongFlags.insert(flagString.longFlag);
+                                }
+                            }
+                        }
+                    }
+                    else if(auto group = dynamic_cast<Group*>(child))
+                    {
+                        // A command opens its own flag namespace and runs its
+                        // own duplicate detection as a separate root, so a flag
+                        // reused either side of a command boundary is not a
+                        // genuine duplicate. Only descend into plain groups
+                        // here; IsGroup() is false for a Command.
+                        if(group->IsGroup())
+                        {
+                            group->DetectDuplicateFlags(usedShortFlags, usedLongFlags);
+                        }
+                    }
+                }
             }
 
 #ifdef ARGS_NOEXCEPT
@@ -2576,12 +2733,26 @@ namespace args
 
             OptionType ParseOption(const std::string &s, bool allowEmpty = false)
             {
-                if (s.find(longprefix) == 0 && (allowEmpty || s.length() > longprefix.length()))
+                const bool matchesLong = s.find(longprefix) == 0 && (allowEmpty || s.length() > longprefix.length());
+                const bool matchesShort = s.find(shortprefix) == 0 && (allowEmpty || s.length() > shortprefix.length());
+
+                // A chunk can start with both prefixes when one is a prefix of
+                // the other, or when the long prefix is empty (every string
+                // starts with it). Resolve to the longer, more specific prefix:
+                // this keeps the default "--"/"-" preference for long flags
+                // while letting a short flag be recognised under an empty long
+                // prefix instead of being swallowed as a nameless long flag.
+                if (matchesLong && matchesShort)
+                {
+                    return longprefix.length() >= shortprefix.length() ? OptionType::LongFlag : OptionType::ShortFlag;
+                }
+
+                if (matchesLong)
                 {
                     return OptionType::LongFlag;
                 }
 
-                if (s.find(shortprefix) == 0 && (allowEmpty || s.length() > shortprefix.length()))
+                if (matchesShort)
                 {
                     return OptionType::ShortFlag;
                 }
@@ -2630,14 +2801,14 @@ namespace args
 
                 Nargs nargs = flag.NumberOfArguments();
 
-                if (hasJoined && !allowJoined && nargs.min != 0)
+                if (hasJoined && !allowJoined && (nargs.min != 0 || !canDiscardJoined))
                 {
                     return "Flag '" + arg + "' was passed a joined argument, but these are disallowed";
                 }
 
                 if (hasJoined)
                 {
-                    if (!canDiscardJoined || nargs.max != 0)
+                    if (!canDiscardJoined || (allowJoined && nargs.max != 0))
                     {
                         values.push_back(joinedArg);
                     }
@@ -2647,12 +2818,19 @@ namespace args
                     {
                         return "Flag '" + arg + "' was passed a separate argument, but these are disallowed";
                     }
-                } else
+                }
+
+                // Only gather separate values when they are allowed. A joined
+                // value that was discarded rather than taken (short chunks such
+                // as -nf when joined short values are off) means this flag isn't
+                // taking an argument here, so the rest of the chunk is flags.
+                if (allowSeparate && (!hasJoined || !values.empty()))
                 {
                     auto valueIt = it;
                     ++valueIt;
 
                     while (valueIt != end &&
+                           *valueIt != terminator &&
                            values.size() < nargs.max &&
                            (values.size() < nargs.min || ParseOption(*valueIt) == OptionType::Positional))
                     {
@@ -2875,7 +3053,7 @@ namespace args
             }
 
             template <typename It>
-            bool Complete(It it, It end)
+            bool Complete(It it, It end, bool terminated)
             {
                 auto nextIt = it;
                 if (!readCompletion || (++nextIt != end))
@@ -2888,7 +3066,11 @@ namespace args
                 std::vector<Command *> commands = GetCommands();
                 const auto optionType = ParseOption(chunk, true);
 
-                if (!commands.empty() && (chunk.empty() || optionType == OptionType::Positional))
+                // Once the terminator has been seen the parser treats every
+                // following chunk as positional, so only positional choices are
+                // valid completions here. Suggesting flags or commands past the
+                // terminator offers candidates the parser would then reject.
+                if (!terminated && !commands.empty() && (chunk.empty() || optionType == OptionType::Positional))
                 {
                     for (auto &cmd : commands)
                     {
@@ -2901,7 +3083,7 @@ namespace args
                 {
                     bool hasPositionalCompletion = true;
 
-                    if (!commands.empty())
+                    if (!terminated && !commands.empty())
                     {
                         for (auto &cmd : commands)
                         {
@@ -2923,7 +3105,7 @@ namespace args
                         }
                     }
 
-                    if (hasPositionalCompletion)
+                    if (!terminated && hasPositionalCompletion)
                     {
                         auto flags = GetAllFlags();
                         for (auto flag : flags)
@@ -3007,7 +3189,7 @@ namespace args
                 // Check all arg chunks
                 for (auto it = begin; it != end; ++it)
                 {
-                    if (Complete(it, end))
+                    if (Complete(it, end, terminated))
                     {
                         return end;
                     }
@@ -3227,8 +3409,11 @@ namespace args
 
             void AddCompletion(CompletionFlag &completionFlag)
             {
-                completion = &completionFlag;
+                // Only take the pointer once registration has succeeded: Add()
+                // throws on a duplicate flag, and the flag it was handed is
+                // gone by the time that error reaches the caller.
                 Add(completionFlag);
+                completion = &completionFlag;
             }
 
             /** The program name for help generation
@@ -4058,6 +4243,43 @@ namespace args
                     ValueFlag<T, Reader>::ParseValue(value_);
                 }
             }
+    };
+
+    /** A boolean flag containing a retrievable constant.
+     * 
+     * \tparam T the type of the constant
+     */
+    template <typename T>
+    class ConstantFlag : public Flag
+    {
+        T value;
+
+        public:
+
+        ConstantFlag(Group &group_, const std::string &name_, const std::string &help_, Matcher &&matcher_, Options options_, const T& value_):
+        Flag(group_, name_, help_, std::move(matcher_), options_),
+        value(value_)
+        {}
+
+        ConstantFlag(Group &group_, const std::string &name_, const std::string &help_, Matcher &&matcher_, const T& value_, bool extraError_ = false):
+        Flag(group_, name_, help_, std::move(matcher_), extraError_),
+        value(value_)
+        {}
+
+        T operator * () const noexcept
+        {
+            return value;
+        }
+
+        T Get() const noexcept
+        {
+            return value;
+        }
+
+        const T *operator -> () const noexcept
+        {
+            return &value;
+        }
     };
 
     /** A variadic arguments accepting flag class
