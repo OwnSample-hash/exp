@@ -50,6 +50,8 @@ struct LTW {
   friend struct LFW;
   std::shared_ptr<spdlog::logger> logger = spdlog::get("lua_exp")->clone("lua_exp::lua::LTW");
 
+  ~LTW() { close(); }
+
   LTW() {
     L = luaL_newstate();
     if (!L)
