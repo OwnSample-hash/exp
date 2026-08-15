@@ -1,0 +1,27 @@
+- name: FREE_INODES
+  type: int
+  prompt: Free inode number for the FUSE filesystem in rw mode
+  help_text: Free inode number for the FUSE filesystem in rw mode.
+  default: 1.0e+6
+  cmake_export: false
+
+- name: IN_MEMORY_MAX
+  type: int
+  prompt: Maximum number of in-memory bytes for the FUSE filesystem
+  help_text: Maximum number of in-memory bytes for the FUSE filesystem.
+  default: 1073741824
+  cmake_export: false
+
+- name: IS_RO
+  type: bool
+  prompt: Set the FUSE filesystem to read-only mode by default
+  help_text: Set the FUSE filesystem to read-only mode by default.
+  default: true
+  cmake_export: false
+
+- name: ENABLE_STAT_CHDEV
+  type: bool
+  prompt: Enable stat char dev for the FUSE filesystem
+  help_text: Enable stat char dev for the FUSE filesystem.
+  default: false
+  cmake_export: false

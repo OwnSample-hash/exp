@@ -11,3 +11,15 @@
   help_text: Link static for the tool.
   cmake_export: true
   default: false
+
+- name: ENABLE_LOGGING
+  prompt: Enable logging
+  type: bool
+  help_text: Enable logging for the tool.
+  cmake_export: true
+  default: true
+
+- name: FUSE
+  prompt: FUSE options
+  type: menu
+  source: fuse.yaml

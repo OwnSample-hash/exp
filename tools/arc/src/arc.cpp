@@ -1,8 +1,11 @@
-#include "arc.hpp"
+#include <arc.hpp>
+#include <arc_fuse.hpp>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fuse3/fuse_lowlevel.h>
+#include <stdint.h>
 
 namespace fs = std::filesystem;
 
@@ -23,6 +26,10 @@ uint32_t crc32(const uint8_t *data, size_t length) {
   return ~crc;
 }
 
+uint32_t crc32(const std::span<const std::byte> &data) {
+  return crc32(reinterpret_cast<const uint8_t *>(data.data()), data.size());
+}
+
 const char *strdup(const char *str) {
   if (!str)
     return nullptr;
@@ -32,22 +39,17 @@ const char *strdup(const char *str) {
   return copy;
 }
 
-Arc::Arc() : file_(nullptr) {
-  header_.pieces = nullptr;
-  header_.file_count = 0;
-};
+Arc::Arc() : file_(nullptr) { header_.file_count = 0; };
 
 Arc::Arc(const std::string &filename) : file_(nullptr) {
-  header_.pieces = nullptr;
   header_.file_count = 0;
-  open(filename);
+  this->open(filename);
 };
 
 Arc::~Arc() { this->close(); };
 
 Arc::Arc(Arc &&other) noexcept : file_(other.file_), header_(other.header_) {
   other.file_ = nullptr;
-  other.header_.pieces = nullptr;
   other.header_.file_count = 0;
 };
 
@@ -56,19 +58,19 @@ Arc &Arc::operator=(Arc &&other) noexcept {
     if (file_) {
       std::fclose(file_);
     }
-    if (header_.pieces) {
-      delete[] header_.pieces;
+    if (!header_.pieces.empty()) {
+      this->header_.pieces = std::move(other.header_.pieces);
     }
     file_ = other.file_;
     header_ = other.header_;
     other.file_ = nullptr;
-    other.header_.pieces = nullptr;
     other.header_.file_count = 0;
   }
   return *this;
 };
 
 bool Arc::create(const std::string &filename) {
+  filename_ = filename;
   file_ = std::fopen(filename.c_str(), "wb");
   if (!file_) {
     LOG_ERROR("Failed to create archive file: %s", filename.c_str());
@@ -76,60 +78,59 @@ bool Arc::create(const std::string &filename) {
   }
   header_.version = VERSION;
   header_.file_count = 0;
-  header_.pieces = nullptr;
   header_.crc32 = 0;
   LOG_DEBUG("Created archive file: %s", filename.c_str());
   return true;
 };
 
-bool Arc::open(const std::string &filename) {
-  file_ = std::fopen(filename.c_str(), "rb");
+bool Arc::parse() {
   if (!file_) {
-    LOG_ERROR("Failed to open archive file: %s", filename.c_str());
+    LOG_ERROR("Failed to open archive file: %s", filename_.c_str());
     return false;
   }
   // Read the header
   if (std::fread(&header_, HEADER_SIZE, 1, file_) != 1) {
-    LOG_ERROR("Failed to read header from archive file: %s", filename.c_str());
+    LOG_ERROR("Failed to read header from archive file: %s", filename_.c_str());
     std::fclose(file_);
     file_ = nullptr;
     return false;
   }
   // Validate the magic number
   if (std::memcmp(header_.magic, ARC_MAGIC, sizeof(ARC_MAGIC)) != 0) {
-    LOG_ERROR("Invalid magic number in archive file: %s", filename.c_str());
+    LOG_ERROR("Invalid magic number in archive file: %s", filename_.c_str());
     std::fclose(file_);
     file_ = nullptr;
     return false;
   }
   // Validate the version
   if (header_.version != VERSION) {
-    LOG_ERROR("Unsupported version in archive file: %s", filename.c_str());
+    LOG_ERROR("Unsupported version in archive file: %s", filename_.c_str());
     std::fclose(file_);
     file_ = nullptr;
     return false;
   }
   // Read the pieces
   LOG_DEBUG("At %#lx reading in %u pieces", std::ftell(file_), header_.file_count);
-  header_.pieces = new Piece[header_.file_count];
-  assert(header_.pieces != nullptr);
+  header_.pieces.reserve(header_.file_count);
   for (size_t i = 0; i < header_.file_count; ++i) {
-    std::memset(&header_.pieces[i], 0, sizeof(Piece));
-    if (std::fread(header_.pieces + i, PIECE_SIZE, 1, file_) != 1) {
-      LOG_ERROR("Failed to read pieces from archive file: %s", filename.c_str());
-      delete[] header_.pieces;
-      header_.pieces = nullptr;
+    Piece piece;
+    piece.name = nullptr;
+
+    std::byte buffer[PIECE_SIZE];
+    if (std::fread(&piece, PIECE_SIZE, 1, file_) != 1) {
+      LOG_ERROR("Failed to read pieces from archive file: %s", filename_.c_str());
       std::fclose(file_);
       file_ = nullptr;
       return false;
     }
+    header_.pieces.push_back(piece);
   }
   LOG_DEBUG("After pieace read at: %#lx", std::ftell(file_));
   // Populate the name pointers and data for each piece
   for (uint32_t i = 0; i < header_.file_count; ++i) {
     Piece &piece = header_.pieces[i];
-    LOG_DEBUG("Validating piece %u: smarker=%#lx, name_offset=%ld, name_size=%zu, offset=%ld, size=%zu, emarker=%#x", i,
-              piece.smarker, piece.name_offset, piece.name_size, piece.offset, piece.size, piece.emarker);
+    LOG_DEBUG("Validating piece %u: name_offset=%ld, name_size=%zu, offset=%ld, size=%zu", i, piece.name_offset,
+              piece.name_size, piece.offset, piece.size);
     assert(piece.smarker == SMARKER);
     assert(piece.emarker == EMARKER);
     assert(piece.name_offset > 0);
@@ -139,20 +140,16 @@ bool Arc::open(const std::string &filename) {
     // Read the name
     LOG_DEBUG("Reading name for piece %u at offset %ld with size %zu", i, piece.name_offset, piece.name_size);
     if (std::fseek(file_, piece.name_offset, SEEK_SET)) {
-      LOG_ERROR("Failed to seek to name offset for piece %u in archive file: %s", i, filename.c_str());
+      LOG_ERROR("Failed to seek to name offset for piece %u in archive file: %s", i, filename_.c_str());
       perror("fseek");
-      delete[] header_.pieces;
-      header_.pieces = nullptr;
       std::fclose(file_);
       file_ = nullptr;
       return false;
     }
     char *name = new char[piece.name_size + 1];
     if (std::fread(name, 1, piece.name_size, file_) != piece.name_size) {
-      LOG_ERROR("Failed to read name for piece %u from archive file: %s", i, filename.c_str());
+      LOG_ERROR("Failed to read name for piece %u from archive file: %s", i, filename_.c_str());
       delete[] name;
-      delete[] header_.pieces;
-      header_.pieces = nullptr;
       std::fclose(file_);
       file_ = nullptr;
       return false;
@@ -161,11 +158,11 @@ bool Arc::open(const std::string &filename) {
     piece.name = name;
     // Read the data
     std::fseek(file_, piece.offset, SEEK_SET);
-    uint8_t *data = new uint8_t[piece.size];
+    std::byte *data = new std::byte[piece.size];
     size_t read_size;
     LOG_DEBUG("Reading data for piece %u %zu byte", i, piece.size);
     if ((read_size = std::fread(data, 1, piece.size, file_)) != piece.size) {
-      LOG_ERROR("Failed to read data for piece %u from archive file: %s", i, filename.c_str());
+      LOG_ERROR("Failed to read data for piece %u from archive file: %s", i, filename_.c_str());
       LOG_ERROR("read: %zu, expected: %zu", read_size, piece.size);
       perror("fread");
 #ifndef NDEBUG
@@ -173,17 +170,28 @@ bool Arc::open(const std::string &filename) {
 #endif
       delete[] data;
       delete[] name;
-      delete[] header_.pieces;
-      header_.pieces = nullptr;
       std::fclose(file_);
       file_ = nullptr;
       return false;
     }
-    piece.data = data;
+    piece.data.insert(piece.data.end(), data, data + piece.size);
+    delete[] data;
   }
-  LOG_DEBUG("Opened archive file: %s with %u files", filename.c_str(), header_.file_count);
+  LOG_DEBUG("Opened archive file: %s with %u files", filename_.c_str(), header_.file_count);
   return true;
+}
+
+bool Arc::open(const std::string &filename) {
+  filename_ = filename;
+  file_ = std::fopen(filename.c_str(), "rb");
+  return this->parse();
 };
+
+bool Arc::open(const unsigned char *data, size_t size) {
+  filename_ = "<memory>";
+  file_ = fmemopen((void *)data, size, "rb");
+  return this->parse();
+}
 
 bool Arc::add_file(const std::string &filename, const std::string &name_in_archive) {
   if (!file_) {
@@ -208,14 +216,6 @@ bool Arc::add_file(const std::string &filename, const std::string &name_in_archi
   std::fseek(input_file, 0, SEEK_SET);
   // Allocate memory for the file data
   assert(size > 0);
-  char *data = new char[size];
-  if (std::fread(data, 1, size, input_file) != size) {
-    LOG_ERROR("Failed to read input file: %s", filename.c_str());
-    delete[] data;
-    std::fclose(input_file);
-    return false;
-  }
-  std::fclose(input_file);
   // Create a new piece
 
   long int pos = HEADER_SIZE + ((header_.file_count + 1) * PIECE_SIZE);
@@ -224,15 +224,29 @@ bool Arc::add_file(const std::string &filename, const std::string &name_in_archi
   }
   LOG_DEBUG("Adding file: %s as %s to archive at %zx with size %zu", filename.c_str(), sanitized_name.c_str(), pos,
             size);
+
   Piece piece{
       .name_offset = pos,
       .name_size = sanitized_name.size(),
       .offset = static_cast<long>(pos + sanitized_name.size()),
       .size = size,
-      .crc32 = crc32(reinterpret_cast<const uint8_t *>(data), size),
       .name = arc::strdup(sanitized_name.c_str()),
-      .data = reinterpret_cast<uint8_t *>(data),
   };
+  piece.data.reserve(size);
+
+  std::byte *data = new std::byte[size];
+  if (std::fread(data, 1, size, input_file) != size) {
+    LOG_ERROR("Failed to read input file: %s", filename.c_str());
+    std::fclose(input_file);
+    return false;
+  }
+  piece.data.insert(piece.data.end(), data, data + size);
+  delete[] data;
+  assert(piece.data.size() == size);
+  std::fclose(input_file);
+
+  piece.crc32 = crc32(piece.data);
+
   // Update the old pieces offset to account for the new piece
 
   for (uint32_t i = 0; i < header_.file_count; ++i) {
@@ -240,29 +254,9 @@ bool Arc::add_file(const std::string &filename, const std::string &name_in_archi
     header_.pieces[i].offset += PIECE_SIZE;
   }
 
-  // #ifndef NDEBUG
-  //   std::FILE *test_file = std::fopen((sanitized_name + ".piece").c_str(), "wb");
-  //   if (!test_file) {
-  //     LOG_ERROR("Failed to create test piece file");
-  //     delete[] data;
-  //     return false;
-  //   }
-  //   if (std::fwrite(&piece, PIECE_SIZE, 1, test_file) != 1) {
-  //     LOG_ERROR("Failed to write test piece file");
-  //   }
-  //   std::fclose(test_file);
-  // #endif
-
-  // Rewrite the archive with the new piece count
-
-  Piece *new_pieces = new Piece[header_.file_count + 1];
-  if (header_.pieces) {
-    std::memcpy(new_pieces, header_.pieces, sizeof(Piece) * header_.file_count);
-    delete[] header_.pieces;
-  }
-  new_pieces[header_.file_count] = piece;
-  header_.pieces = new_pieces;
+  header_.pieces.push_back(piece);
   header_.file_count++;
+
   update_crc32();
 
   std::fseek(file_, 0, SEEK_SET);
@@ -272,26 +266,67 @@ bool Arc::add_file(const std::string &filename, const std::string &name_in_archi
   }
   for (uint32_t i = 0; i < header_.file_count; ++i) {
     std::fwrite(header_.pieces[i].name, 1, header_.pieces[i].name_size, file_);
-    std::fwrite(header_.pieces[i].data, 1, header_.pieces[i].size, file_);
-  }
-
-  std::fseek(file_, 0, SEEK_END);
-
-  // Write the name and data to the archive file
-  if (std::fwrite(name_in_archive.c_str(), 1, name_in_archive.size(), file_) != name_in_archive.size()) {
-    LOG_ERROR("Failed to write name to archive file: %s", name_in_archive.c_str());
-    delete[] data;
-    return false;
-  }
-  if (std::fwrite(data, 1, size, file_) != size) {
-    LOG_ERROR("Failed to write data to archive file: %s", filename.c_str());
-    delete[] data;
-    return false;
+    std::fwrite(header_.pieces[i].data.data(), 1, header_.pieces[i].size, file_);
   }
 
   modified_ = true;
+  std::fflush(file_);
   return true;
 };
+
+bool Arc::add_file(const std::string &name_in_archive, const std::span<const std::byte> &data) {
+  if (!file_) {
+    LOG_ERROR("Archive file is not open");
+    return false;
+  }
+  // Create a new piece
+
+  // Remove any "../" from the name_in_archive to prevent directory traversal
+  std::string sanitized_name = name_in_archive;
+  size_t pos_;
+  while ((pos_ = sanitized_name.find("../")) != std::string::npos) {
+    sanitized_name.erase(pos_, 3);
+  }
+  long int pos = HEADER_SIZE + ((header_.file_count + 1) * PIECE_SIZE);
+  for (uint32_t i = 0; i < header_.file_count; ++i) {
+    pos += header_.pieces[i].name_size + header_.pieces[i].size;
+  }
+  LOG_DEBUG("Adding file: %s as %s to archive at %zx with size %zu", name_in_archive.c_str(), sanitized_name.c_str(),
+            pos, data.size());
+  Piece piece{
+      .name_offset = pos,
+      .name_size = sanitized_name.size(),
+      .offset = static_cast<long>(pos + sanitized_name.size()),
+      .size = data.size(),
+      .crc32 = crc32(data),
+      .name = arc::strdup(sanitized_name.c_str()),
+  };
+  piece.data.reserve(data.size());
+  piece.data.insert(piece.data.end(), data.begin(), data.end());
+  // Update the old pieces offset to account for the new piece
+  header_.pieces.push_back(piece);
+
+  for (uint32_t i = 0; i < header_.file_count; ++i) {
+    header_.pieces[i].name_offset += PIECE_SIZE;
+    header_.pieces[i].offset += PIECE_SIZE;
+  }
+  header_.file_count++;
+
+  update_crc32();
+
+  std::fseek(file_, 0, SEEK_SET);
+  std::fwrite(&header_, HEADER_SIZE, 1, file_);
+  for (uint32_t i = 0; i < header_.file_count; ++i) {
+    std::fwrite(&header_.pieces[i], PIECE_SIZE, 1, file_);
+  }
+  for (uint32_t i = 0; i < header_.file_count; ++i) {
+    std::fwrite(header_.pieces[i].name, 1, header_.pieces[i].name_size, file_);
+    std::fwrite(header_.pieces[i].data.data(), 1, header_.pieces[i].size, file_);
+  }
+  std::fflush(file_);
+  modified_ = true;
+  return true;
+}
 
 bool Arc::add_dir(const std::string &dirpath, const std::string &base_path) {
   if (!file_) {
@@ -360,45 +395,146 @@ bool Arc::remove_file(const std::string &name_in_archive) {
     return false;
   }
   // Find the piece with the given name
-  for (uint32_t i = 0; i < header_.file_count; ++i) {
+  uint32_t i;
+  for (i = 0; i < header_.file_count; ++i) {
     if (std::strcmp(header_.pieces[i].name, name_in_archive.c_str()) == 0) {
-      // Found the piece, remove it
-      Piece *new_pieces = new Piece[header_.file_count - 1];
-      std::memcpy(new_pieces, header_.pieces, sizeof(Piece) * i);
-      std::memcpy(new_pieces + i, header_.pieces + i + 1, sizeof(Piece) * (header_.file_count - i - 1));
-      // Rewrite the archive file without the removed piece
-      std::fclose(file_);
-      file_ = std::fopen("temp.arc", "wb");
-      if (!file_) {
-        LOG_ERROR("Failed to create temporary archive file");
-        delete[] new_pieces;
-        return false;
-      }
-      // Write the header
-      if (std::fwrite(&header_, HEADER_SIZE, 1, file_) != 1) {
-        LOG_ERROR("Failed to write header to temporary archive file");
-        delete[] new_pieces;
-        std::fclose(file_);
-        return false;
-      }
-      // Write the pieces
-      if (std::fwrite(new_pieces, PIECE_SIZE, header_.file_count - 1, file_) != header_.file_count - 1) {
-        LOG_ERROR("Failed to write pieces to temporary archive file");
-        delete[] new_pieces;
-        std::fclose(file_);
-        return false;
-      }
-      delete[] header_.pieces;
-      header_.pieces = new_pieces;
-      header_.file_count--;
-      update_crc32();
-      LOG_DEBUG("Removed file: %s from archive", name_in_archive.c_str());
-      return true;
+      break;
     }
   }
+
+  // Found the piece, remove it
+  delete[] header_.pieces[i].name;
+
+  // Shift the remaining pieces down
+  auto removed = std::find_if(header_.pieces.begin(), header_.pieces.end(),
+                              [&](const Piece &p) { return std::strcmp(p.name, name_in_archive.c_str()) == 0; });
+
+  if (removed != header_.pieces.end()) {
+    header_.pieces.erase(removed);
+  } else {
+    LOG_ERROR("Failed to find piece to remove: %s", name_in_archive.c_str());
+    return false;
+  }
+
+  header_.file_count--;
+  update_crc32();
+  // Rewrite the archive file without the removed piece
+  std::fseek(file_, 0, SEEK_SET);
+  std::fwrite(&header_, HEADER_SIZE, 1, file_);
+  for (uint32_t j = 0; j < header_.file_count; ++j) {
+    std::fwrite(&header_.pieces[j], PIECE_SIZE, 1, file_);
+  }
+  for (uint32_t j = 0; j < header_.file_count; ++j) {
+    std::fwrite(header_.pieces[j].name, 1, header_.pieces[j].name_size, file_);
+    std::fwrite(header_.pieces[j].data.data(), 1, header_.pieces[j].size, file_);
+  }
+
+  LOG_DEBUG("Removed file: %s from archive", name_in_archive.c_str());
   modified_ = true;
-  LOG_ERROR("File not found in archive: %s", name_in_archive.c_str());
-  return false;
+  return true;
+}
+
+bool Arc::mount_archive(const std::string &mount_point, int argc, char *argv[], bool daemonize, bool mt) {
+  if (!file_) {
+    LOG_ERROR("Archive file is not open");
+    return false;
+  }
+  if (mounted_) {
+    LOG_ERROR("Archive is already mounted");
+    return false;
+  }
+
+  unsigned long total_size = HEADER_SIZE + header_.file_count * PIECE_SIZE;
+  for (const auto &piece : *this) {
+    total_size += piece.name_size + piece.size;
+  }
+
+  fuse::FileSystem fsys(this->filename_, total_size, [&](const fuse::Node &node) {
+    if (node.is_dir())
+      return;
+    this->remove_file(node.name.substr(1));                                          // Remove leading '/' from name
+    this->add_file(node.name.substr(1), std::get<fuse::FileData>(node.data).view()); // Add file back to archive
+  });
+
+  for (const auto &piece : *this) {
+    fsys.insert_file(std::string("/") + piece.name, piece.data);
+  }
+
+  struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+  args.allocated = 1; // Prevent fuse_opt_free_args from freeing argv
+#if CONFIG_ARC_FUSE_IS_RO
+  fuse_opt_add_arg(&args, "-oro");
+#endif
+
+  fuse_ = fuse_new(&args, &fuse::arc_fuse_ops, sizeof(fuse::arc_fuse_ops), &fsys);
+  se_ = fuse_get_session(fuse_);
+  if (!fuse_) {
+    LOG_ERROR("Failed to create FUSE instance");
+    return false;
+  }
+  if (fuse_mount(fuse_, mount_point.c_str()) != 0) {
+    LOG_ERROR("Failed to mount FUSE filesystem at: %s", mount_point.c_str());
+    fuse_opt_free_args(&args);
+    fuse_destroy(fuse_);
+    return false;
+  }
+
+  if (daemonize) {
+    if (fuse_daemonize(1) != 0) {
+      LOG_ERROR("Failed to daemonize FUSE filesystem");
+      fuse_opt_free_args(&args);
+      fuse_unmount(fuse_);
+      fuse_destroy(fuse_);
+      return false;
+    }
+  }
+
+  int ret;
+  LOG_DEBUG("Starting FUSE loop (multi-threaded: %s)", mt ? "true" : "false");
+  mounted_ = true;
+  if (mt) {
+    if ((ret = fuse_session_loop_mt(se_, 1)) != 0) {
+      LOG_ERROR("FUSE multi-threaded loop exited with error");
+      fuse_opt_free_args(&args);
+      fuse_unmount(fuse_);
+      fuse_destroy(fuse_);
+      return false;
+    }
+  } else {
+    if ((ret = fuse_session_loop(se_)) != 0) {
+      LOG_ERROR("FUSE loop exited with error");
+      fuse_opt_free_args(&args);
+      fuse_unmount(fuse_);
+      fuse_destroy(fuse_);
+      return false;
+    }
+  }
+
+  LOG_DEBUG("FUSE loop exited with code: %d", ret);
+
+  fuse_opt_free_args(&args);
+  // fuse_unmount(fuse_);
+  // fuse_destroy(fuse_);
+
+  return true;
+}
+
+bool Arc::stop_mount() {
+  if (!mounted_) {
+    LOG_ERROR("Archive is not mounted");
+    return false;
+  }
+  if (fuse_) {
+    fuse_session_exit(se_);
+    fuse_exit(fuse_);
+    fuse_unmount(fuse_);
+    fuse_destroy(fuse_);
+    fuse_ = nullptr;
+    se_ = nullptr;
+    mounted_ = false;
+    LOG_DEBUG("Unmounted archive");
+  }
+  return true;
 }
 
 bool Arc::close() {
@@ -412,13 +548,12 @@ bool Arc::close() {
       return false;
     }
   }
-  if (header_.pieces) {
-    for (uint32_t i = 0; i < header_.file_count; ++i) {
-      delete[] header_.pieces[i].name;
-      delete[] header_.pieces[i].data;
+  if (!header_.pieces.empty()) {
+    for (auto &piece : header_.pieces) {
+      delete[] piece.name;
+      piece.data.clear();
     }
-    delete[] header_.pieces;
-    header_.pieces = nullptr;
+    header_.pieces.clear();
   }
   if (file_) {
     std::fclose(file_);
@@ -447,6 +582,9 @@ const Piece &Arc::get_piece(const std::string &name) const {
 
 #ifndef NDEBUG
 void Arc::debug_print() const {
+  if (log_level < DBG) {
+    return;
+  }
   LOG_DEBUG("Archive debug print:");
   LOG_DEBUG("Version: %u", header_.version);
   unsigned int x = 1;
@@ -474,4 +612,4 @@ void Arc::debug_print() const {
 }
 #endif
 } // namespace arc
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
