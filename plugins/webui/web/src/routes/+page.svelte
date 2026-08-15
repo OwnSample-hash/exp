@@ -60,6 +60,7 @@
     }
     if (data.type === "prompt") {
       promptPrefixQ.push(data.prompt);
+      waitForResponse = false;
     }
     if (data.type === "upload") {
       if (data.status === "success") {
@@ -69,6 +70,10 @@
         writer.error(`Error: ${data.message}`);
       }
       waitForUpload = false;
+    }
+    if (data.type === "ac") {
+      writer.info(`Current client connections: ${data.count}`);
+      waitForResponse = false;
     }
   };
 
@@ -85,6 +90,12 @@
         writer.clear();
       } else if (lcmd[0] === "prompt") {
         writer.info(`Current prompt prefix: ${promptPrefix}`);
+      } else if (lcmd[0] === "getac") {
+        ws.send(JSON.stringify({ type: "getAC" }));
+        waitForResponse = true;
+        while (waitForResponse) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
       } else if (lcmd[0] === "upload") {
         if (lcmd.length < 2) {
           writer.error("Usage: !upload <filename>");
@@ -119,6 +130,9 @@
         writer.info("!help - Show this help message");
         writer.info("!prompt - Show the current prompt prefix");
         writer.info(
+          "!getac - Get the current client connections count form the server",
+        );
+        writer.info(
           "!upload <varname> - Upload a file to the server and bind it to a variable",
         );
       } else {
@@ -138,13 +152,13 @@
         type: "getPrompt",
       }),
     );
+    while (waitForResponse) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     if (promptPrefixQ.length > 0) {
       promptPrefix = promptPrefixQ[promptPrefixQ.length - 1];
       console.log(`Prompt prefix updated to: ${promptPrefix}`);
       promptPrefixQ = [];
-    }
-    while (waitForResponse) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     new Promise((resolve) => {
       setTimeout(resolve, 10);
