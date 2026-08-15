@@ -1,8 +1,83 @@
+#include <arc.hpp>
 #include <httplib.h>
+#include <limits.h>
 #include <sstream>
+#include <sys/mount.h>
 #include <tool.hpp>
+#include <webui_config.hpp>
+
+constexpr unsigned char webui_arc[] = {
+#embed ARCHIVE
+};
 
 void webui::initialize() {
+
+  if (arc.open(webui_arc, sizeof(webui_arc))) {
+    logger->info("Web UI archive loaded successfully");
+  } else {
+    logger->error("Failed to load web UI archive");
+  }
+
+  if (!fs::exists(temp_dir)) {
+    fs::create_directories(temp_dir);
+  }
+
+  char buffer[32];
+  std::ifstream comm("/proc/self/comm", std::ios::in | std::ios::binary);
+  if (!comm.is_open()) {
+    logger->error("Failed to open /proc/self/comm");
+    return;
+  }
+  comm.read(buffer, sizeof(buffer) - 1);
+  buffer[comm.gcount()] = '\0'; // Null-terminate the string
+  comm.close();
+  std::string process_name(buffer);
+  process_name.erase(std::remove(process_name.begin(), process_name.end(), '\n'), process_name.end());
+
+  fuse_thread = std::thread([&]() {
+    char **argv;
+    try {
+      argv = (char **)calloc(sizeof(char *), 2);
+      argv[0] = strdup(process_name.c_str());
+      argv[1] = nullptr;
+      umount(temp_dir.string().c_str());
+      if (!arc.mount_archive(temp_dir.string(), 1, argv, false, false)) {
+        logger->error("Failed to mount web UI archive");
+      } else {
+        logger->info("Web UI archive mounted successfully at {}", temp_dir.string());
+      }
+    } catch (const std::exception &e) {
+      logger->error("Exception in fuse_thread: {}", e.what());
+    } catch (...) {
+      logger->error("Unknown exception in fuse_thread");
+    }
+    umount(temp_dir.string().c_str());
+  });
+
+  // fuse_thread.detach();
+
+  nouse_thread = std::thread([&]() {
+    int count = 0;
+    std::cout << "The web UI will automatically shut down after " << CONFIG_WEBUI_TIMEOUT_SEC
+              << " seconds of inactivity (no WebSocket connections)." << std::endl;
+    while (this->running) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      if (activeWebSocketConnections == 0) {
+        count++;
+        if (count >= CONFIG_WEBUI_TIMEOUT_SEC) {
+          server->stop();
+          break;
+        }
+      } else {
+        count = 0;
+      }
+    }
+    std::cout << "Web UI is shutting down due to inactivity." << std::endl;
+    logger->debug("Exiting nouse_thread");
+  });
+
+  nouse_thread.detach();
+
   if (plugin.enableTLS->Get()) {
     logger->info("Starting web UI with TLS support on port {}", ACC_ARG(port));
     server = std::make_unique<httplib::SSLServer>(&ACC_ARG(certFile)->c_str(), &ACC_ARG(keyFile)->c_str());
@@ -34,17 +109,7 @@ void webui::initialize() {
 
   server->set_tcp_nodelay(true);
 
-  // server->set_mount_point("/static", "./");
-
-  server->Get("/", [&](const httplib::Request &req, httplib::Response &res) {
-    logger->info("Received request for root path from {}", req.remote_addr);
-    res.set_content("Welcome to the Web UI Renderer!", "text/plain");
-  });
-
-  server->Get("/status", [&](const httplib::Request &req, httplib::Response &res) {
-    logger->info("Received status request from {}", req.remote_addr);
-    res.set_content("Web UI is running", "text/plain");
-  });
+  server->set_mount_point("/", temp_dir);
 
   server->Get("/info", [&](const httplib::Request &req, httplib::Response &res) {
     logger->info("Received info request from {}", req.remote_addr);
@@ -167,6 +232,7 @@ void webui::initialize() {
   });
 
   server->WebSocket("/ws", [&](const httplib::Request &req, httplib::ws::WebSocket &ws) { this->ws_loop(req, ws); });
+  logger->info("Web UI initialized successfully");
 }
 
 void webui::shutdown() {
@@ -175,6 +241,20 @@ void webui::shutdown() {
     server->stop();
     server.reset();
   }
+  logger->info("Web UI server stopped");
+  logger->trace("Trying to join thread fuse_thread");
+  logger->trace("fuse_thread joinable: {}", fuse_thread.joinable());
+  if (fuse_thread.joinable()) {
+    umount(temp_dir.string().c_str());
+    arc.stop_mount();
+    fuse_thread.join();
+  }
+  logger->trace("Trying to join thread nouse_thread");
+  if (nouse_thread.joinable()) {
+    running = false;
+    nouse_thread.join();
+  }
+  arc.close();
 }
 
 void webui::runLoop() {

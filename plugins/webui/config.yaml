@@ -4,3 +4,10 @@
   help_text: Enable or disable the plugin.
   cmake_export: true
   default: true
+
+- name: TIMEOUT_SEC
+  prompt: Timeout in seconds
+  type: int
+  help_text: The timeout value for stopping the server due to no use in seconds.
+  cmake_export: false
+  default: 60

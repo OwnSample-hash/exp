@@ -6,6 +6,7 @@
 #include <interfaces/tool_provider.hpp>
 #include <nlohmann/json.hpp>
 #include <queue>
+#include <spdlog/fmt/bundled/format.h>
 #include <tool.hpp>
 
 using json = nlohmann::json;
@@ -15,9 +16,11 @@ extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
 extern std::unordered_map<std::string, initArgs> pluginInitArgs;
 extern thread_local std::shared_ptr<ITool> currentTool;
 extern const std::list<std::unique_ptr<IPlugin>> &get_loaded_plugins();
+extern void shutdown [[noreturn]] (int code = 0);
 
 void webui::ws_loop(const httplib::Request &req, httplib::ws::WebSocket &ws) {
   logger->info("WebSocket connection established from {}", req.remote_addr);
+  activeWebSocketConnections++;
   cmd::CommandProcessor &cp = cmd::CommandProcessor::instance();
   std::queue<json> eventQueue;
   std::vector<int> fds;
@@ -168,7 +171,11 @@ void webui::ws_loop(const httplib::Request &req, httplib::ws::WebSocket &ws) {
           }
         }
         eventQueue.push(response);
-
+      } else if (type == "getAC") {
+        json response;
+        response["type"] = "ac";
+        response["ac"] = activeWebSocketConnections.load();
+        eventQueue.push(response);
       } else {
         logger->warn("Unknown event type: {}", type);
         eventQueue.push({{"type", "error"}, {"message", "Unknown event type: " + type}});
@@ -195,18 +202,7 @@ void webui::ws_loop(const httplib::Request &req, httplib::ws::WebSocket &ws) {
   cp.onAutocomplete(nullptr);
   cp.onExecute(nullptr);
   cp.onError(nullptr);
-
-  for (const auto &[name, arg] : pluginInitArgs) {
-    for (const auto &mod : *arg.modules) {
-      if (mod.type == explo::ModuleType::TOOLPROVIDER) {
-        auto *provider = dynamic_cast<explo::IToolProvider *>(mod.instance.get());
-        for (const auto &[name, tool] : provider->getTools()) {
-          tool->shutdown();
-        }
-      } else
-        mod.instance->shutdown();
-    }
-  }
+  activeWebSocketConnections--;
 }
 
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
