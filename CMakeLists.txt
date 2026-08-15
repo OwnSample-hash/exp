@@ -16,6 +16,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(exp LANGUAGES C CXX VERSION 0.0.1 SPDX_LICENSE "GPL-3.0-or-later")
 
+add_compile_options("-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=")
+
 include(cmake/CPM.cmake)
 CPMUsePackageLock("cpm-package-lock.cmake")
 
@@ -114,13 +116,15 @@ if(ENABLE_SANITIZERS)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
+if (ENABLE_TESTS)
+  message(STATUS "Adding Catch2 for testing")
+  CPMAddPackage("gh:catchorg/Catch2@3.15.3")
+  enable_testing()
+endif()
+
 # Global modules
 add_subdirectory(tools)
 add_subdirectory(app)
 message(STATUS "Adding global modules")
 add_subdirectory(plugins)
-if (ENABLE_TESTS)
-  CPMAddPackage("gh:catchorg/Catch2@3.11.0")
-  enable_testing()
-endif()
 # Vim: set expandtab tabstop=2 shiftwidth=2:
