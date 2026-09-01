@@ -45,10 +45,14 @@ if (ENABLE_PCH)
     message(FATAL_ERROR "Unsupported compiler for precompiled headers")
   endif()
   make_directory(${CMAKE_BINARY_DIR}/pch)
-  set(PCH_FLAGS -std=gnu++26)
+  set(PCH_FLAGS -std=gnu++26 ${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS})
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     list(APPEND PCH_FLAGS -ggdb)
+  endif()
+
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    list(APPEND PCH_FLAGS -O3)
   endif()
 
   if(ENABLE_SANITIZERS)
