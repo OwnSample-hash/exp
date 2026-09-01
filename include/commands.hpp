@@ -158,6 +158,7 @@
           currentTool->invoke(currentTool->getName());
           cp.switchContext(name);
           cp.vars().set("prompt", cmd::VarValue(std::string("(" + name + ") \33[33m>\33[0m ")));
+          cp.vars().set("current_tool", cmd::VarValue(name));
           return "Using tool: " + name + "\n";
         }
       }

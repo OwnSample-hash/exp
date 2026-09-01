@@ -109,9 +109,22 @@ CommandProcessor::CommandProcessor() {
     c.description = "List all variables";
     c.handler = [](const ExecutionContext &ec) -> std::string {
       std::string out;
+      std::vector<std::string> toolVars;
+      const std::string &toolPrefix = ec.vars->get("current_tool")->toString() + ".";
       for (auto &n : ec.vars->names()) {
+        if (n.starts_with(toolPrefix)) {
+          toolVars.push_back(n);
+          continue;
+        }
         auto v = ec.vars->get(n);
         out += n + "=" + (v ? v->toString() : "") + "\n";
+      }
+      if (!toolVars.empty()) {
+        out += "\nTool-specific variables:\n";
+        for (auto &n : toolVars) {
+          auto v = ec.vars->get(n);
+          out += n + "=" + (v ? v->toString() : "") + "\n";
+        }
       }
       return out;
     };
@@ -172,8 +185,8 @@ CommandProcessor::~CommandProcessor() {}
 
 void CommandProcessor::registerContext(std::shared_ptr<Context> ctx) {
   contexts_[ctx->name()] = std::move(ctx);
-  if (!currentCtx_)
-    currentCtx_ = contexts_.begin()->second;
+  // if (!currentCtx_)
+  //   currentCtx_ = contexts_.begin()->second;
 }
 
 void CommandProcessor::switchContext(const std::string &name) {
