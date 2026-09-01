@@ -1,4 +1,4 @@
-if(ENABLE_WEBUI)
+if(WEBUI_ENABLE)
   set(MOD_NAME webui)
   set(MOD_SRC 
     src/webui.cpp

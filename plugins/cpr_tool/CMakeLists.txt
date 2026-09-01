@@ -1,4 +1,4 @@
-if (ENABLE_CPR_TOOL)
+if (CPR_TOOL_ENABLE)
   set(MOD_NAME cpr_tool)
   set(MOD_SRC 
     src/cpr_tool.cpp

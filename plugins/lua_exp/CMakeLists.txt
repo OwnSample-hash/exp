@@ -1,10 +1,10 @@
-if (ENABLE_LUA_EXP)
-  message(STATUS "Building Lua Expression Module")
+if (LUA_EXP_ENABLE)
   set(MOD_NAME lua_exp)
   set(MOD_SRC 
     src/lua_exp.cpp
     src/loader.cpp
     src/tool.cpp
+    src/alib.cpp
     src/lib.cpp
     src/tls.cpp
   )
@@ -17,8 +17,6 @@ if (ENABLE_LUA_EXP)
   )
   
   if (lua_ADDED)
-    # lua has no CMake support, so we create our own target
-  
     FILE(GLOB lua_sources ${lua_SOURCE_DIR}/*.c)
     list(REMOVE_ITEM lua_sources "${lua_SOURCE_DIR}/lua.c" "${lua_SOURCE_DIR}/luac.c"
      "${lua_SOURCE_DIR}/onelua.c")
@@ -52,14 +50,8 @@ if (ENABLE_LUA_EXP)
 
   add_custom_command(TARGET ${MOD_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${MOD_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/../$<TARGET_FILE_NAME:${MOD_NAME}>
-  )
-
-  add_custom_command(TARGET ${MOD_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/lua ${CMAKE_CURRENT_BINARY_DIR}/lua
-  )
-
-  add_custom_command(TARGET ${MOD_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/lua ${CMAKE_CURRENT_BINARY_DIR}/../../lua
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/lua ${CMAKE_BINARY_DIR}/${LUA_EXP_DIRECTORY}
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/lua_lib ${CMAKE_BINARY_DIR}/${LUA_EXP_LIB_DIR}
   )
  
   if(ENABLE_TESTS)

@@ -27,9 +27,18 @@ def generate_func(opts: list[ConfigOption], f: Any = None, depth: int = 0) -> li
             continue
         logger.verbose_2(f"{opt=}")  # pyright: ignore
         plugin_name = os.path.dirname(opt.source_file).split("/")[-1].upper()
-        f.write(
-            f"option({opt.name.upper()}{"_" if plugin_name else ""}{plugin_name} \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" {"ON" if opt.value else "OFF"})\n"
-        )
+        if opt.type == ConfigType.BOOL:
+            f.write(
+                f"option({plugin_name}{"_" if plugin_name else ""}{opt.name.upper()} \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" {"ON" if opt.value else "OFF"})\n"
+            )
+        elif (
+            opt.type == ConfigType.STRING
+            or opt.type == ConfigType.INT
+            or opt.type == ConfigType.CHOICE
+        ):
+            f.write(
+                f"set({plugin_name}{"_" if plugin_name else ""}{opt.name.upper()} \"{opt.value}\" CACHE STRING \"{opt.value}\")\n"
+            )
     if depth == 0:
         f.close()
         return ["cmake/Options.cmake"]

@@ -1,4 +1,4 @@
-if(ENABLE_BINI)
+if(BINI_ENABLE)
   set(MOD_NAME bini)
   set(MOD_SRC 
     src/bini.cpp
