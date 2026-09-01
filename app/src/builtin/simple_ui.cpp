@@ -77,7 +77,6 @@ void UI::runLoop() {
       std::cout << "\n" << std::flush;
     }
 
-    logger->trace("Pre  feed cursor pos: {}, buffer size: {} '{}'", cp.cursorPos(), cp.buffer().size(), cp.buffer());
     switch (cp.feed(ch)) {
     case cmd::InputResult::Escape: {
       int ch = getch();
@@ -143,7 +142,6 @@ void UI::runLoop() {
       std::cout << prompt << std::flush;
       break;
     }
-    logger->trace("Post feed cursor pos: {}, buffer size: {} '{}'", cp.cursorPos(), cp.buffer().size(), cp.buffer());
   }
 }
 
