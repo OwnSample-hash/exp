@@ -30,16 +30,16 @@ name = ""
 explo = {
   ---@type function
   ---@param message string
-  logd = function(message) end,
+  dbg = function(message) end,
   ---@type function
   ---@param message string
-  logi = function(message) end,
+  info = function(message) end,
   ---@type function
   ---@param message string
-  logw = function(message) end,
+  warn = function(message) end,
   ---@type function
   ---@param message string
-  loge = function(message) end,
+  error = function(message) end,
 
   ---@type function
   ---@param name string
@@ -97,6 +97,26 @@ explo = {
   ---@type function
   ---@return number
   clock = function() end,
+
+  ---@type function
+  ---@param max number
+  ---@param coro thread
+  async_scan = function(max, coro) end,
+
+  ConnectionStatus = {
+    Open = 0,
+    OpenUntested = 1,
+    Filtered = 2,
+    Error = 3,
+    Timeout = 4,
+    Refused = 5,
+    Reset = 6,
+    Closed = 7,
+    Aborted = 8,
+    NetReset = 9,
+    HostUnreachable = 10,
+    NetworkUnreachable = 11,
+  },
 }
 
 ---@class HTTPConfig
@@ -114,5 +134,7 @@ HTTPResponse = {
   body = "",
 }
 
+AF_INET = 2
+AF_INET6 = 10
 SOCK_STREAM = 1
 SOCK_DGRAM = 2

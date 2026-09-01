@@ -15,7 +15,7 @@
 
 using json = nlohmann::json;
 
-auto &getLogger() {
+static auto &getLogger() {
   static std::shared_ptr<spdlog::logger> logger;
   if (!logger)
     logger = spdlog::get("lua_exp")->clone("lua_exp::lua::lib");
@@ -393,10 +393,10 @@ int sclose(lua_State *L) {
 }
 
 int clock(lua_State *L) {
-  auto now = std::chrono::high_resolution_clock::now();
-  auto epoch = now.time_since_epoch();
-  auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
+  auto nanos =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch())
+          .count();
   lua_pushnumber(L, nanos);
   return 1;
 }
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

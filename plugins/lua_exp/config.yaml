@@ -12,4 +12,25 @@
   help_text: "The directory that will be scanned for Lua files. The plugin will look for .lua files in this directory and its subdirectories."
   show_if:
     - ENABLE
+  cmake_export: true
 
+- name: LIB_DIR
+  prompt: Library Directory
+  type: string
+  default: "lua_lib"
+  help_text: Directory which contains the Lua libraries to be used by the plugin. Libraries in this directory will be loaded and made available to the Lua scripts.
+  show_if:
+    - ENABLE
+  cmake_export: true
+
+- name: SOCKET_LIMIT
+  prompt: Socket Limit
+  type: int
+  default: 256
+  help_text: How many sockets to open at once when scanning for open ports. This is a performance tuning parameter. A higher number will scan faster but may use more resources.
+
+- name: TIMEOUT_LIMIT
+  prompt: Timeout Limit
+  type: int
+  default: 5
+  help_text: How many attempts to make before timing out when scanning for open ports. This is a performance tuning parameter. A higher number will scan slower but may be more accurate.

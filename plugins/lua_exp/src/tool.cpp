@@ -14,14 +14,14 @@ void luaTool::initialize() {
     {
       cmd::CommandDef c;
       c.name = "run";
-      c.description = "Run the Lua tool's main function";
+      c.description = "Run " + name + "'s tool main function";
       c.variadic = false;
       c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
         this->execute();
         if (this->lastStatus != 0) {
-          return "\033[1;31mLua tool execution failed with status: " + std::to_string(this->lastStatus) + "\033[0m";
+          return "\033[1;31mTool execution failed with status: " + std::to_string(this->lastStatus) + "\033[0m";
         }
-        return "Lua tool execution completed";
+        return "Tool execution completed";
       };
       ctx->registerCommand(c);
     }
@@ -140,7 +140,7 @@ void luaTool::execute() {
   auto execute = this->lua["execute"];
   if (execute.is<LFW>()) {
     auto func = execute.as<LFW>();
-    auto status = func();
+    auto status = func()[0];
     if (status.is<std::string>()) {
       this->logger->info("Main script returned: {}", status.as<std::string>());
     } else if (status.is<lua_Number>()) {
@@ -164,7 +164,7 @@ void luaTool::execute() {
       auto execute_fn = lua["execute_fn"];
       if (execute_fn.is<LFW>()) {
         auto func = execute_fn.as<LFW>();
-        auto status = func();
+        auto status = func()[0];
         if (status.is<std::string>()) {
           this->logger->info("Main script returned: {}", status.as<std::string>());
         } else if (status.is<lua_Number>()) {

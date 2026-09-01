@@ -6,19 +6,14 @@ extern "C" {
 #include <lualib.h>
 }
 #include <interfaces/tool.hpp>
-#include <map>
-#include <memory>
-#include <string>
 #include <sys/socket.h>
 
-extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
-
 #define luaLogFuncs                                                                                                    \
-  X(logt, trace)                                                                                                       \
-  X(logd, debug)                                                                                                       \
-  X(logi, info)                                                                                                        \
-  X(logw, warn)                                                                                                        \
-  X(loge, error)
+  X(trace, trace)                                                                                                      \
+  X(debug, debug)                                                                                                      \
+  X(info, info)                                                                                                        \
+  X(warn, warn)                                                                                                        \
+  X(error, error)
 
 #define luaSocketFuncs                                                                                                 \
   X(socket_, socket)                                                                                                   \
@@ -32,27 +27,63 @@ extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
   X(sclose, sclose)
 
 #define luaFuncs                                                                                                       \
-  X(var)                                                                                                               \
-  X(call)                                                                                                              \
-  X(sleep)                                                                                                             \
-  X(clock)                                                                                                             \
+  X(var, var)                                                                                                          \
+  X(call, call)                                                                                                        \
+  X(sleep, sleep)                                                                                                      \
+  X(clock, clock)                                                                                                      \
   luaLogFuncs luaSocketFuncs
+
+#define asyncLuaFuncs X(async_scan, async_scan)
+
+#define ConnectionStatuses                                                                                             \
+  Z(Open)                                                                                                              \
+  Z(OpenUntested)                                                                                                      \
+  Z(Filtered)                                                                                                          \
+  Z(Error)                                                                                                             \
+  Z(Timeout)                                                                                                           \
+  Z(Refused)                                                                                                           \
+  Z(Reset)                                                                                                             \
+  Z(Closed)                                                                                                            \
+  Z(Aborted)                                                                                                           \
+  Z(NetReset)                                                                                                          \
+  Z(HostUnreachable)                                                                                                   \
+  Z(NetworkUnreachable)
 
 #define enumData                                                                                                       \
   X(SOCK_STREAM, number)                                                                                               \
-  X(SOCK_DGRAM, number)
+  X(SOCK_DGRAM, number)                                                                                                \
+  X(AF_INET, number)                                                                                                   \
+  X(AF_INET6, number)                                                                                                  \
+  Y(ConnectionStatus, ConnectionStatuses)
 
 #define X(name, ...) int name(lua_State *L);
-luaFuncs
+luaFuncs asyncLuaFuncs
 #undef X
 
     const luaL_Reg libs[] = {
-#define X(name, ...) {#name, name},
-        luaFuncs
-#undef X
 #define X(fn, name) {#name, fn},
-            luaSocketFuncs
+        luaFuncs asyncLuaFuncs
 #undef X
         {nullptr, nullptr},
 };
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+
+namespace ConnectionStatus {
+enum Type {
+#define Z(name) name,
+  ConnectionStatuses
+#undef Z
+      Count
+};
+inline const char *toString(Type status) {
+  switch (status) {
+#define Z(name)                                                                                                        \
+  case name:                                                                                                           \
+    return #name;
+    ConnectionStatuses
+#undef Z
+        default : return "Unknown";
+  }
+}
+} // namespace ConnectionStatus
+
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

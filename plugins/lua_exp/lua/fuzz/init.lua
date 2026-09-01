@@ -1,90 +1,4 @@
-local c = {
-
-  reset = "\27[0m",
-
-  -- Text styles
-  style = {
-    bold = "\27[1m",
-    dim = "\27[2m",
-    italic = "\27[3m",
-    underline = "\27[4m",
-    blink = "\27[5m",
-    reverse = "\27[7m",
-    hidden = "\27[8m",
-    strike = "\27[9m",
-  },
-
-  -- Foreground (text) colors
-  fg = {
-    black = "\27[30m",
-    red = "\27[31m",
-    green = "\27[32m",
-    yellow = "\27[33m",
-    blue = "\27[34m",
-    magenta = "\27[35m",
-    cyan = "\27[36m",
-    white = "\27[37m",
-    default = "\27[39m",
-
-    -- Bright variants
-    bright_black = "\27[90m",
-    bright_red = "\27[91m",
-    bright_green = "\27[92m",
-    bright_yellow = "\27[93m",
-    bright_blue = "\27[94m",
-    bright_magenta = "\27[95m",
-    bright_cyan = "\27[96m",
-    bright_white = "\27[97m",
-  },
-
-  -- Background colors
-  bg = {
-    black = "\27[40m",
-    red = "\27[41m",
-    green = "\27[42m",
-    yellow = "\27[43m",
-    blue = "\27[44m",
-    magenta = "\27[45m",
-    cyan = "\27[46m",
-    white = "\27[47m",
-    default = "\27[49m",
-
-    -- Bright variants
-    bright_black = "\27[100m",
-    bright_red = "\27[101m",
-    bright_green = "\27[102m",
-    bright_yellow = "\27[103m",
-    bright_blue = "\27[104m",
-    bright_magenta = "\27[105m",
-    bright_cyan = "\27[106m",
-    bright_white = "\27[107m",
-  },
-}
-
--- Helper: wrap a string with a color and auto-reset
-function c.w(color_code, text)
-  return color_code .. text .. c.reset
-end
-
--- Helper: 256-color foreground  (n = 0–255)
-function c.fg256(n)
-  return string.format("\27[38;5;%dm", n)
-end
-
--- Helper: 256-color background  (n = 0–255)
-function c.bg256(n)
-  return string.format("\27[48;5;%dm", n)
-end
-
--- Helper: true-color (RGB) foreground
-function c.fg_rgb(r, g, b)
-  return string.format("\27[38;2;%d;%d;%dm", r, g, b)
-end
-
--- Helper: true-color (RGB) background
-function c.bg_rgb(r, g, b)
-  return string.format("\27[48;2;%d;%d;%dm", r, g, b)
-end
+local c = require("colors")
 
 ---@param tbl table
 ---@param indent string
@@ -101,11 +15,11 @@ function DumpTable(tbl, indent, printfn, depth)
     depth = 0
   end
   if depth > 5 then
-    explo.logw("Max depth reached, stopping dump to prevent infinite recursion")
+    explo.warn("Max depth reached, stopping dump to prevent infinite recursion")
     return indent .. "{...}\n"
   end
   if type(tbl) ~= "table" then
-    explo.loge("Not a table: " .. tostring(tbl))
+    explo.error("Not a table: " .. tostring(tbl))
     return "Not table type: " .. indent .. tostring(tbl) .. "\n"
   end
   for k, v in pairs(tbl) do
@@ -164,7 +78,7 @@ end
 ---@return HTTPResponse
 function ParseHTTPResponse(response)
   if #response == 0 then
-    explo.logw("Empty response received")
+    explo.warn("Empty response received")
     return {
       status_code = 444,
       headers = {},
@@ -183,15 +97,15 @@ function ParseHTTPResponse(response)
     body = body,
   }
   if not parsed.status_code then
-    explo.logw("Failed to parse status code from response, defaulting to 0")
+    explo.warn("Failed to parse status code from response, defaulting to 0")
     parsed.status_code = -1
   end
   if not parsed.headers then
-    explo.logw("Failed to parse headers from response, defaulting to empty table")
+    explo.warn("Failed to parse headers from response, defaulting to empty table")
     parsed.headers = {}
   end
   if not parsed.body then
-    explo.logw("Failed to parse body from response, defaulting to empty string")
+    explo.warn("Failed to parse body from response, defaulting to empty string")
     parsed.body = ""
   end
   return parsed
@@ -203,7 +117,7 @@ end
 function SendHttp(data)
   local fd = explo.socket(SOCK_STREAM)
   if not fd then
-    explo.loge("Failed to create socket")
+    explo.error("Failed to create socket")
     return -1
   end
 
@@ -212,13 +126,13 @@ function SendHttp(data)
     ip = ip
     port = tonumber(port) or 80
   else
-    explo.logw("Failed to parse IP and port from URL, defaulting to localhost:80")
+    explo.warn("Failed to parse IP and port from URL, defaulting to localhost:80")
     ip = "localhost"
     port = 80
   end
 
   if not explo.connect(fd, ip, port) then
-    explo.loge("Failed to connect to " .. ip .. ":" .. port)
+    explo.error("Failed to connect to " .. ip .. ":" .. port)
     return -2
   end
 
@@ -246,15 +160,15 @@ function SendHttp(data)
 
   local bytes_written = explo.write(fd, request)
   if bytes_written <= 0 then
-    explo.loge("Failed to send request")
+    explo.error("Failed to send request")
     return -3
   end
   local response = explo.read(fd, 4096)
   if not response then
-    explo.loge("Failed to read response")
+    explo.error("Failed to read response")
     return -4
   end
-  explo.logd("Received response: " .. response)
+  explo.dbg("Received response: " .. response)
   return ParseHTTPResponse(response)
 end
 
@@ -267,12 +181,12 @@ function SendHttps(data)
 
   local tlc = debug.getregistry().tlsClient
   if tlc then
-    explo.logi("Using TLS client from registry for HTTPS connection")
+    explo.info("Using TLS client from registry for HTTPS connection")
     goto existing_client
   end
   fd = explo.socket(SOCK_STREAM)
   if not fd then
-    explo.loge("Failed to create socket")
+    explo.error("Failed to create socket")
     return -1
   end
 
@@ -280,13 +194,13 @@ function SendHttps(data)
     ip = ip
     port = tonumber(port) or 443
   else
-    explo.logw("Failed to parse IP and port from URL, defaulting to localhost:443")
+    explo.warn("Failed to parse IP and port from URL, defaulting to localhost:443")
     ip = "localhost"
     port = 443
   end
 
   if not explo.sconnect(fd, ip, port) then
-    explo.loge("Failed to connect to " .. ip .. ":" .. port)
+    explo.error("Failed to connect to " .. ip .. ":" .. port)
     return -2
   end
 
@@ -315,13 +229,13 @@ function SendHttps(data)
 
   local bytes_written = explo.swrite(request)
   if bytes_written <= 0 then
-    explo.loge("Failed to send request")
+    explo.error("Failed to send request")
     return -3
   end
 
   local response = explo.sread(4096)
   if not response then
-    explo.loge("Failed to read response")
+    explo.error("Failed to read response")
     return -4
   end
 
@@ -330,7 +244,7 @@ function SendHttps(data)
     (data.headers["Connection"] and data.headers["Connection"] == "Close")
     or (pr.headers["Connection"] and pr.headers["Connection"]:lower() == "close")
   then
-    explo.logi("Closing TLS client due to Connection: Close header")
+    explo.info("Closing TLS client due to Connection: Close header")
     explo.sclose()
     debug.getregistry().tlsClient = nil
   end
@@ -356,9 +270,9 @@ end
 ---@param call_data HTTPConfig
 function HostAnalysis(response, call_data)
   if response.status_code == wrong_status_code then
-    explo.logw("Received response with wrong status code: " .. response.status_code)
+    explo.warn("Received response with wrong status code: " .. response.status_code)
   elseif response.body and #response.body == wrong_response_size then
-    explo.logw("Received response with wrong size: " .. #response.body)
+    explo.warn("Received response with wrong size: " .. #response.body)
   elseif Contains({ 200, 201, 202, 204, 205, 206 }, response.status_code) then
     print(
       "Host: "
@@ -369,7 +283,7 @@ function HostAnalysis(response, call_data)
         .. #response.body
     )
   elseif Contains({ 300, 301, 302 }, response.status_code) then
-    explo.logi("Received redirection response with status code: " .. response.status_code)
+    explo.info("Received redirection response with status code: " .. response.status_code)
     print(
       "Host: "
         .. call_data.headers["Host"]
@@ -381,7 +295,7 @@ function HostAnalysis(response, call_data)
         .. (response.headers["Location"] or "N/A")
     )
   elseif response.status_code == -1 then
-    explo.logw("Failed to parse status code from response, treating as unknown response")
+    explo.warn("Failed to parse status code from response, treating as unknown response")
     print(
       "Host: "
         .. call_data.headers["Host"]
@@ -407,9 +321,9 @@ end
 ---@param call_data HTTPConfig
 function PathAnalysis(response, call_data)
   if response.status_code == wrong_status_code then
-    explo.logw("Received response with wrong status code: " .. response.status_code)
+    explo.warn("Received response with wrong status code: " .. response.status_code)
   elseif response.body and #response.body == wrong_response_size then
-    explo.logw("Received response with wrong size: " .. #response.body)
+    explo.warn("Received response with wrong size: " .. #response.body)
   elseif Contains({ 200, 201, 202, 204, 205, 206 }, response.status_code) then
     print(
       "Path: "
@@ -420,7 +334,7 @@ function PathAnalysis(response, call_data)
         .. #response.body
     )
   elseif Contains({ 300, 301, 302 }, response.status_code) then
-    explo.logi("Received redirection response with status code: " .. response.status_code)
+    explo.info("Received redirection response with status code: " .. response.status_code)
     print(
       "Path: "
         .. call_data.url
@@ -432,7 +346,7 @@ function PathAnalysis(response, call_data)
         .. (response.headers["Location"] or "N/A")
     )
   elseif response.status_code == -1 then
-    explo.logw("Failed to parse status code from response, treating as unknown response")
+    explo.warn("Failed to parse status code from response, treating as unknown response")
     print(
       "Path: "
         .. call_data.url
@@ -477,10 +391,10 @@ return {
     threads = 4,
   },
   initialize = function()
-    explo.logi("Initializing fuzz tool")
+    explo.info("Initializing fuzz tool")
   end,
   shutdown = function()
-    explo.logi("Shutting down fuzz tool")
+    explo.info("Shutting down fuzz tool")
   end,
   execute = function()
     local target = explo.var("target")
@@ -511,10 +425,10 @@ return {
       or type(data) ~= "string"
       or type(type_) ~= "string"
     then
-      explo.loge(
+      explo.error(
         "Invalid configuration: target, fuzz_key, fuzz_ext_key, dict, ext_dict, kind, header, host and data must be strings"
       )
-      explo.logd(
+      explo.dbg(
         "Received types: "
           .. string.format(
             "target=%s, fuzz_key=%s, fuzz_ext_key=%s, dict=%s, ext_dict=%s kind=%s, header=%s, host=%s, data=%s, type_=%s",
@@ -530,7 +444,7 @@ return {
             type(type_)
           )
       )
-      explo.logd(
+      explo.dbg(
         "Received values: "
           .. string.format(
             "target=%s, fuzz_key=%s, fuzz_ext_key=%s, dict=%s, ext_dict=%s kind=%s, header=%s, host=%s, data=%s, type_=%s",
@@ -555,10 +469,10 @@ return {
       or type(thread_delay) ~= "number"
       or type(threads) ~= "number"
     then
-      explo.loge(
+      explo.error(
         "Invalid configuration: wrong_status_code, wrong_response_size, wrong_response_time, thread_delay and threads must be numbers"
       )
-      explo.logd(
+      explo.dbg(
         "Received types: "
           .. string.format(
             "wrong_status_code=%s, wrong_response_size=%s, wrong_response_time=%s, thread_delay=%s, threads=%s",
@@ -576,18 +490,18 @@ return {
     _G.wrong_response_size = wrong_response_size
     _G.wrong_response_time = wrong_response_time
 
-    explo.logi(string.format("Fuzzing %s with %d threads and delay of %d ms", target, threads, thread_delay))
-    explo.logi(("Loading dict %s"):format(dict))
+    explo.info(string.format("Fuzzing %s with %d threads and delay of %d ms", target, threads, thread_delay))
+    explo.info(("Loading dict %s"):format(dict))
     local file = io.open(dict, "r")
     if not file then
-      explo.loge(("Failed to open dict file: %s"):format(dict))
+      explo.error(("Failed to open dict file: %s"):format(dict))
       return 3
     end
 
     local lines = {}
     for line in file:lines() do
       if line:find("^#") then
-        explo.logd(("Skipping comment line: %s"):format(line))
+        explo.dbg(("Skipping comment line: %s"):format(line))
         goto continue
       end
       table.insert(lines, line)
@@ -596,7 +510,7 @@ return {
     file:close()
 
     if #lines == 0 then
-      explo.loge("Dict file is empty or contains only comments")
+      explo.error("Dict file is empty or contains only comments")
       file:close()
       return 4
     end
@@ -606,13 +520,13 @@ return {
       file = io.open(ext_dict, "r")
 
       if not file then
-        explo.loge(("Failed to open ext_dict file: %s"):format(ext_dict))
+        explo.error(("Failed to open ext_dict file: %s"):format(ext_dict))
         return 3
       end
 
       for line in file:lines() do
         if line:find("^#") then
-          explo.logd(("Skipping comment line in ext_dict: %s"):format(line))
+          explo.dbg(("Skipping comment line in ext_dict: %s"):format(line))
           goto continue_ext
         end
         table.insert(exts, line)
@@ -625,11 +539,11 @@ return {
     -- type_ = "host,path,data",
     local x = string.len(type_:gsub("%s+", "")) - string.len(type_:gsub("%s+", ""):gsub(",", "")) + 1
     if x <= 0 then
-      explo.loge("Invalid type_ configuration, must contain at least one type (host, path, data)")
+      explo.error("Invalid type_ configuration, must contain at least one type (host, path, data)")
       return 5
     end
     if x > 5 then
-      explo.logw("Too many types specified in type_, limiting to 5 for performance reasons")
+      explo.warn("Too many types specified in type_, limiting to 5 for performance reasons")
       x = 5
     end
 
@@ -639,11 +553,11 @@ return {
       if key and value then
         headers[key] = value
       else
-        explo.logw(("Invalid header format: %s"):format(str))
+        explo.warn(("Invalid header format: %s"):format(str))
       end
     end
 
-    explo.logi(("Fuzzing with %d payloads per type"):format(x))
+    explo.info(("Fuzzing with %d payloads per type"):format(x))
     local start = explo.clock()
     for words in GenFuzzPayloads(lines, x) do
       ---@type HTTPConfig
@@ -654,21 +568,21 @@ return {
         headers = headers,
       }
       local index = 1
-      DumpTable(words, "dt: ", explo.logd)
+      DumpTable(words, "dt: ", explo.dbg)
 
       if type_:find("host") then
-        explo.logi("Fuzzing host with payload: " .. words[index])
+        explo.info("Fuzzing host with payload: " .. words[index])
         if host then
           call_data.headers["Host"] = host:gsub(fuzz_key, words[index])
           index = index + 1
         else
-          explo.logw("Host header not found, skipping host fuzzing")
+          explo.warn("Host header not found, skipping host fuzzing")
         end
         local sender = nil
         if call_data.url:find("^https://") then
           call_data.url = call_data.url:gsub("^http://", "https://")
-          explo.logi("Using HTTPS for fuzzing")
-          explo.logd("Modified URL for HTTPS: " .. call_data.url)
+          explo.info("Using HTTPS for fuzzing")
+          explo.dbg("Modified URL for HTTPS: " .. call_data.url)
           sender = SendHttps
         else
           sender = SendHttp
@@ -676,10 +590,10 @@ return {
 
         local response = sender(call_data)
         if type(response) == "number" then
-          explo.loge("Error sending HTTP request, skipping response analysis")
+          explo.error("Error sending HTTP request, skipping response analysis")
           return 5
         end
-        explo.logd("Received response with status code: " .. response.status_code)
+        explo.dbg("Received response with status code: " .. response.status_code)
 
         HostAnalysis(response, call_data)
       end
@@ -700,28 +614,28 @@ return {
             explo.logt("Index: " .. index .. ", Remaining path fuzzing count: " .. path_count)
           end
 
-          explo.logd("Fuzzing path with payload: " .. call_data.url)
+          explo.dbg("Fuzzing path with payload: " .. call_data.url)
 
-          explo.logi("Fuzzing path with payload: " .. call_data.url .. " and extension: " .. ext)
+          explo.info("Fuzzing path with payload: " .. call_data.url .. " and extension: " .. ext)
           call_data.url = call_data.url:gsub(fuzz_ext_key, ext)
           index = index + 1
           local sender = nil
           if call_data.url:find("^https://") then
             call_data.url = call_data.url:gsub("^http://", "https://")
-            explo.logi("Using HTTPS for fuzzing")
-            explo.logd("Modified URL for HTTPS: " .. call_data.url)
+            explo.info("Using HTTPS for fuzzing")
+            explo.dbg("Modified URL for HTTPS: " .. call_data.url)
             sender = SendHttps
           else
             sender = SendHttp
           end
 
-          DumpTable(call_data, "call_data: ", explo.logd)
+          DumpTable(call_data, "call_data: ", explo.dbg)
           local response = sender(call_data)
           if type(response) == "number" then
-            explo.loge("Error sending HTTP request, skipping response analysis")
+            explo.error("Error sending HTTP request, skipping response analysis")
             return 5
           end
-          explo.logd("Received response with status code: " .. response.status_code)
+          explo.dbg("Received response with status code: " .. response.status_code)
 
           PathAnalysis(response, call_data)
         end
@@ -750,11 +664,11 @@ return {
     end
 
     if debug.getregistry().tlsClient then
-      explo.logi("Closing TLS client from registry")
+      explo.info("Closing TLS client from registry")
       explo.sclose()
     end
 
-    explo.logi(string.format("Fuzzing completed in %.2f seconds", os.clock() - start))
+    explo.info(string.format("Fuzzing completed in %.2f seconds", os.clock() - start))
     print("Fuzzing completed in " .. c.w(c.fg.cyan, string.format("%.2f seconds", (explo.clock() - start) / (10 ^ 9))))
     return 0
   end,

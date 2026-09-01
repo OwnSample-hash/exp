@@ -2,6 +2,7 @@
 
 #include "utils.hpp"
 #include <interfaces/tool.hpp>
+#include <lua.h>
 #include <memory>
 #include <spdlog/logger.h>
 
@@ -14,15 +15,55 @@ class luaTool final : public ITool {
   std::string description;
   std::string version;
   std::vector<std::string> tags;
+  lua_State *L;
   LTW lua;
   int lastStatus = 0;
 
 public:
-  ~luaTool() { lua.close(); }
+  ~luaTool() {
+    if (L) {
+      lua_close(L);
+      L = nullptr;
+    }
+  }
 
   luaTool() = delete;
   luaTool(const luaTool &) = delete;
+  luaTool(luaTool &&) = delete;
+
   luaTool(std::shared_ptr<spdlog::logger> logger, const std::string &file) : logger(std::move(logger)), file(file) {
+    L = luaL_newstate();
+    if (!L)
+      throw std::runtime_error("Failed to create Lua state");
+    lua = LTW(L);
+
+    luaL_openlibs(L);
+    luaL_newlibtable(L, libs);
+    luaL_setfuncs(L, libs, 0);
+    lua_setglobal(L, "explo");
+
+    {
+#define Z(name)                                                                                                        \
+  lua_pushnumber(L, name);                                                                                             \
+  lua_setfield(L, -2, #name);
+#define Y(ns, ...)                                                                                                     \
+  do {                                                                                                                 \
+    using namespace ns;                                                                                                \
+    lua_createtable(L, 0, ns::Count);                                                                                  \
+    __VA_ARGS__                                                                                                        \
+    lua_getglobal(L, "explo");                                                                                         \
+    lua_pushvalue(L, -2);                                                                                              \
+    lua_setfield(L, -2, #ns);                                                                                          \
+  } while (0);
+#define X(name, type)                                                                                                  \
+  lua_push##type(L, name);                                                                                             \
+  lua_setglobal(L, #name);
+      enumData
+#undef X
+#undef Y
+#undef Z
+    }
+
     lua(file);
     name = lua["name"].as<std::string>("Unnamed Lua Tool");
     version = lua["version"].as<std::string>("0.1");

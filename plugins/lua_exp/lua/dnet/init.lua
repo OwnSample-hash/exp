@@ -1,136 +1,40 @@
----@type function
----@param target string
----@param port string
----@param method string
----@return integer
-function PortScan(target, port, method)
-  local ports = {}
+require("utils")
+local c = require("colors")
 
-  if string.find(port, "-") then
-    explo.logi("Port range detected: " .. port)
-    local start, finish = string.match(port, "(%d+)-(%d+)")
-    if start == nil or finish == nil then
-      explo.loge("Invalid port range format")
-      return 1
+local s2a = function(status)
+  local str = ""
+  for k, v in pairs(explo.ConnectionStatus) do
+    if v == status then
+      str = k
+      break
     end
-    start = tonumber(start)
-    finish = tonumber(finish)
-    if start == nil or finish == nil then
-      explo.loge("Port range contains non-numeric values")
-      return 1
-    end
-    if start < 0 or finish > 65535 or start > finish then
-      explo.loge("Invalid port range values")
-      return 1
-    end
-    for i = start, finish do
-      table.insert(ports, i)
-    end
-  else
-    explo.logi("Single port detected: " .. port)
-    table.insert(ports, tonumber(port))
   end
-
-  local openPorts = {}
-  if method == "tcp" then
-    explo.logi("Performing TCP scan on " .. target .. " for ports " .. port)
-    print("Performing TCP scan on " .. target .. " for ports " .. port)
-    for _, p in ipairs(ports) do
-      local fd = explo.socket(SOCK_STREAM)
-      if fd < 0 then
-        explo.loge("Failed to create socket")
-        return 1
-      end
-      if explo.connect(fd, target, p) then
-        explo.logi("Port " .. p .. " is open")
-        table.insert(openPorts, p)
-      else
-        explo.logi("Port " .. p .. " is closed")
-      end
-      explo.close(fd)
-    end
-  elseif method == "udp" then
-    explo.logi("Performing UDP scan on " .. target .. " for ports " .. port)
-    print("Performing UDP scan on " .. target .. " for ports " .. port)
-    for _, p in ipairs(ports) do
-      local fd = explo.socket(SOCK_DGRAM)
-      if fd < 0 then
-        explo.loge("Failed to create socket")
-        return 1
-      end
-      if explo.connect(fd, target, p) then
-        explo.logi("Port " .. p .. " is open")
-        table.insert(openPorts, p)
-      end
-      explo.close(fd)
-    end
-  else
-    explo.logw("Unknown method: " .. method)
-    return 1
-  end
-
-  if #openPorts == 0 then
-    explo.logi("No open ports found")
-    print("No open ports found")
-    return 0
-  end
-
-  for _, p in ipairs(openPorts) do
-    print("Open port: " .. p)
-  end
-  return 0
+  return str
 end
 
----@type function
----@param target string
----@return integer
-function NetworkScan(target)
-  explo.logi("Performing network scan on " .. target)
-  print("Performing network scan on " .. target)
-  local ip, mask = string.match(target, "([^/]+)/(%d+)")
-  if ip == nil or mask == nil then
-    explo.loge("Invalid network format")
-    return 1
-  end
-  local maskNum = tonumber(mask)
-  if maskNum == nil or maskNum < 0 or maskNum > 32 then
-    explo.loge("Invalid subnet mask")
-    return 1
-  end
-  explo.logi("IP: " .. ip .. ", Mask: " .. mask)
+local function contains(tbl, val)
+  return tbl[val] ~= nil
+end
 
-  local function ipToNum(ip_)
-    local num = 0
-    for octet in string.gmatch(ip_, "%d+") do
-      num = num * 256 + tonumber(octet)
-    end
-    return num
+local function s2c(status)
+  local red = {
+    [explo.ConnectionStatus.Closed] = true,
+    [explo.ConnectionStatus.Timeout] = true,
+    [explo.ConnectionStatus.Refused] = true,
+    [explo.ConnectionStatus.HostUnreachable] = true,
+    [explo.ConnectionStatus.NetworkUnreachable] = true,
+  }
+  if status == explo.ConnectionStatus.Open then
+    return c.c(c.fg.green, s2a(status))
+  elseif contains(red, status) then
+    return c.c(c.fg.red, s2a(status))
+  elseif status == explo.ConnectionStatus.Filtered then
+    return c.c(c.fg.yellow, s2a(status))
+  elseif status == explo.ConnectionStatus.Unreachable then
+    return c.c(c.fg.magenta, s2a(status))
+  else
+    return c.c(c.fg.white, s2a(status))
   end
-
-  local function numToIp(num)
-    local octets = {}
-    for _ = 1, 4 do
-      table.insert(octets, 1, num % 256)
-      num = math.floor(num / 256)
-    end
-    return table.concat(octets, ".")
-  end
-
-  local ipNum = ipToNum(ip)
-  maskNum = 0xFFFFFFFF - (2 ^ (32 - maskNum) - 2)
-  local networkNum = ipNum & maskNum
-  local broadcastNum = networkNum + (0xFFFFFFFF - maskNum)
-
-  local activeHosts = {}
-  for i = networkNum + 1, broadcastNum - 1 do
-    local hostIp = numToIp(i)
-    local fd = explo.socket(SOCK_STREAM)
-    if fd >= 0 then
-      table.insert(activeHosts, hostIp)
-    end
-  end
-
-  return 0
 end
 
 ---@type LuaTool
@@ -141,41 +45,128 @@ return {
   tags = { "tool", "nmap" },
   vars = {
     target = "127.0.0.1",
-    ports = "0-1024",
+    ports = "1-10000",
     method = "tcp",
   },
   initialize = function()
-    explo.logi("Initializing pmap")
+    explo.info("Initializing pmap")
   end,
   shutdown = function()
-    explo.logi("Shutting down pmap")
+    explo.info("Shutting down pmap")
   end,
   execute = function()
-    explo.logi("Executing pmap")
+    local start = explo.clock()
+    explo.info("Executing dnet")
     local target = explo.var("target")
     local port = explo.var("ports")
     local method = explo.var("method")
-    explo.logi("Target: " .. target)
-    explo.logi("Ports: " .. port)
-    explo.logi("Method: " .. method)
+    explo.info("Target: " .. target)
+    explo.info("Ports: " .. port)
+    explo.info("Method: " .. method)
     if target == nil or port == nil or method == nil then
-      explo.loge("One or more variables are nil")
+      explo.error("One or more variables are nil")
       return 1
     end
 
     if type(target) ~= "string" or type(port) ~= "string" or type(method) ~= "string" then
-      explo.loge("Variable 'target' is not a string")
+      explo.error("Variable 'target' is not a string")
       return 1
     end
 
     local result = -1
 
-    if #port > 0 then
-      result = PortScan(target, port, method)
-    else
-      result = NetworkScan(target)
+    local ips = MakeIps(target)
+    local ports = MakePortRange(port)
+
+    local longestPort = 0
+    for _, p in pairs(ports) do
+      if #tostring(p) > longestPort then
+        longestPort = #tostring(p)
+      end
     end
 
+    -- TODO: Rewrite so if multiple addresses are given, scan them in parallel.
+    local coroF = function()
+      for w in method:gmatch("([^,]+)") do
+        local type_ = TypeToNum(w:lower())
+        for _, ip in ipairs(ips) do
+          local domain = IpToDomain(ip)
+          for _, p in pairs(ports) do
+            coroutine.yield(ip, p, type_, domain)
+          end
+        end
+      end
+    end
+
+    local types = {}
+    for w in method:gmatch("([^,]+)") do
+      local type_ = TypeToNum(w:lower())
+      if type_ then
+        table.insert(types, type_)
+      end
+    end
+
+    local scan_start = explo.clock()
+    local scanRes = explo.async_scan(#ips * #ports * #types, coroutine.create(coroF))
+    local took = (explo.clock() - scan_start) / 1000000000
+    explo.info(string.format("Scan took %.2f seconds", took))
+
+    if not scanRes then
+      explo.error("Scan failed")
+      return 1
+    end
+
+    local stats = {}
+
+    for k, v in pairs(scanRes) do
+      local dom, proto, ip, port_ = k:match("^(%g+):(%g+)://(%g+):(%g+)$")
+      if dom and proto and ip and port_ then
+        stats[proto] = stats[proto] or {}
+        stats[proto][ip] = stats[proto][ip] or {}
+        stats[proto][ip][port_] = v
+      else
+        explo.error("Invalid scan result format: " .. k)
+      end
+    end
+
+    local format_str = ("    Port: " .. c.fg.cyan .. "%%-%ds" .. c.reset .. " => Status: %%s"):format(longestPort)
+
+    print("Scan completed. Summary:")
+    for proto, ips_ in pairs(stats) do
+      print(string.format("Protocol: " .. c.fg.magenta .. "%s" .. c.reset, proto))
+      for ip, ports_ in pairs(ips_) do
+        local kports = {}
+        for port_ in pairs(ports_) do
+          table.insert(kports, port_)
+        end
+        table.sort(kports, function(a, b)
+          return tonumber(a) < tonumber(b)
+        end)
+
+        print(string.format("  IP: " .. c.fg.magenta .. "%s" .. c.reset, ip))
+        local errors = {}
+        for _, key in ipairs(kports) do
+          local port_ = key
+          local status = ports_[key]
+          if status <= 1 then
+            print(string.format(format_str, port_, s2c(status)))
+          else
+            errors[status] = errors[status] or 0
+            errors[status] = errors[status] + 1
+          end
+        end
+        if next(errors) then
+          print(c.c(c.fg.red, "    Errors:"))
+          for err, count in pairs(errors) do
+            print(string.format("      Error code: %s => %d", s2c(err), count))
+          end
+        end
+      end
+    end
+
+    result = 0
+    local main_time = (explo.clock() - start) / 1000000000
+    print("Scan took " .. took .. " seconds and total execution time was " .. main_time .. " seconds.")
     return result
   end,
 }
