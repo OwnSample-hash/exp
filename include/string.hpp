@@ -28,25 +28,20 @@ struct SplitStringYield {
    * @brief An iterator that yields substrings of a string split by a delimiter.
    *
    */
-  class iterator
-      : public IteratorFacade<SplitStringYield, std::forward_iterator_tag,
-                              std::string> {
+  class iterator : public IteratorFacade<iterator, std::forward_iterator_tag, std::string> {
     std::string Current;
     const char *Index, *Begin;
     const char Delim;
 
   public:
-    explicit iterator(const std::string current, char delimiter = '\0')
-        : Current(), Delim(delimiter) {
+    explicit iterator(const std::string current, char delimiter = '\0') : Current(), Delim(delimiter) {
       Index = Begin = strdup(current.c_str());
       this->operator++();
     }
 
     ~iterator() { free((void *)Begin); }
 
-    bool operator==(const iterator &That) const {
-      return Current == That.Current;
-    }
+    bool operator==(const iterator &That) const { return Current == That.Current; }
 
     iterator &operator++() {
       const char *Start = Index;
@@ -84,8 +79,7 @@ struct SplitStringYield {
    * @param s The string to split.
    * @param delimiter The delimiter to split the string by.
    */
-  SplitStringYield(const std::string &s, char delimiter)
-      : Str(s), Delimiter(delimiter) {}
+  SplitStringYield(const std::string &s, char delimiter) : Str(s), Delimiter(delimiter) {}
 };
 
 } // namespace explo

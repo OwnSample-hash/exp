@@ -1,11 +1,11 @@
 #include <arc.hpp>
 #include <arc_fuse.hpp>
 #include <cassert>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fuse3/fuse_lowlevel.h>
-#include <stdint.h>
 
 namespace fs = std::filesystem;
 
@@ -131,12 +131,6 @@ bool Arc::parse() {
     Piece &piece = header_.pieces[i];
     LOG_DEBUG("Validating piece %u: name_offset=%ld, name_size=%zu, offset=%ld, size=%zu", i, piece.name_offset,
               piece.name_size, piece.offset, piece.size);
-    assert(piece.smarker == SMARKER);
-    assert(piece.emarker == EMARKER);
-    assert(piece.name_offset > 0);
-    assert(piece.name_size > 0);
-    assert(piece.offset > 0);
-    assert(piece.size > 0);
     // Read the name
     LOG_DEBUG("Reading name for piece %u at offset %ld with size %zu", i, piece.name_offset, piece.name_size);
     if (std::fseek(file_, piece.name_offset, SEEK_SET)) {
@@ -214,8 +208,6 @@ bool Arc::add_file(const std::string &filename, const std::string &name_in_archi
   std::fseek(input_file, 0, SEEK_END);
   size_t size = std::ftell(input_file);
   std::fseek(input_file, 0, SEEK_SET);
-  // Allocate memory for the file data
-  assert(size > 0);
   // Create a new piece
 
   long int pos = HEADER_SIZE + ((header_.file_count + 1) * PIECE_SIZE);
@@ -242,7 +234,6 @@ bool Arc::add_file(const std::string &filename, const std::string &name_in_archi
   }
   piece.data.insert(piece.data.end(), data, data + size);
   delete[] data;
-  assert(piece.data.size() == size);
   std::fclose(input_file);
 
   piece.crc32 = crc32(piece.data);

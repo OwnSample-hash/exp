@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 
 namespace arc {
 
-enum LogLevel { ERR, INF, DBG };
+enum LogLevel : std::uint8_t { ERR, INF, DBG };
 inline const char *log_level_str[] = {"ERR", "INF", "DBG"};
 
 inline int log_level = ERR;
@@ -26,16 +26,20 @@ inline int log_level = ERR;
 #else
 // #define LOG_LOG(file, line, lvl, msg, ...) fprintf(stderr, "[%s:%d] " STR(lvl) " " msg "\n", file, line,
 // ##__VA_ARGS__)
-inline void LOG_LOG(const char *file, int line, LogLevel lvl, const char *msg, ...) {
+inline void LOG_LOG(const char *file, int line, LogLevel lvl, const char *msg) {
   if (lvl > log_level) {
     return;
   }
-  va_list args;
-  va_start(args, msg);
+  fprintf(stderr, "[%s:%d] %s %s\n", file, line, log_level_str[lvl], msg);
+}
+template <typename... Args>
+inline void LOG_LOG(const char *file, int line, LogLevel lvl, const char *msg, Args... args) {
+  if (lvl > log_level) {
+    return;
+  }
   char buffer[1024];
-  vsnprintf(buffer, sizeof(buffer), msg, args);
+  snprintf(buffer, sizeof(buffer), msg, args...);
   fprintf(stderr, "[%s:%d] %s %s\n", file, line, log_level_str[lvl], buffer);
-  va_end(args);
 }
 inline void set_log_level(LogLevel lvl) { log_level = lvl; }
 #endif
@@ -57,13 +61,13 @@ uint32_t crc32(const std::span<const std::byte> &data);
 #define EMARKER 0xDEADBEEF
 
 struct __attribute__((__packed__)) Piece {
-  unsigned long smarker = SMARKER; //< Marker to identify the start of a piece
-  long int name_offset;            //< Offset from the start of the file to the name string
-  unsigned long name_size;         //< Size of the name string (not including null terminator)
-  long int offset;                 //< Offset from the start of the file to the data
-  unsigned long size;              //< Size of the data in bytes
-  uint32_t crc32;                  //< CRC32 checksum of the data
-  uint32_t emarker = EMARKER;      //< Marker to identify the end of a piece
+  uint64_t smarker = SMARKER; //< Marker to identify the start of a piece
+  int64_t name_offset;        //< Offset from the start of the file to the name string
+  uint64_t name_size;         //< Size of the name string (not including null terminator)
+  int64_t offset;             //< Offset from the start of the file to the data
+  uint64_t size;              //< Size of the data in bytes
+  uint32_t crc32;             //< CRC32 checksum of the data
+  uint32_t emarker = EMARKER; //< Marker to identify the end of a piece
 
   // excluded from serialization
   const char *name;            //< Name of the file (null-terminated string)
@@ -109,7 +113,7 @@ class Arc {
 
 public:
   Arc();
-  Arc(const std::string &filename);
+  explicit Arc(const std::string &filename);
   ~Arc();
 
   Arc(const Arc &) = delete;
@@ -141,7 +145,7 @@ public:
 
   uint32_t get_file_count() const { return header_.file_count; };
 
-  struct iterator : public explo::IteratorFacade<Arc, std::forward_iterator_tag, Piece> {
+  struct iterator : public explo::IteratorFacade<iterator, std::forward_iterator_tag, Piece> {
     Arc *arc_;
     uint32_t index_;
 

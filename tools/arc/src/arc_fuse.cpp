@@ -18,8 +18,9 @@ void *arc_fuse_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
   (void)conn;
   (void)cfg;
   auto *fs = static_cast<FileSystem *>(fuse_get_context()->private_data);
-  if (!fs) {
+  if (fs == nullptr) {
     LOG_ERROR("arc_fuse_init: fuse_get_context()->private_data is null");
+    throw std::runtime_error("arc_fuse_init: fuse_get_context()->private_data is null");
   }
   fs->update_write_budget();
 
@@ -71,7 +72,7 @@ int arc_fuse_read(const char *path, char *buf, size_t size, off_t offset, struct
   }
 #endif
 
-  if (!fi && fi->fh == 0) {
+  if (!fi || fi->fh == 0) {
     LOG_ERROR("arc_fuse_read: file handle is null for path: %s", path);
     return -EBADF;
   }
@@ -200,7 +201,7 @@ int arc_fuse_statfs(const char *path, struct statvfs *stbuf) {
   LOG_DEBUG("arc_fuse_statfs: path=%s", path);
   auto *fs = static_cast<FileSystem *>(fuse_get_context()->private_data);
   std::memset(stbuf, 0, sizeof(*stbuf));
-  constexpr unsigned long block_size = 4096;
+  constexpr uint64_t block_size = 4096;
 
   stbuf->f_bsize = block_size;
   stbuf->f_frsize = block_size;
@@ -244,7 +245,7 @@ int arc_fuse_write(const char *path, const char *buf, size_t size, off_t offset,
   auto *fs = static_cast<FileSystem *>(fuse_get_context()->private_data);
   if (fs->is_read_only())
     return -EROFS;
-  if (!fi && fi->fh == 0) {
+  if (!fi || fi->fh == 0) {
     LOG_ERROR("arc_fuse_write: file handle is null for path: %s", path);
     return -EBADF;
   }
@@ -264,7 +265,7 @@ int arc_fuse_write(const char *path, const char *buf, size_t size, off_t offset,
     cont.resize(offset + size);
   // std::memcpy(cont.data() + offset, buf, size);
   cont.insert_range(cont.end(), std::span<const std::byte>(reinterpret_cast<const std::byte *>(buf), size));
-  return size;
+  return static_cast<int>(size);
 }
 
 int arc_fuse_truncate(const char *path, off_t size, struct fuse_file_info *fi) {
@@ -301,7 +302,7 @@ int arc_fuse_mkdir(const char *path, mode_t mode) {
     return -EROFS;
   if (fs->lookup(path))
     return -EEXIST;
-  auto node = fs->create_dir(path);
+  fs->create_dir(path);
   return 0;
 }
 
@@ -331,7 +332,7 @@ int arc_fuse_rename(const char *from, const char *to, unsigned int flags) {
 
 int arc_fuse_release(const char *path, struct fuse_file_info *fi) {
   LOG_DEBUG("arc_fuse_release: path=%s", path);
-  if (!fi && fi->fh == 0)
+  if (!fi || fi->fh == 0)
     return -EBADF;
   auto *fs = static_cast<FileSystem *>(fuse_get_context()->private_data);
   auto node = reinterpret_cast<Node *>(&fi->fh);
@@ -347,7 +348,7 @@ int arc_fuse_fsync(const char *path, int datasync, struct fuse_file_info *fi) {
   LOG_DEBUG("arc_fuse_fsync: path=%s, datasync=%d", path, datasync);
   (void)path;
   (void)datasync;
-  if (!fi && fi->fh == 0)
+  if (!fi || fi->fh == 0)
     return -EBADF;
   auto *fs = static_cast<FileSystem *>(fuse_get_context()->private_data);
   auto node = reinterpret_cast<Node *>(&fi->fh);

@@ -72,7 +72,7 @@ public:
   [[nodiscard]] FileData &as_file() { return std::get<FileData>(data); }
 };
 
-enum class LookupError { NotFound, NotADirectory, NotAFile };
+enum class LookupError : std::uint8_t { NotFound, NotADirectory, NotAFile };
 
 struct WriteBudget {
   uint64_t free_space;
@@ -133,7 +133,7 @@ public:
     Node *current = root_.get();
     std::string built_path;
 
-    for (auto component : std::filesystem::path(full_path).parent_path()) {
+    for (const auto &component : std::filesystem::path(full_path).parent_path()) {
       if (component == "/")
         continue;
       built_path += "/" + component.string();
@@ -276,12 +276,12 @@ public:
     if (!file_data.is_dirty())
       return true; // nothing to commit
 
-    std::string full_path;
-    for (Node *current = node; current != nullptr; current = current->parent) {
-      if (current->parent != nullptr) { // skip root
-        full_path = "/" + current->name + full_path;
-      }
-    }
+    // std::string full_path;
+    // for (Node *current = node; current != nullptr; current = current->parent) {
+    //   if (current->parent != nullptr) { // skip root
+    //     full_path = "/" + current->name + full_path;
+    //   }
+    // }
 
     if (staged_callback_) {
       (*staged_callback_)(*node);
