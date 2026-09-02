@@ -31,22 +31,22 @@ bool OpenSSL_TLSClient::connect(std::string_view host, int port) {
   addrinfo hints{}, *res;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  if (getaddrinfo(host.data(), std::to_string(port).c_str(), &hints, &res) != 0)
+  if (explo::lib::getaddrinfo(host.data(), std::to_string(port).c_str(), &hints, &res) != 0)
     return false;
 
   // 2. Create TCP socket
   sock = explo::lib::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (sock < 0) {
-    freeaddrinfo(res);
+    explo::lib::freeaddrinfo(res);
     return false;
   }
 
   // 3. TCP connect
   if (explo::lib::connect(sock, res->ai_addr, res->ai_addrlen) != 0) {
-    freeaddrinfo(res);
+    explo::lib::freeaddrinfo(res);
     return false;
   }
-  freeaddrinfo(res);
+  explo::lib::freeaddrinfo(res);
 
   // 4. Wrap socket with TLS
   ssl = SSL_new(ctx);
