@@ -202,7 +202,10 @@ class MenuConfig:
             self._format_configs_files()
             return
 
-        self.config: list[ConfigOption] = self._load_config_from_file(in_file)
+        ocwd = os.getcwd()
+        os.chdir(os.path.dirname(in_file))
+        self.config: list[ConfigOption] = self._load_config_from_file(os.path.basename(in_file))
+        os.chdir(ocwd)
         self.current_selection: int = 0
         self.scroll_offset: int = 0
         self.show_help: bool = False
@@ -274,7 +277,6 @@ class MenuConfig:
             result.append(option)
             if option.children:
                 result.extend(self._flatten_options(option.children))
-        logger.verbose_2(f"{result=}")  # pyright: ignore
         return result
 
     def _check_depends(self, opt: ConfigOption) -> tuple[bool, tuple[str]]:
@@ -320,25 +322,27 @@ class MenuConfig:
 
         all_options = self._flatten_options(self.config)
         name_to_option = {o.name: o for o in all_options}
-        split = lambda c: (c, None) if "." not in c else c.split(".", 1)
 
         for condition in opt.show_if:
-            condition, sub = split(condition)
-            if condition not in name_to_option:
-                return False
-            cond_opt = name_to_option[condition]
-            if cond_opt.type == ConfigType.BOOL:
-                if not cond_opt.value:
-                    return False
-            elif cond_opt.type == ConfigType.TRISTATE:
-                if cond_opt.value != "y":
-                    return False
-            elif cond_opt.type == ConfigType.CHOICE:
-                if not cond_opt.value == sub:
+            logger.verbose_2(f"Evaluating show_if condition: {condition} {name_to_option[condition].value}")  # pyright: ignore
+            if condition not in name_to_option and not name_to_option[condition].value is None:
+                logger.warning("show_if condition references unknown option/None value: {condition}")
+            if condition.startswith("!"):
+                opt_name = condition[1:]
+                if not name_to_option[opt_name].value:
+                    logger.verbose_1(  # pyright: ignore
+                        f"Condition '{condition}' not satisfied because {opt_name} is enabled"
+                    )
                     return False
             else:
-                if not cond_opt.value:
+                if not name_to_option[condition].value:
+                    logger.verbose_1(  # pyright: ignore
+                        f"Condition '{condition}' not satisfied because {condition} is not enabled"
+                    )
+                    logger.verbose_2(f"{name_to_option[condition].value=}")  # pyright: ignore
                     return False
+
+        logger.verbose_1(f"All show_if conditions satisfied for {opt.name}")  # pyright: ignore
         return True
 
     def run(self, stdscr: curses.window):
@@ -1131,21 +1135,23 @@ class MenuConfig:
     ) -> List[ConfigOption]:
         """Load configuration definition from a YAML file"""
         logger.debug(f"Loading configuration from file: {filename}")
+        logger.verbose_1(f"Current recursion depth: {depth}")  # pyright: ignore
+        logger.verbose_1(f"Current cwd: {os.getcwd()}") # pyright: ignore
         if depth > 5:
             raise RecursionError("Maximum menu depth exceeded")
         with open(filename, "r") as f:
             data = yaml.safe_load(f)
         if depth == 0:
             self.old_cwd = os.getcwd()
-            os.chdir(os.path.dirname(os.path.abspath(filename)))
+        #     os.chdir(os.path.dirname(os.path.abspath(filename)))
 
         def parse_option(opt_dict):
             opt_type = ConfigType(opt_dict["type"])
             if opt_type == ConfigType.MENU:
-                logger.verbose_1(  # pyright: ignore
-                    f"Loading submenu from {opt_dict['source']} for {opt_dict['name']}"
-                )
-                return ConfigOption(
+                old_cwd = os.getcwd()
+                if depth > 0:
+                    os.chdir(os.path.dirname(os.path.abspath(filename)))
+                co = ConfigOption(
                     name=opt_dict["name"],
                     prompt=opt_dict["prompt"],
                     type=opt_type,
@@ -1165,16 +1171,19 @@ class MenuConfig:
                         "cmake_help", "Enable {plugin_name} plugin"
                     ),
                 )
+                if depth > 0:
+                    os.chdir(old_cwd)
+                logger.debug(f"Loaded submenu from {opt_dict['source']} for {opt_dict['name']}")
+                return co
             elif opt_type == ConfigType.DYNAMICMENU:
                 old_cwd = os.getcwd()
-                os.chdir(CWD)
-                logger.verbose_1(os.getcwd())  # pyright: ignore
+                os.chdir(os.path.dirname(os.path.abspath(filename)))
                 logger.verbose_1(  # pyright: ignore
                     f"Loading submenus from {opt_dict['source']} for {opt_dict['name']}"
                 )
                 children = []
-                for file in glob(opt_dict["source"]):
-                    logger.verbose_2(  # pyright: ignore
+                for file in glob(os.path.join(CWD, opt_dict["source"])):
+                    logger.verbose_2( # pyright: ignore
                         f"Loading dynamic submenu from file: {file}"
                     )
                     children.append(

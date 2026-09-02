@@ -21,3 +21,16 @@
   help_text: Enable or disable the use of precompiled headers to speed up compilation.
   cmake_export: true
   cmake_help: $help_text$
+
+- name: TLS_BACKEND
+  prompt: TLS Backend
+  type: choice
+  choices:
+    - name: openssl
+      description: Use OpenSSL as the TLS backend.
+    - name: mbedtls
+      description: Use mbedTLS as the TLS backend. Not implemented yet.
+  default: openssl
+  help_text: Select the TLS backend to use for secure connections.
+  cmake_export: true
+  cmake_help: $help_text$

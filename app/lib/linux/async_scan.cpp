@@ -1,29 +1,29 @@
 #include <arpa/inet.h>
-#include <bits/types/sigset_t.h>
 #include <cassert>
+#include <config.hpp>
 #include <ctime>
+#include <enums.hpp>
 #include <fcntl.h>
 #include <future>
 #include <inplace_vector>
 #include <lib.hpp>
-#include <lua.h>
-#include <lua_exp_config.hpp>
 #include <netinet/in.h>
+#include <spdlog/spdlog.h>
+#include <stdexcept>
 #include <sys/epoll.h>
 #include <sys/resource.h>
 #include <sys/select.h>
 #include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <thread>
 #include <tuple>
 #include <unistd.h>
-#include <utils.hpp>
 
+namespace explo::lib::impl {
 static auto &getLogger() {
   static std::shared_ptr<spdlog::logger> logger;
   if (!logger)
-    logger = spdlog::get("lua_exp")->clone("lua_exp::lua::alib");
+    logger = spdlog::get("lib")->clone("lib::async_scan");
   return logger;
 }
 
@@ -72,58 +72,6 @@ std::string formatResultKey(int domain, int socktype, std::string_view host, int
   return formatResultKey(dom2a(domain), sock2a(socktype), host, port);
 }
 
-std::tuple<int, int, std::string, int, int> analyzeFd(int fd, bool timedOut = true) {
-  int domain = -1, socktype = -1, port = -1, last_socket_error = -1;
-  std::string host = "unknown";
-  socklen_t domain_len = sizeof(domain);
-  socklen_t socktype_len = sizeof(socktype);
-  if (getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &domain, &domain_len) < 0 ||
-      getsockopt(fd, SOL_SOCKET, SO_TYPE, &socktype, &socktype_len) < 0) {
-    if (domain == -1) {
-      perror("getsockopt(SO_DOMAIN) failed");
-    }
-    if (socktype == -1) {
-      perror("getsockopt(SO_TYPE) failed");
-    }
-  }
-  struct sockaddr_storage addr;
-  addr.ss_family = domain;
-  socklen_t addrlen = domain2size(domain);
-  getpeername(fd, (struct sockaddr *)&addr, &addrlen);
-  if (domain == AF_INET6) {
-    char str[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&addr)->sin6_addr, str, sizeof(str));
-    host = str;
-  } else {
-    char str[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &((struct sockaddr_in *)&addr)->sin_addr, str, sizeof(str));
-    host = str;
-  }
-  port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
-  socklen_t optlen = sizeof(last_socket_error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &last_socket_error, &optlen) < 0) {
-  }
-  auto &logger = getLogger();
-  while (!timedOut) {
-    int err = 0;
-    socklen_t len = sizeof(err);
-    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
-      perror("getsockopt(SO_ERROR) failed");
-      return std::make_tuple(domain, socktype, host, port, last_socket_error);
-    }
-    if (err == EINPROGRESS) {
-      logger->info("Connection still in progress on fd {}", fd);
-    } else if (err != 0) {
-      perror("Connection failed");
-      return std::make_tuple(domain, socktype, host, port, last_socket_error);
-    } else {
-      break;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-  return std::make_tuple(domain, socktype, host, port, last_socket_error);
-}
-
 struct socketInfo {
   int fd;
   std::string host;
@@ -132,60 +80,41 @@ struct socketInfo {
   int type;
 };
 
-int async_scan(lua_State *L) {
+std::unordered_map<std::string, ConnectionStatus::Type>
+async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> generator) noexcept(false) {
   auto &logger = getLogger();
   std::unordered_map<std::string, ConnectionStatus::Type> connected;
   std::mutex connected_mutex;
-  std::inplace_vector<socketInfo, CONFIG_LUA_EXP_SOCKET_LIMIT> fds;
+  std::inplace_vector<socketInfo, CONFIG_LIB_SOCKET_LIMIT> fds;
   int fd_index = 0;
 
-  int max = luaL_checkinteger(L, 1);
-
-  luaL_checktype(L, 2, LUA_TTHREAD);
-  lua_State *co = lua_tothread(L, 2);
-  int nargs = lua_gettop(L) - 2;
-  lua_xmove(L, co, nargs);
-
-  int step = CONFIG_LUA_EXP_SOCKET_LIMIT;
+  int step = CONFIG_LIB_SOCKET_LIMIT;
 
   const struct timespec timeout{
-      .tv_sec = 0,
-      .tv_nsec = 250'000'000,
+      .tv_sec = CONFIG_LIB_TIMEOUT_SEC,
+      .tv_nsec = CONFIG_LIB_TIMEOUT_NSEC,
   };
   int epoll_fd = epoll_create1(0);
   std::vector<std::future<void>> futures;
+  logger->info("Starting async_scan with max={} and step={}", max, step);
   for (int i = 0; i < max; i += step) {
-    for (int j = 0; j < step; ++j) {
-      std::string host;
-      int port, domain, type;
-      int nres;
-      int status = lua_resume(co, L, nargs, &nres);
+    for (int j = 0; j < step && j + i < max; ++j) {
+      // std::string host;
+      // int port, domain, type;
 
-      if (status == LUA_YIELD) {
-        if (nres != 4) {
-          logger->error("Lua coroutine yielded with insufficient results: {} excepted 4", nres);
-          return luaL_error(L, "Lua coroutine yielded with insufficient results: %d excepted 4", nres);
-        }
-        host = lua_tostring(co, -4);
-        port = lua_tointeger(co, -3);
-        type = lua_tointeger(co, -2);
-        domain = lua_tointeger(co, -1);
-        lua_pop(co, nres);
-        nargs = 0; // Reset nargs after the first resume
-      } else if (status == LUA_OK) {
-        logger->info("Lua coroutine completed successfully");
-        break;
-      } else {
-        const char *err_msg = lua_tostring(co, -1);
-        logger->error("Lua coroutine error: {}", err_msg ? err_msg : "Unknown error");
-        break;
+      auto [host, port, domain, type] = generator();
+      if (host.empty() || port <= 0 || domain <= 0 || type <= 0) {
+        logger->error("Invalid parameters for async_scan({}:{})): host='{}', port={}, domain={}, type={}", i, j, host,
+                      port, domain, type);
+        throw std::invalid_argument(
+            fmt::format("Invalid parameters for async_scan({}:{}): host='{}', port={}, domain={}, type={}", i, j, host,
+                        port, domain, type));
       }
 
       int fd = socket(domain, type, 0);
       if (fd < 0) {
         logger->error("Failed to create socket: {}", strerror(errno));
-        return luaL_error(L, "Failed to create socket: %s", strerror(errno));
-        break;
+        throw std::runtime_error(fmt::format("Failed to create socket: {}", strerror(errno)));
       }
       int oflags = fcntl(fd, F_GETFL, 0);
       fcntl(fd, F_SETFL, O_NONBLOCK | oflags);
@@ -198,8 +127,7 @@ int async_scan(lua_State *L) {
         if (inet_pton(AF_INET6, host.c_str(), &addr->sin6_addr) <= 0) {
           logger->error("Invalid IPv6 address: {}", host);
           close(fd);
-          return luaL_error(L, "Invalid IPv6 address: %s", host.c_str());
-          continue;
+          throw std::runtime_error(fmt::format("Invalid IPv6 address: {}", host));
         }
       } else {
         auto *adr = (struct sockaddr_in *)&base_addr;
@@ -208,17 +136,15 @@ int async_scan(lua_State *L) {
         if (inet_pton(AF_INET, host.c_str(), &(adr->sin_addr)) <= 0) {
           logger->error("Invalid address: {}", host);
           close(fd);
-          return luaL_error(L, "Invalid address: %s", host.c_str());
-          continue;
+          throw std::runtime_error(fmt::format("Invalid address: {}", host));
         }
       }
 
-      int ret = connect(fd, (struct sockaddr *)&base_addr, domain2size(domain));
+      int ret = explo::lib::connect(fd, (struct sockaddr *)&base_addr, domain2size(domain));
       if (ret < 0 && errno != EINPROGRESS) {
         logger->error("Failed to connect to {}:{}: {}", host, port, strerror(errno));
         close(fd);
-        return luaL_error(L, "Failed to connect to %s:%d: %s", host.c_str(), port, strerror(errno));
-        continue;
+        throw std::runtime_error(fmt::format("Failed to connect to {}:{}: {}", host, port, strerror(errno)));
       }
 
       fds.push_back({fd, host, port, domain, type});
@@ -228,8 +154,7 @@ int async_scan(lua_State *L) {
       if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev) < 0) {
         logger->error("Failed to add socket to epoll: {}", strerror(errno));
         close(fd);
-        return luaL_error(L, "Failed to add socket to epoll: %s", strerror(errno));
-        break;
+        throw std::runtime_error(fmt::format("Failed to add socket to epoll: {}", strerror(errno)));
       }
     }
 
@@ -237,22 +162,22 @@ int async_scan(lua_State *L) {
     int tries = 0;
 
     while (remaining > 0) {
-      struct epoll_event events[CONFIG_LUA_EXP_SOCKET_LIMIT] = {};
+      struct epoll_event events[CONFIG_LIB_SOCKET_LIMIT] = {};
 
-      int nfds = epoll_pwait2(epoll_fd, events, CONFIG_LUA_EXP_SOCKET_LIMIT, &timeout, nullptr);
+      int nfds = epoll_pwait2(epoll_fd, events, CONFIG_LIB_SOCKET_LIMIT, &timeout, nullptr);
 
       if (nfds < 0) {
         logger->error("epoll_wait failed: {}", strerror(errno));
-        return luaL_error(L, "epoll_wait failed: %s", strerror(errno));
+        throw std::runtime_error(fmt::format("epoll_wait failed: {}", strerror(errno)));
         break;
       }
       if (nfds == 0) {
-        if (tries != CONFIG_LUA_EXP_TIMEOUT_LIMIT) {
+        if (tries != CONFIG_LIB_TIMEOUT_LIMIT) {
           logger->info("epoll_wait timed out with {} sockets and will retry it {} times", remaining,
-                       CONFIG_LUA_EXP_TIMEOUT_LIMIT - tries++);
+                       CONFIG_LIB_TIMEOUT_LIMIT - tries++);
         } else {
           logger->error("epoll_wait timed out with {} sockets and reached the maximum retry limit of {}", remaining,
-                        CONFIG_LUA_EXP_TIMEOUT_LIMIT);
+                        CONFIG_LIB_TIMEOUT_LIMIT);
           for (const auto &si : fds) {
             std::lock_guard<std::mutex> lock(connected_mutex);
             connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::Timeout;
@@ -330,14 +255,6 @@ int async_scan(lua_State *L) {
   futures.clear();
   close(epoll_fd);
 
-  lua_createtable(L, 0, connected.size());
-
-  for (const auto &[key, status] : connected) {
-    lua_pushnumber(L, status);
-    lua_setfield(L, -2, key.c_str());
-  }
-
-  return 1;
+  return connected;
 }
-
-// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
+} // namespace explo::lib::impl

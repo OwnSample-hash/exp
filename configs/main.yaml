@@ -40,3 +40,9 @@
   source: tools/*/config.yaml
   help_text: Select tool options.
   help_text_fmt: Options for {filename} tool.
+
+- name: LIB
+  prompt: Library options
+  type: menu
+  source: lib.yaml
+  help_text: Select library options.

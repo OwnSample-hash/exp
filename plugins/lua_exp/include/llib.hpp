@@ -5,8 +5,11 @@ extern "C" {
 #include <lua.h>
 #include <lualib.h>
 }
+#include <enums.hpp>
 #include <interfaces/tool.hpp>
 #include <sys/socket.h>
+
+namespace ConnectionStatus = explo::ConnectionStatus;
 
 #define luaLogFuncs                                                                                                    \
   X(trace, trace)                                                                                                      \
@@ -35,20 +38,6 @@ extern "C" {
 
 #define asyncLuaFuncs X(async_scan, async_scan)
 
-#define ConnectionStatuses                                                                                             \
-  Z(Open)                                                                                                              \
-  Z(OpenUntested)                                                                                                      \
-  Z(Filtered)                                                                                                          \
-  Z(Error)                                                                                                             \
-  Z(Timeout)                                                                                                           \
-  Z(Refused)                                                                                                           \
-  Z(Reset)                                                                                                             \
-  Z(Closed)                                                                                                            \
-  Z(Aborted)                                                                                                           \
-  Z(NetReset)                                                                                                          \
-  Z(HostUnreachable)                                                                                                   \
-  Z(NetworkUnreachable)
-
 #define enumData                                                                                                       \
   X(SOCK_STREAM, number)                                                                                               \
   X(SOCK_DGRAM, number)                                                                                                \
@@ -66,24 +55,5 @@ luaFuncs asyncLuaFuncs
 #undef X
         {nullptr, nullptr},
 };
-
-namespace ConnectionStatus {
-enum Type {
-#define Z(name) name,
-  ConnectionStatuses
-#undef Z
-      Count
-};
-inline const char *toString(Type status) {
-  switch (status) {
-#define Z(name)                                                                                                        \
-  case name:                                                                                                           \
-    return #name;
-    ConnectionStatuses
-#undef Z
-        default : return "Unknown";
-  }
-}
-} // namespace ConnectionStatus
 
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

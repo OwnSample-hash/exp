@@ -4,6 +4,7 @@
   default: true
   help_text: Enable or disable the plugin.
   cmake_export: true
+  cmake_help: $help_text$
 
 - name: DIRECTORY
   prompt: "Directory to recursively scan for Lua files"
@@ -13,6 +14,7 @@
   show_if:
     - ENABLE
   cmake_export: true
+  cmake_help: $help_text$
 
 - name: LIB_DIR
   prompt: Library Directory
@@ -22,15 +24,5 @@
   show_if:
     - ENABLE
   cmake_export: true
+  cmake_help: $help_text$
 
-- name: SOCKET_LIMIT
-  prompt: Socket Limit
-  type: int
-  default: 256
-  help_text: How many sockets to open at once when scanning for open ports. This is a performance tuning parameter. A higher number will scan faster but may use more resources.
-
-- name: TIMEOUT_LIMIT
-  prompt: Timeout Limit
-  type: int
-  default: 5
-  help_text: How many attempts to make before timing out when scanning for open ports. This is a performance tuning parameter. A higher number will scan slower but may be more accurate.

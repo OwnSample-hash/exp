@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     from conf import *
 
 
-def dump_entry(f, entry, prefix="CONFIG_"):
+def dump_entry(f, entry: ConfigOption, prefix="CONFIG_"):
     match entry.type:
         case ConfigType.BOOL:
             f.write(f"#define {prefix}{entry.name} {1 if entry.value else 0}\n")
@@ -13,7 +13,12 @@ def dump_entry(f, entry, prefix="CONFIG_"):
         case ConfigType.STRING:
             f.write(f'#define {prefix}{entry.name} "{entry.value}"\n')
         case ConfigType.CHOICE:
-            f.write(f"#define {prefix}{entry.name} {entry.value}\n")
+            opt = ""
+            for choice,i in zip(entry.choices, range(len(entry.choices))): 
+                f.write(f"#define {prefix}{entry.name}_{choice["name"].upper()} {i}\n")
+                if entry.value == choice["name"]:
+                    opt = f"{prefix}{entry.name}_{choice['name'].upper()}"
+            f.write(f"#define {prefix}{entry.name} {opt}\n")
         case ConfigType.MENU | ConfigType.DYNAMICMENU:
             for e in entry.children:
                 dump_entry(f, e, prefix=prefix + entry.name + "_")
@@ -69,7 +74,7 @@ def tl_generate_func(opt: list[ConfigOption]) -> list[str]:
     return gen_files
 
 
-def generate_func(opt: list[ConfigOption]) -> list[str]:
+def generate_func_pl(opt: list[ConfigOption]) -> list[str]:
     return pl_generate_func(opt) + tl_generate_func(opt)
 
 @register_generator
@@ -77,7 +82,7 @@ def gen():
     return Generator(
         name="Plugin config header generator",
         description="Generate a header file for plugin config",
-        gen=generate_func,
+        gen=generate_func_pl,
     )
 
 

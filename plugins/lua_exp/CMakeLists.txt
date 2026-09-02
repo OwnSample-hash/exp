@@ -4,9 +4,7 @@ if (LUA_EXP_ENABLE)
     src/lua_exp.cpp
     src/loader.cpp
     src/tool.cpp
-    src/alib.cpp
     src/lib.cpp
-    src/tls.cpp
   )
 
   CPMAddPackage(
@@ -22,7 +20,7 @@ if (LUA_EXP_ENABLE)
      "${lua_SOURCE_DIR}/onelua.c")
     add_library(lua STATIC ${lua_sources})
     FILE(GLOB lua_headers ${lua_SOURCE_DIR}/*.h)
-  
+
     target_include_directories(lua
       PUBLIC ${lua_headers}
     )
@@ -36,13 +34,11 @@ if (LUA_EXP_ENABLE)
       C_EXTENSIONS OFF
     )
   endif()
-  
-  find_package(OpenSSL COMPONENTS SSL)
 
   add_library(${MOD_NAME} SHARED ${MOD_SRC})
   target_sources(${MOD_NAME} PUBLIC ${MOD_SRC})
   target_include_directories(${MOD_NAME} PUBLIC include ../../include/ ${lua_headers})
-  target_link_libraries(${MOD_NAME} PRIVATE spdlog::spdlog lua nlohmann_json::nlohmann_json OpenSSL::SSL)
+  target_link_libraries(${MOD_NAME} PRIVATE spdlog::spdlog lua nlohmann_json::nlohmann_json)
   target_compile_definitions(${MOD_NAME} PRIVATE MODULE_NAME="${MOD_NAME}" LUA_USE_LINUX LUA_USE_APICHECK)
   set_property(TARGET ${MOD_NAME} PROPERTY PREFIX "")
  

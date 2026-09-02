@@ -37,7 +37,7 @@ def generate_func(opts: list[ConfigOption], f: Any = None, depth: int = 0) -> li
             or opt.type == ConfigType.CHOICE
         ):
             f.write(
-                f"set({plugin_name}{"_" if plugin_name else ""}{opt.name.upper()} \"{opt.value}\" CACHE STRING \"{opt.value}\")\n"
+                f"set(CACHE{{{plugin_name}{"_" if plugin_name else ""}{opt.name.upper()}}} TYPE STRING HELP \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" VALUE \"{opt.value}\")\n"
             )
     if depth == 0:
         f.close()

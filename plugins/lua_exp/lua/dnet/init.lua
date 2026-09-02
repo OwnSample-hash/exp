@@ -85,6 +85,7 @@ return {
       end
     end
 
+    explo.info("Scanning " .. #ips .. " IPs and " .. #ports .. " ports with method: " .. method)
     -- TODO: Rewrite so if multiple addresses are given, scan them in parallel.
     local coroF = function()
       for w in method:gmatch("([^,]+)") do

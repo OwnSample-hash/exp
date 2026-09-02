@@ -1,0 +1,23 @@
+- name: SOCKET_LIMIT
+  prompt: Socket Limit
+  type: int
+  default: 256
+  help_text: How many sockets to open at once when scanning for open ports. This is a performance tuning parameter. A higher number will scan faster but may use more resources.
+
+- name: TIMEOUT_LIMIT
+  prompt: Timeout Limit
+  type: int
+  default: 5
+  help_text: How many attempts to make before timing out when scanning for open ports. This is a performance tuning parameter. A higher number will scan slower but may be more accurate.
+
+- name: TIMEOUT_SEC
+  prompt: Timeout
+  type: int
+  default: 0
+  help_text: How many seconds to wait before timing out when scanning for open ports. This is a performance tuning parameter. A higher number will scan slower but may be more accurate.
+
+- name: TIMEOUT_NSEC
+  prompt: Timeout (nanoseconds)
+  type: int
+  default: 250000000
+  help_text: How many nanoseconds to wait before timing out when scanning for open ports. This is a performance tuning parameter. A higher number will scan slower but may be more accurate.

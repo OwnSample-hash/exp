@@ -124,6 +124,7 @@ int main(int argc, const char **argv, const char **envp) {
   spdlog::set_default_logger(spdlog::basic_logger_mt("main", logDir.Get() + "/" + normalizePath(logFile.Get()), true));
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
+  spdlog::basic_logger_mt("lib", logDir.Get() + "/lib.log", true);
 
   PluginLoader &loader = PluginLoader::instance();
 

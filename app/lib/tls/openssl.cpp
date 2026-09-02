@@ -1,8 +1,15 @@
-#include <sstream>
+#include <lib.hpp>
 #include <tls.hpp>
+#include <unistd.h>
 
-TLSClient::TLSClient() {
-  logger = spdlog::get("lua_exp")->clone("lua_exp::lua::tls");
+namespace explo::lib {
+namespace impl {
+
+OpenSSL_TLSClient::OpenSSL_TLSClient() { this->init(); }
+
+OpenSSL_TLSClient::~OpenSSL_TLSClient() { this->close(); }
+
+void OpenSSL_TLSClient::init() {
   SSL_library_init();
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
@@ -19,25 +26,23 @@ TLSClient::TLSClient() {
   SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
 }
 
-TLSClient::~TLSClient() { this->close(); }
+bool OpenSSL_TLSClient::connect(std::string_view host, int port) {
 
-bool TLSClient::connect(const std::string &host, int port) {
-  // 1. Resolve host
   addrinfo hints{}, *res;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  if (getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &res) != 0)
+  if (getaddrinfo(host.data(), std::to_string(port).c_str(), &hints, &res) != 0)
     return false;
 
   // 2. Create TCP socket
-  sock = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  sock = explo::lib::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (sock < 0) {
     freeaddrinfo(res);
     return false;
   }
 
   // 3. TCP connect
-  if (::connect(sock, res->ai_addr, res->ai_addrlen) != 0) {
+  if (explo::lib::connect(sock, res->ai_addr, res->ai_addrlen) != 0) {
     freeaddrinfo(res);
     return false;
   }
@@ -48,7 +53,7 @@ bool TLSClient::connect(const std::string &host, int port) {
   SSL_set_fd(ssl, sock);
 
   // 5. SNI — required by most servers
-  SSL_set_tlsext_host_name(ssl, host.c_str());
+  SSL_set_tlsext_host_name(ssl, host.data());
 
   // 6. TLS handshake
   if (SSL_connect(ssl) != 1) {
@@ -56,13 +61,12 @@ bool TLSClient::connect(const std::string &host, int port) {
     return false;
   }
 
-  logger->trace("Established TLS connection to {}:{}", host, port);
   return true;
 }
 
-int TLSClient::send_data(const std::string &data) { return SSL_write(ssl, data.c_str(), data.size()); }
+int OpenSSL_TLSClient::sendData(const std::string &data) { return SSL_write(ssl, data.c_str(), data.size()); }
 
-std::string TLSClient::recv_data(int buf_size) {
+std::string OpenSSL_TLSClient::recvData(int buf_size) {
   std::stringstream ss;
   std::string result(buf_size, '\0');
   while (true) {
@@ -78,18 +82,18 @@ std::string TLSClient::recv_data(int buf_size) {
   return ss.str();
 }
 
-void TLSClient::close() {
+void OpenSSL_TLSClient::close() {
   if (ssl) {
     SSL_shutdown(ssl);
     SSL_free(ssl);
   }
   if (sock >= 0)
-    ::close(sock);
+    explo::lib::close(sock);
   if (ctx)
     SSL_CTX_free(ctx);
 }
 
-std::string TLSClient::getLastError() {
+std::string OpenSSL_TLSClient::getLastError() {
   unsigned long errCode = ERR_get_error();
   if (errCode == 0)
     return "No error";
@@ -98,4 +102,8 @@ std::string TLSClient::getLastError() {
   return std::string(buf);
 }
 
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+OpenSSL_TLSClient *createTLSClient() { return new OpenSSL_TLSClient(); }
+
+} // namespace impl
+} // namespace explo::lib
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

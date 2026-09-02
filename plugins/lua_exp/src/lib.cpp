@@ -3,6 +3,7 @@
 #include <cmd/variable.hpp>
 #include <fcntl.h>
 #include <lib.hpp>
+#include <llib.hpp>
 #include <lua.h>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -166,25 +167,16 @@ int call(lua_State *L) {
 
 int sleep(lua_State *L) {
   int ms = luaL_checkinteger(L, 1);
-  getLogger()->trace("Lua is sleeping for {} milliseconds", ms);
-  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+  explo::lib::sleep(std::chrono::milliseconds(ms));
   return 0;
 }
 
 int socket_(lua_State *L) {
   int type = luaL_checkinteger(L, 1);
   getLogger()->trace("Lua is creating a new socket with type {}", type);
-  int sockfd = socket(AF_INET, type, 0);
+  int sockfd = explo::lib::socket(AF_INET, type, 0, SOCK_NONBLOCK);
   if (sockfd < 0) {
     getLogger()->error("Failed to create socket: {}", strerror(errno));
-    lua_pushnil(L);
-    return 1;
-  }
-
-  int optval = 1;
-  if (fcntl(sockfd, F_SETFD, O_NONBLOCK) < 0) {
-    getLogger()->error("Failed to set socket {} to non-blocking mode: {}", sockfd, strerror(errno));
-    close(sockfd);
     lua_pushnil(L);
     return 1;
   }
@@ -218,15 +210,15 @@ int connect_(lua_State *L) {
   FD_ZERO(&write_fds);
   FD_SET(sockfd, &write_fds);
 
-  if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0 && errno != EINPROGRESS) {
+  if (explo::lib::connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0 && errno != EINPROGRESS) {
     getLogger()->error("Failed to initiate connection on socket {}: {}", sockfd, strerror(errno));
     lua_pushboolean(L, false);
     return 1;
   }
-  if (select(sockfd + 1, nullptr, &write_fds, nullptr, &timeout) == 1) {
+  if (explo::lib::select(sockfd + 1, nullptr, &write_fds, nullptr, &timeout) == 1) {
     int so_err;
     socklen_t len = sizeof(so_err);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &so_err, &len) < 0 || so_err != 0) {
+    if (explo::lib::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &so_err, &len) < 0 || so_err != 0) {
       getLogger()->error("Failed to connect socket {}: {}", sockfd, strerror(so_err));
       lua_pushboolean(L, false);
       return 1;
@@ -252,7 +244,7 @@ int write_(lua_State *L) {
 
   getLogger()->trace("Lua is writing to fd {}", fd);
 
-  ssize_t bytes_sent = write(fd, data, data_len);
+  ssize_t bytes_sent = explo::lib::write(fd, data, data_len);
   if (bytes_sent < 0) {
     getLogger()->error("Failed to write tofd {}: {}", fd, strerror(errno));
     lua_pushnil(L);
@@ -270,7 +262,7 @@ int read_(lua_State *L) {
   getLogger()->trace("Lua is reading up to {} bytes from fd {}", max_len, fd);
 
   std::string buffer(max_len, '\0');
-  ssize_t bytes_read = read(fd, buffer.data(), max_len);
+  ssize_t bytes_read = explo::lib::read(fd, buffer.data(), max_len);
   if (bytes_read < 0) {
     getLogger()->error("Failed to read from fd {}: {}", fd, strerror(errno));
     lua_pushnil(L);
@@ -286,7 +278,7 @@ int close_(lua_State *L) {
 
   getLogger()->trace("Lua is closing fd {}", fd);
 
-  if (close(fd) < 0) {
+  if (explo::lib::close(fd) < 0) {
     getLogger()->error("Failed to close fd {}: {}", fd, strerror(errno));
     lua_pushboolean(L, false);
     return 1;
@@ -298,26 +290,23 @@ int close_(lua_State *L) {
 
 int sconnect(lua_State *L) {
   lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  TLSClient *tlsClient_ = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  explo::lib::TLSClient *tlsClient_ = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
   if (tlsClient_) {
-    getLogger()->warn("Lua attempted to establish a new TLS connection while an existing "
-                      "TLS client is still active. This may indicate a resource leak or "
-                      "mismanagement. Previous TLS client will be overwritten.");
+    getLogger()->warn(
+        "Lua attempted to establish a new TLS connection while having one already. Deleting the old one.");
+    delete tlsClient_;
   }
 
   int sockfd = luaL_checkinteger(L, 1);
   const char *host = luaL_checkstring(L, 2);
   int port = luaL_checkinteger(L, 3);
 
-  TLSClient *tlsClient = new TLSClient();
-  tlsClient->logger->trace("Lua is connecting socket {} to {}:{}", sockfd, host, port);
+  explo::lib::TLSClient *tlsClient = explo::lib::createTLSClient();
 
   if (!tlsClient->connect(host, port)) {
-    tlsClient->logger->error("Failed to establish TLS connection to {}:{}", host, port);
     lua_pushboolean(L, false);
     return 1;
   }
-  tlsClient->logger->trace("TLS connection established successfully to {}:{}", host, port);
   lua_pushlightuserdata(L, tlsClient);
   lua_setfield(L, LUA_REGISTRYINDEX, "tlsClient");
 
@@ -327,7 +316,7 @@ int sconnect(lua_State *L) {
 
 int swrite(lua_State *L) {
   lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  TLSClient *tlsClient = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  explo::lib::TLSClient *tlsClient = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
   if (!tlsClient) {
     getLogger()->error("No TLS client found in registry for swrite");
     lua_pushnil(L);
@@ -336,23 +325,18 @@ int swrite(lua_State *L) {
   size_t data_len;
   const char *data = luaL_checklstring(L, 1, &data_len);
 
-  tlsClient->logger->trace("Lua is writing to TLS connection");
-
-  int sent = tlsClient->send_data(std::string(data, data_len));
+  int sent = tlsClient->sendData(std::string(data, data_len));
   if (sent < 0) {
-    tlsClient->logger->error("Failed to send data over TLS connection");
-    tlsClient->logger->error("Error details: {}", tlsClient->getLastError());
     lua_pushnil(L);
     return 1;
   }
-  tlsClient->logger->trace("Data sent over TLS connection successfully");
   lua_pushnumber(L, sent);
   return 1;
 }
 
 int sread(lua_State *L) {
   lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  TLSClient *tlsClient = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  explo::lib::TLSClient *tlsClient = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
   if (!tlsClient) {
     getLogger()->error("No TLS client found in registry for sread");
     lua_pushnil(L);
@@ -360,32 +344,24 @@ int sread(lua_State *L) {
   }
   int max_len = luaL_checkinteger(L, 1);
 
-  tlsClient->logger->trace("Lua is reading up to {} bytes from TLS connection", max_len);
-
-  std::string data = tlsClient->recv_data(max_len);
+  std::string data = tlsClient->recvData(max_len);
   if (data.empty()) {
-    tlsClient->logger->warn("Failed to read data from TLS connection");
-    tlsClient->logger->warn("Error details: {}", tlsClient->getLastError());
   }
-  tlsClient->logger->trace("Data received from TLS connection: '{}' bytes", data.size());
   lua_pushlstring(L, data.c_str(), data.size());
   return 1;
 }
 
 int sclose(lua_State *L) {
   lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  TLSClient *tlsClient = static_cast<TLSClient *>(lua_touserdata(L, -1));
+  explo::lib::TLSClient *tlsClient = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
   if (!tlsClient) {
     getLogger()->error("No TLS client found in registry for sclose");
     lua_pushboolean(L, false);
     return 1;
   }
 
-  tlsClient->logger->trace("Lua is closing TLS connection");
-
   lua_pushlightuserdata(L, nullptr);
   lua_setfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  tlsClient->logger->trace("TLS connection closed successfully");
   delete tlsClient;
 
   lua_pushboolean(L, true);
@@ -393,10 +369,52 @@ int sclose(lua_State *L) {
 }
 
 int clock(lua_State *L) {
-  auto nanos =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch())
-          .count();
-  lua_pushnumber(L, nanos);
+  lua_pushnumber(L, explo::lib::clock());
   return 1;
 }
+
+int async_scan(lua_State *L) {
+  auto &logger = getLogger();
+  int max = luaL_checkinteger(L, 1);
+
+  luaL_checktype(L, 2, LUA_TTHREAD);
+  lua_State *co = lua_tothread(L, 2);
+  int nargs = lua_gettop(L) - 2;
+  lua_xmove(L, co, nargs);
+
+  auto results = explo::lib::async_scan(max, [&]() -> std::tuple<std::string, int, int, int> {
+    std::string host;
+    int port, domain, type;
+    int nres;
+    int status = lua_resume(co, L, nargs, &nres);
+
+    if (status == LUA_YIELD) {
+      if (nres != 4) {
+        logger->error("Lua coroutine yielded with insufficient results: {} excepted 4", nres);
+        return std::make_tuple("", 0, 0, 0);
+      }
+      host = lua_tostring(co, -4);
+      port = lua_tointeger(co, -3);
+      type = lua_tointeger(co, -2);
+      domain = lua_tointeger(co, -1);
+      lua_pop(co, nres);
+      nargs = 0; // Reset nargs after the first resume
+    } else if (status == LUA_OK) {
+      logger->info("Lua coroutine completed successfully");
+    } else {
+      const char *err_msg = lua_tostring(co, -1);
+      logger->error("Lua coroutine error: {}", err_msg ? err_msg : "Unknown error");
+    }
+    return std::make_tuple(host, port, domain, type);
+  });
+
+  lua_createtable(L, 0, results.size());
+
+  for (const auto &[key, status] : results) {
+    lua_pushnumber(L, status);
+    lua_setfield(L, -2, key.c_str());
+  }
+  return 1;
+}
+
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
