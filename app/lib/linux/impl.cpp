@@ -3,7 +3,9 @@
 #include <arpa/inet.h>
 #include <chrono>
 #include <lib.hpp>
+#include <netdb.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <thread>
 #include <unistd.h>
 
@@ -42,6 +44,13 @@ uint64_t clock() noexcept {
              std::chrono::high_resolution_clock::now().time_since_epoch())
       .count();
 }
+
+int getaddrinfo(const char *node, const char *service, const struct ::addrinfo *hints,
+                struct ::addrinfo **res) noexcept {
+  return ::getaddrinfo(node, service, hints, res);
+}
+
+void freeaddrinfo(struct ::addrinfo *res) noexcept { ::freeaddrinfo(res); }
 
 } // namespace impl
 } // namespace explo::lib

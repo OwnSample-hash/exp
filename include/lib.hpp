@@ -41,6 +41,13 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
   return impl::async_scan(max, generator);
 }
 
+inline int getaddrinfo(const char *node, const char *service, const struct ::addrinfo *hints,
+                       struct ::addrinfo **res) noexcept {
+  return impl::getaddrinfo(node, service, hints, res);
+}
+
+inline void freeaddrinfo(struct ::addrinfo *res) noexcept { impl::freeaddrinfo(res); }
+
 } // namespace lib
 } // namespace explo
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

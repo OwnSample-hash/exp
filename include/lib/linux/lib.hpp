@@ -17,6 +17,9 @@
 #include <chrono>
 #include <enums.hpp>
 #include <functional>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unordered_map>
 
 namespace explo::lib {
@@ -46,6 +49,11 @@ EXPLO_LIB_API uint64_t clock() noexcept;
 
 EXPLO_LIB_API std::unordered_map<std::string, ConnectionStatus::Type>
 async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> generator);
+
+EXPLO_LIB_API int getaddrinfo(const char *node, const char *service, const struct ::addrinfo *hints,
+                              struct ::addrinfo **res) noexcept;
+
+EXPLO_LIB_API void freeaddrinfo(struct ::addrinfo *res) noexcept;
 
 } // namespace impl
 } // namespace explo::lib
