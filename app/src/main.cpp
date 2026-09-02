@@ -259,13 +259,9 @@ int main(int argc, const char **argv, const char **envp) {
 
   IRenderer *rendererModule = nullptr;
 
-  try {
-    rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
-    if (!rendererModule) {
-      throw std::runtime_error("No valid display module found");
-    }
-  } catch (const std::exception &e) {
-    spdlog::error("Error initializing display module: {}", e.what());
+  rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
+  if (!rendererModule) {
+    spdlog::error("Error initializing display module: No valid display module found");
     goto quit;
   }
 
@@ -274,7 +270,7 @@ int main(int argc, const char **argv, const char **envp) {
   rendererModule->shutdown();
 
 quit:
-  shutdown();
+  shutdown(0);
   return -1;
 }
 
