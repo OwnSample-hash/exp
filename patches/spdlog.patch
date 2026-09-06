@@ -1,0 +1,94 @@
+Common subdirectories: a/bench and b/bench
+Common subdirectories: a/cmake and b/cmake
+diff --color -u a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2026-09-06 15:20:15.945547542 +0200
++++ b/CMakeLists.txt	2026-09-06 15:20:32.781544950 +0200
+@@ -166,35 +166,17 @@
+     list(APPEND SPDLOG_SRCS src/bundled_fmtlib_format.cpp)
+ endif()
+ 
+-if(SPDLOG_BUILD_SHARED OR BUILD_SHARED_LIBS)
+-    if(WIN32)
+-        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version.rc @ONLY)
+-        list(APPEND SPDLOG_SRCS ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+-    endif()
+-    add_library(spdlog SHARED ${SPDLOG_SRCS} ${SPDLOG_ALL_HEADERS})
+-    target_compile_definitions(spdlog PUBLIC SPDLOG_SHARED_LIB)
+-    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+-        target_compile_options(spdlog PUBLIC $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<NOT:$<COMPILE_LANGUAGE:CUDA>>>:/wd4251
+-                                             /wd4275>)
+-    endif()
+-    if(NOT SPDLOG_USE_STD_FORMAT AND NOT SPDLOG_FMT_EXTERNAL AND NOT SPDLOG_FMT_EXTERNAL_HO)
+-        target_compile_definitions(spdlog PRIVATE FMT_LIB_EXPORT PUBLIC FMT_SHARED)
+-    endif()
+-else()
+-    add_library(spdlog STATIC ${SPDLOG_SRCS} ${SPDLOG_ALL_HEADERS})
+-endif()
+-
+-add_library(spdlog::spdlog ALIAS spdlog)
++add_library(spdlog INTERFACE ${SPDLOG_SRCS} ${SPDLOG_ALL_HEADERS})
+ 
+ set(SPDLOG_INCLUDES_LEVEL "")
+ if(SPDLOG_SYSTEM_INCLUDES)
+     set(SPDLOG_INCLUDES_LEVEL "SYSTEM")
+ endif()
+ 
+-target_compile_definitions(spdlog PUBLIC SPDLOG_COMPILED_LIB)
+-target_include_directories(spdlog ${SPDLOG_INCLUDES_LEVEL} PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
++target_compile_definitions(spdlog INTERFACE SPDLOG_COMPILED_LIB)
++target_include_directories(spdlog ${SPDLOG_INCLUDES_LEVEL} INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+                                                                   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+-target_link_libraries(spdlog PUBLIC Threads::Threads)
++target_link_libraries(spdlog INTERFACE Threads::Threads)
+ spdlog_enable_warnings(spdlog)
+ 
+ set_target_properties(spdlog PROPERTIES VERSION ${SPDLOG_VERSION} SOVERSION
+@@ -257,7 +239,7 @@
+         check_symbol_exists(fwrite_unlocked "stdio.h" HAVE_FWRITE_UNLOCKED)
+     endif()
+     if(HAVE_FWRITE_UNLOCKED)
+-        target_compile_definitions(spdlog PRIVATE SPDLOG_FWRITE_UNLOCKED)
++        target_compile_definitions(spdlog INTERFACE SPDLOG_FWRITE_UNLOCKED)
+         target_compile_definitions(spdlog_header_only INTERFACE SPDLOG_FWRITE_UNLOCKED)
+     endif()
+ endif()
+@@ -345,6 +327,31 @@
+     add_subdirectory(bench)
+ endif()
+ 
++if(WIN32)
++    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version.rc @ONLY)
++    list(APPEND SPDLOG_SRCS ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
++endif()
++add_library(spdlog_shared SHARED ${SPDLOG_SRCS} ${SPDLOG_ALL_HEADERS})
++target_link_libraries(spdlog_shared PUBLIC spdlog)
++target_compile_definitions(spdlog_shared PUBLIC SPDLOG_SHARED_LIB)
++if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
++    target_compile_options(spdlog_shared PUBLIC $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<NOT:$<COMPILE_LANGUAGE:CUDA>>>:/wd4251
++                                         /wd4275>)
++endif()
++if(NOT SPDLOG_USE_STD_FORMAT AND NOT SPDLOG_FMT_EXTERNAL AND NOT SPDLOG_FMT_EXTERNAL_HO)
++    target_compile_definitions(spdlog_shared PRIVATE FMT_LIB_EXPORT PUBLIC FMT_SHARED)
++endif()
++add_library(spdlog_static STATIC ${SPDLOG_SRCS} ${SPDLOG_ALL_HEADERS})
++target_link_libraries(spdlog_static PUBLIC spdlog)
++
++if(SPDLOG_BUILD_SHARED OR BUILD_SHARED_LIBS)
++    add_library(spdlog::spdlog ALIAS spdlog_shared)
++    add_library(spdlog::spdlog_static ALIAS spdlog_static)
++else()
++    add_library(spdlog::spdlog ALIAS spdlog_static)
++    add_library(spdlog::spdlog_shared ALIAS spdlog_shared)
++endif()
++
+ # ---------------------------------------------------------------------------------------
+ # Install
+ # ---------------------------------------------------------------------------------------
+Common subdirectories: a/example and b/example
+Common subdirectories: a/.git and b/.git
+Common subdirectories: a/.github and b/.github
+Common subdirectories: a/include and b/include
+Common subdirectories: a/logos and b/logos
+Common subdirectories: a/scripts and b/scripts
+Common subdirectories: a/src and b/src
+Common subdirectories: a/tests and b/tests

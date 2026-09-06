@@ -26,7 +26,12 @@ set(YAML_CPP_BUILD_TESTS OFF)
 set(YAML_CPP_BUILD_CONTRIB OFF)
 set(YAML_CPP_BUILD_TOOLS OFF)
 
-CPMAddPackage("gh:gabime/spdlog@1.17.0")
+CPMAddPackage(
+  NAME spdlog
+  URL "https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz"
+  URL_HASH SHA256=d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744
+  PATCHES "patches/spdlog.patch"
+)
 CPMAddPackage("gh:nlohmann/json@3.12.0")
 CPMAddPackage("gh:jbeder/yaml-cpp#yaml-cpp-0.9.0")
 

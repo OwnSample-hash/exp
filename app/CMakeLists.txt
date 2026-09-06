@@ -5,17 +5,17 @@ add_executable(main_app
 )
 
 if (${TLS_BACKEND} STREQUAL "openssl")
-find_package(OpenSSL COMPONENTS SSL)
-target_link_libraries(main_app PRIVATE OpenSSL::SSL)
+  find_package(OpenSSL COMPONENTS SSL)
+  target_link_libraries(main_app PRIVATE OpenSSL::SSL)
 elseif(${TLS_BACKEND} STREQUAL "mbedtls")
-option(ENABLE_PROGRAMS OFF)
-message(STATUS "MbedTLS implementation is partial")
-CPMAddPackage("Mbed-TLS/mbedtls#v4.2.0")
-target_link_libraries(main_app PRIVATE
-  MbedTLS::mbedtls
-  MbedTLS::tfpsacrypto
-  MbedTLS::mbedx509
-)
+  option(ENABLE_PROGRAMS OFF)
+  message(STATUS "MbedTLS implementation is partial")
+  CPMAddPackage("Mbed-TLS/mbedtls#v4.2.0")
+  target_link_libraries(main_app PRIVATE
+    MbedTLS::mbedtls
+    MbedTLS::tfpsacrypto
+    MbedTLS::mbedx509
+  )
 endif()
 
 target_link_libraries(main_app PRIVATE spdlog::spdlog)
