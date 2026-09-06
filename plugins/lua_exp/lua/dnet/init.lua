@@ -1,42 +1,6 @@
 require("utils")
 local c = require("colors")
 
-local s2a = function(status)
-  local str = ""
-  for k, v in pairs(explo.ConnectionStatus) do
-    if v == status then
-      str = k
-      break
-    end
-  end
-  return str
-end
-
-local function contains(tbl, val)
-  return tbl[val] ~= nil
-end
-
-local function s2c(status)
-  local red = {
-    [explo.ConnectionStatus.Closed] = true,
-    [explo.ConnectionStatus.Timeout] = true,
-    [explo.ConnectionStatus.Refused] = true,
-    [explo.ConnectionStatus.HostUnreachable] = true,
-    [explo.ConnectionStatus.NetworkUnreachable] = true,
-  }
-  if status == explo.ConnectionStatus.Open then
-    return c.c(c.fg.green, s2a(status))
-  elseif contains(red, status) then
-    return c.c(c.fg.red, s2a(status))
-  elseif status == explo.ConnectionStatus.Filtered then
-    return c.c(c.fg.yellow, s2a(status))
-  elseif status == explo.ConnectionStatus.Unreachable then
-    return c.c(c.fg.magenta, s2a(status))
-  else
-    return c.c(c.fg.white, s2a(status))
-  end
-end
-
 ---@type LuaTool
 return {
   name = "dnet",
@@ -46,6 +10,7 @@ return {
   vars = {
     target = "127.0.0.1",
     ports = "1-10000",
+    test_port = "443",
     method = "tcp",
   },
   initialize = function()
@@ -59,9 +24,11 @@ return {
     explo.info("Executing dnet")
     local target = explo.var("target")
     local port = explo.var("ports")
+    local test_port = explo.var("test_port")
     local method = explo.var("method")
     explo.info("Target: " .. target)
     explo.info("Ports: " .. port)
+    explo.info("Test Port: " .. test_port)
     explo.info("Method: " .. method)
     if target == nil or port == nil or method == nil then
       explo.error("One or more variables are nil")
@@ -85,16 +52,12 @@ return {
       end
     end
 
-    explo.info("Scanning " .. #ips .. " IPs and " .. #ports .. " ports with method: " .. method)
-    -- TODO: Rewrite so if multiple addresses are given, scan them in parallel.
-    local coroF = function()
+    local coroUpF = function()
       for w in method:gmatch("([^,]+)") do
         local type_ = TypeToNum(w:lower())
         for _, ip in ipairs(ips) do
           local domain = IpToDomain(ip)
-          for _, p in pairs(ports) do
-            coroutine.yield(ip, p, type_, domain)
-          end
+          coroutine.yield(ip, test_port, type_, domain)
         end
       end
     end
@@ -108,8 +71,60 @@ return {
     end
 
     local scan_start = explo.clock()
-    local scanRes = explo.async_scan(#ips * #ports * #types, coroutine.create(coroF))
+    local upRes = explo.async_scan(#ips * #types, coroutine.create(coroUpF))
     local took = (explo.clock() - scan_start) / 1000000000
+    explo.info(string.format("Host up scan took %.2f seconds", took))
+
+    if not upRes then
+      explo.error("Up scan failed")
+      return 1
+    end
+
+    local down_hosts = {}
+
+    for k, v in pairs(upRes) do
+      local dom, proto, ip, port_ = k:match("^(%g+):(%g+)://(%g+):(%g+)$")
+      if dom and proto and ip and port_ then
+        if
+          v == explo.ConnectionStatus.HostUnreachable
+          or v == explo.ConnectionStatus.NetworkUnreachable
+          or v == explo.ConnectionStatus.Error
+        then
+          table.insert(down_hosts, ip)
+          down_hosts[ip] = v
+        end
+      else
+        explo.error("Invalid scan result format: " .. k)
+      end
+    end
+
+    explo.info("Found " .. #down_hosts .. " down hosts")
+    print("Found " .. #down_hosts .. " down hosts")
+
+    local filtered_ip = {}
+    for _, ip in ipairs(ips) do
+      if not down_hosts[ip] then
+        table.insert(filtered_ip, ip)
+      end
+    end
+
+    explo.info("Scanning " .. #ips - #down_hosts .. " IPs and " .. #ports .. " ports with method: " .. method)
+    -- TODO: Rewrite so if multiple addresses are given, scan them in parallel.
+    local coroF = function()
+      for w in method:gmatch("([^,]+)") do
+        local type_ = TypeToNum(w:lower())
+        for _, ip in pairs(filtered_ip) do
+          local dom = IpToDomain(ip)
+          for _, p in ipairs(ports) do
+            coroutine.yield(ip, p, type_, dom)
+          end
+        end
+      end
+    end
+
+    start = explo.clock()
+    local scanRes = explo.async_scan((#ips - #down_hosts) * #ports * #types, coroutine.create(coroF))
+    took = (explo.clock() - scan_start) / 1000000000
     explo.info(string.format("Scan took %.2f seconds", took))
 
     if not scanRes then
@@ -150,7 +165,7 @@ return {
           local port_ = key
           local status = ports_[key]
           if status <= 1 then
-            print(string.format(format_str, port_, s2c(status)))
+            print(string.format(format_str, port_, S2c(status)))
           else
             errors[status] = errors[status] or 0
             errors[status] = errors[status] + 1
@@ -159,11 +174,13 @@ return {
         if next(errors) then
           print(c.c(c.fg.red, "    Errors:"))
           for err, count in pairs(errors) do
-            print(string.format("      Error code: %s => %d", s2c(err), count))
+            print(string.format("      Error code: %s => %d", S2c(err), count))
           end
         end
       end
     end
+
+    print("    " .. #down_hosts .. c.c(c.fg.red, " hosts were down"))
 
     result = 0
     local main_time = (explo.clock() - start) / 1000000000

@@ -24,6 +24,7 @@ namespace ConnectionStatus = explo::ConnectionStatus;
   X(write_, write)                                                                                                     \
   X(read_, read)                                                                                                       \
   X(close_, close)                                                                                                     \
+  X(getsockopt_, getsockopt)                                                                                           \
   X(sconnect, sconnect)                                                                                                \
   X(swrite, swrite)                                                                                                    \
   X(sread, sread)                                                                                                      \
@@ -43,6 +44,14 @@ namespace ConnectionStatus = explo::ConnectionStatus;
   X(SOCK_DGRAM, number)                                                                                                \
   X(AF_INET, number)                                                                                                   \
   X(AF_INET6, number)                                                                                                  \
+  X(SOL_SOCKET, number)                                                                                                \
+  X(SO_REUSEADDR, number)                                                                                              \
+  X(SO_KEEPALIVE, number)                                                                                              \
+  X(SO_BROADCAST, number)                                                                                              \
+  X(SO_RCVBUF, number)                                                                                                 \
+  X(SO_SNDBUF, number)                                                                                                 \
+  X(SO_ERROR, number)                                                                                                  \
+  X(EINPROGRESS, number)                                                                                               \
   Y(ConnectionStatus, ConnectionStatuses)
 
 #define X(name, ...) int name(lua_State *L);

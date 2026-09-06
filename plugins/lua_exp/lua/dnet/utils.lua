@@ -1,3 +1,5 @@
+local c = require("colors")
+
 ---@type function
 ---@param cidr string
 ---@return table
@@ -130,5 +132,61 @@ function TypeToNum(type)
     return SOCK_DGRAM
   else
     return nil
+  end
+end
+
+S2a = function(status)
+  local str = ""
+  for k, v in pairs(explo.ConnectionStatus) do
+    if v == status then
+      str = k
+      break
+    end
+  end
+  return str
+end
+
+function Contains(tbl, val)
+  return tbl[val] ~= nil
+end
+
+function S2c(status)
+  local red = {
+    [explo.ConnectionStatus.Closed] = true,
+    [explo.ConnectionStatus.Timeout] = true,
+    [explo.ConnectionStatus.Refused] = true,
+    [explo.ConnectionStatus.HostUnreachable] = true,
+    [explo.ConnectionStatus.NetworkUnreachable] = true,
+  }
+  if status == explo.ConnectionStatus.Open then
+    return c.c(c.fg.green, S2a(status))
+  elseif Contains(red, status) then
+    return c.c(c.fg.red, S2a(status))
+  elseif status == explo.ConnectionStatus.Filtered then
+    return c.c(c.fg.yellow, S2a(status))
+  elseif status == explo.ConnectionStatus.Unreachable then
+    return c.c(c.fg.magenta, S2a(status))
+  else
+    return c.c(c.fg.white, S2a(status))
+  end
+end
+
+function HostUp(ip)
+  local sock = explo.socket(SOCK_STREAM)
+  if not sock then
+    return false
+  end
+  local connected = explo.connect(sock, ip, 80)
+  while connected == EINPROGRESS do
+    explo.sleep(0.1)
+    connected = explo.connect(sock, ip, 80)
+  end
+  local res = explo.getsockopt(sock, SOL_SOCKET, SO_ERROR)
+  if res == 0 then
+    explo.close(sock)
+    return 0
+  else
+    explo.close(sock)
+    return res
   end
 end

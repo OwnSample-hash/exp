@@ -417,4 +417,22 @@ int async_scan(lua_State *L) {
   return 1;
 }
 
+int getsockopt_(lua_State *L) {
+  int sockfd = luaL_checkinteger(L, 1);
+  int level = luaL_checkinteger(L, 2);
+  int optname = luaL_checkinteger(L, 3);
+
+  int optval;
+  socklen_t optlen = sizeof(optval);
+
+  if (explo::lib::getsockopt(sockfd, level, optname, &optval, &optlen) < 0) {
+    getLogger()->error("Failed to get socket option for fd {}: {}", sockfd, strerror(errno));
+    lua_pushnil(L);
+    return 1;
+  }
+
+  lua_pushinteger(L, optval);
+  return 1;
+}
+
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

@@ -61,6 +61,12 @@ explo = {
   socket = function(type) end,
   ---@type function
   ---@param fd number
+  ---@param lvl number
+  ---@param opt number
+  ---@return number
+  getsockopt = function(fd, lvl, opt) end,
+  ---@type function
+  ---@param fd number
   ---@param host string
   ---@param port number
   ---@return boolean
@@ -138,3 +144,13 @@ AF_INET = 2
 AF_INET6 = 10
 SOCK_STREAM = 1
 SOCK_DGRAM = 2
+SOL_SOCKET = 1
+SO_REUSEADDR = 2
+SO_KEEPALIVE = 9
+SO_BROADCAST = 6
+SO_RCVBUF = 8
+SO_SNDBUF = 7
+SO_ERROR = 4
+EHOSTDOWN = 112
+EHOSTUNREACH = 114
+EINPROGRESS = 115
