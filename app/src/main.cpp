@@ -1,3 +1,5 @@
+#include "cmd/command_processor.hpp"
+#include "cmd/variable.hpp"
 #include <args.hxx>
 #include <cmd.hpp>
 #include <config.hpp>
@@ -113,6 +115,11 @@ int main(int argc, const char **argv, const char **envp) {
                                            "Set preferred UI (default: " CONFIG_DEFAULT_PREFERRED_UI ")",
                                            {'U', "preferred-ui"}, std::string(CONFIG_DEFAULT_PREFERRED_UI));
 
+  args::ValueFlag<std::string> callTool(parser, "call-tool", "Call a specific tool by name", {'C', "call-tool"});
+
+  args::ValueFlagList<std::string> envVars(parser, "env", "Set environment variables (format: VAR=value)",
+                                           {'e', "env"});
+
   auto res = parser.ParseCLI(argc, argv);
   if (!res) {
     /* */
@@ -125,6 +132,9 @@ int main(int argc, const char **argv, const char **envp) {
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
   spdlog::basic_logger_mt("lib", logDir.Get() + "/lib.log", true);
+
+  const std::vector<std::string> envVV(envVars.Get());
+  const std::string toolToCall(callTool.Get());
 
   PluginLoader &loader = PluginLoader::instance();
 
@@ -165,46 +175,49 @@ int main(int argc, const char **argv, const char **envp) {
   if (!res) {
     spdlog::error("Error parsing arguments: {}", parser.GetErrorMsg());
     spdlog::debug("Argument parsing error: {}", static_cast<int>(parser.GetError()));
+    using args::Error;
     switch (parser.GetError()) {
-    Usage:
+    case Error::Usage:
       std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
       std::exit(1);
-    Parse:
+    case Error::Parse:
       std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
       std::exit(1);
-    Validation:
+    case Error::Validation:
       std::cerr << "Error validating arguments: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
       std::exit(1);
-    Required:
+    case Error::Required:
       std::cerr << "Error: Missing required arguments: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
       std::exit(1);
-    Map:
+    case Error::Map:
       std::cerr << "Error mapping arguments: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
       std::exit(1);
-    Extra:
+    case Error::Extra:
       std::cerr << "Error: Unrecognized arguments: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
       std::exit(1);
-    Help:
-      std::cout << parser;
+    case Error::Help:
+      std::cout << parser << std::endl;
       std::exit(0);
-    Subparser:
+    case Error::Subparser:
       std::cerr << "Error parsing subcommand: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
       std::exit(1);
-    Completion:
-    None:
+    case Error::Completion:
+      std::cout << parser.GetErrorMsg();
+      shutdown();
+    case Error::None:
       break;
     default:
       spdlog::error("Unknown argument parsing error: {}", parser.GetErrorMsg());
       std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
       std::cerr << parser;
-      std::exit(1);
+      shutdown(1);
     };
   }
 
@@ -258,12 +271,65 @@ int main(int argc, const char **argv, const char **envp) {
     }
   }
 
+  spdlog::trace("Environment variables: {}", envVV.empty() ? "None" : "<list>");
+  spdlog::trace("Tool to call: {}", toolToCall);
+  auto &vars = cmd::CommandProcessor::instance().vars();
+  auto &cp = cmd::CommandProcessor::instance();
+
   IRenderer *rendererModule = nullptr;
 
   rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
   if (!rendererModule) {
     spdlog::error("Error initializing display module: No valid display module found");
     goto quit;
+  }
+
+  for (const auto &var : envVV) {
+    auto pos = var.find('=');
+    if (pos != std::string::npos) {
+      std::string name = var.substr(0, pos);
+      std::string value = var.substr(pos + 1);
+      if (value.size() > 2 && value[0] == '%') {
+        if (value[1] == 's')
+          vars.set(name, cmd::VarValue(value.substr(2)));
+        else if (value[1] == 'd')
+          vars.set(name, cmd::VarValue(std::stoll(value.substr(2))));
+        else if (value[1] == 'f')
+          vars.set(name, cmd::VarValue(std::stod(value.substr(2))));
+        else if (value[1] == 'b') {
+          std::string val = value.substr(2);
+          std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+          if (val == "true" || val == "1")
+            vars.set(name, cmd::VarValue(true));
+          else if (val == "false" || val == "0")
+            vars.set(name, cmd::VarValue(false));
+        }
+      } else {
+        vars.set(name, cmd::VarValue(value));
+      }
+      spdlog::debug("Set environment variable: {}={}", name, value);
+    } else {
+      spdlog::warn("Invalid environment variable format: {}", var);
+    }
+  }
+
+  if (!toolToCall.empty()) {
+    auto it = tools.find(toolToCall);
+    if (it != tools.end()) {
+      currentTool = it->second;
+      currentTool->invoke(currentTool->getName(), true);
+      spdlog::info("Calling tool: {}", toolToCall);
+      cp.switchContext(toolToCall);
+      cp.vars().set("prompt", cmd::VarValue(std::string("(" + toolToCall + ") \33[33m>\33[0m ")));
+      cp.vars().set("current_tool", cmd::VarValue(toolToCall));
+      currentTool->execute();
+      currentTool->suppress();
+      spdlog::info("Tool execution completed: {}", toolToCall);
+      shutdown(0);
+    } else {
+      spdlog::error("Tool not found: {}", toolToCall);
+      std::cout << "\033[41mTool not found: " << toolToCall << "\033[0m" << std::endl;
+    }
   }
 
   rendererModule->initialize();

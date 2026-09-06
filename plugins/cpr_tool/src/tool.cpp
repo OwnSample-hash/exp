@@ -44,11 +44,15 @@ void CPR::initialize() {
 
 void CPR::shutdown() { logger->info("Shutting down CPR tool"); }
 
-void CPR::invoke(const std::string &prefix) {
+void CPR::invoke(std::string_view prefix, bool soft) {
   logger->info("Invoking CPR tool with prefix: {}", prefix);
   this->prefix = prefix;
   auto &cpVars = cmd::CommandProcessor::instance().vars();
-  cpVars.set(prefix + ".args", cmd::VarValue{this->payload});
+  if (soft && cpVars.get(this->prefix + ".args").has_value()) {
+    this->logger->info("CPR tool args already exist, skipping due to soft invoke");
+    return;
+  }
+  cpVars.set(this->prefix + ".args", cmd::VarValue{this->payload});
 }
 
 void CPR::suppress() {

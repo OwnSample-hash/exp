@@ -38,11 +38,19 @@ void bini::initialize() {
   logger->info("Tool {} initialized successfully.", this->getName());
 }
 
-void bini::invoke(const std::string &prefix) {
+void bini::invoke(std::string_view prefix, bool soft) {
   this->prefix = prefix;
   auto &vars = cmd::CommandProcessor::instance().vars();
-  vars.set(prefix + ".target", cmd::VarValue{"a.out"});
-  vars.set(prefix + ".type", cmd::VarValue{"summary"});
+  if (soft && vars.get(this->prefix + ".target").has_value()) {
+    this->logger->info("Variable '{}' already exists, skipping due to soft invoke", this->prefix + ".target");
+  } else {
+    vars.set(this->prefix + ".target", cmd::VarValue{"a.out"});
+  }
+  if (soft && vars.get(this->prefix + ".type").has_value()) {
+    this->logger->info("Variable '{}' already exists, skipping due to soft invoke", this->prefix + ".type");
+  } else {
+    vars.set(this->prefix + ".type", cmd::VarValue{"summary"});
+  }
 }
 
 void bini::shutdown() { this->logger->info("Shutting down tool: {}", this->getName()); }

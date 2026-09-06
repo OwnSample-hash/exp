@@ -30,17 +30,7 @@ public:
    * command context, allowing the tool to have its own namespace for variables
    * and commands.
    */
-  virtual void invoke(const std::string &prefix) = 0;
-
-  /**
-   * @brief Called when the tools is selected via the `use` command, with a
-   * C-style string prefix.
-   *
-   * @param prefix The prefix is used for setting the variable names in the
-   * command context, allowing the tool to have its own namespace for variables
-   * and commands.
-   */
-  virtual void invoke(const char *prefix) = 0;
+  virtual void invoke(std::string_view prefix, bool soft = false) = 0;
 
   /**
    * @brief Called when the tool is deselected or switched to another tool,

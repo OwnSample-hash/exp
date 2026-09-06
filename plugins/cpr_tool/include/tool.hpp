@@ -4,6 +4,7 @@
 #include <interfaces/tool.hpp>
 #include <memory>
 #include <spdlog/logger.h>
+#include <string_view>
 
 using namespace explo;
 
@@ -25,8 +26,7 @@ public:
   void initialize() override;
   void shutdown() override;
   void execute() override;
-  void invoke(const std::string &prefix) override;
-  void invoke(const char *prefix) override { this->invoke(std::string(prefix)); }
+  void invoke(std::string_view prefix, bool soft = false) override;
   void suppress() override;
   const std::vector<std::string> &getTags() const override { return tags; }
 

@@ -88,9 +88,7 @@ public:
 
   void execute() override;
 
-  void invoke(const std::string &prefix) override;
-
-  void invoke(const char *prefix) override { this->invoke(std::string(prefix)); }
+  void invoke(std::string_view prefix, bool soft = false) override;
 
   void suppress() override;
 };

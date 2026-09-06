@@ -46,7 +46,7 @@ void NC::initialize() {
   cmd::CommandProcessor::instance().registerContext(ctx);
 }
 
-void NC::invoke(const std::string &prefix) {
+void NC::invoke(std::string_view prefix, bool soft) {
   this->prefix = prefix;
   // Code to run when the nc tool is selected
 }
