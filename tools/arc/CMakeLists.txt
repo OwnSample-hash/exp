@@ -1,18 +1,29 @@
-set(arc_SOURCES
-  src/arc.cpp
-  src/arc_fuse.cpp
-)
 
-add_library(arc_shared SHARED
-  ${arc_SOURCES}
-)
 
-add_library(arc_static STATIC
-  ${arc_SOURCES}
-)
-
-set_target_properties(arc_shared PROPERTIES OUTPUT_NAME "arc" POSITION_INDEPENDENT_CODE ON)
-set_target_properties(arc_static PROPERTIES OUTPUT_NAME "arc" POSITION_INDEPENDENT_CODE ON)
+if(${ARC_FUSE_ENABLE})
+  set(arc_SOURCES
+    src/arc.cpp
+    src/arc_fuse.cpp
+    src/arc_mount_fuse.cpp
+  )
+  add_library(arc_shared SHARED ${arc_SOURCES})
+  add_library(arc_static STATIC ${arc_SOURCES})
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(FUSE REQUIRED IMPORTED_TARGET fuse3)
+  target_link_libraries(arc_shared PUBLIC PkgConfig::FUSE)
+  target_link_libraries(arc_static PUBLIC PkgConfig::FUSE)
+  set(FUSE_USE_VERSION 31)
+  target_compile_definitions(arc_shared PUBLIC FUSE_USE_VERSION=${FUSE_USE_VERSION})
+  target_compile_definitions(arc_static PUBLIC FUSE_USE_VERSION=${FUSE_USE_VERSION})
+else()
+  set(arc_SOURCES
+    src/arc.cpp
+    src/arc_fuse.cpp
+    src/arc_mount_extract.cpp
+  )
+  add_library(arc_shared SHARED ${arc_SOURCES})
+  add_library(arc_static STATIC ${arc_SOURCES})
+endif()
 
 target_include_directories(arc_shared PUBLIC 
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
@@ -23,15 +34,8 @@ target_include_directories(arc_static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include/>
 )
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(FUSE REQUIRED IMPORTED_TARGET fuse3)
-
-target_link_libraries(arc_shared PUBLIC PkgConfig::FUSE)
-target_link_libraries(arc_static PUBLIC PkgConfig::FUSE)
-
-set(FUSE_USE_VERSION 31)
-target_compile_definitions(arc_shared PUBLIC FUSE_USE_VERSION=${FUSE_USE_VERSION})
-target_compile_definitions(arc_static PUBLIC FUSE_USE_VERSION=${FUSE_USE_VERSION})
+set_target_properties(arc_shared PROPERTIES OUTPUT_NAME "arc" POSITION_INDEPENDENT_CODE ON)
+set_target_properties(arc_static PROPERTIES OUTPUT_NAME "arc" POSITION_INDEPENDENT_CODE ON)
 
 install(TARGETS arc_shared arc_static
   EXPORT arcTargets

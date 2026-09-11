@@ -109,12 +109,12 @@ int main(int argc, const char **argv, const char **envp) {
                                          {'p', "plugin-dir"}, std::string(CONFIG_PLUGIN_INSTALL_DIR));
 
   args::ValueFlag<std::string> configFile(globalGroup, "config-file",
-                                          "Set configuration file path (default: " CONFIG_DEFAULT_CONFIG_FILE ")",
-                                          {'c', "config-file"}, std::string(CONFIG_DEFAULT_CONFIG_FILE));
+                                          "Set configuration file path (default: " CONFIG_CONFIG_FILE ")",
+                                          {'c', "config-file"}, std::string(CONFIG_CONFIG_FILE));
 
   args::ValueFlag<std::string> preferredUI(globalGroup, "preferred-ui",
-                                           "Set preferred UI (default: " CONFIG_DEFAULT_PREFERRED_UI ")",
-                                           {'U', "preferred-ui"}, std::string(CONFIG_DEFAULT_PREFERRED_UI));
+                                           "Set preferred UI (default: " CONFIG_PREFERRED_UI ")", {'U', "preferred-ui"},
+                                           std::string(CONFIG_PREFERRED_UI));
 
   args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
 

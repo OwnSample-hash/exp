@@ -93,6 +93,7 @@ class Arc {
   struct fuse *fuse_;
   struct fuse_session *se_;
   bool mounted_ = false;
+  fs::path mount_point_;
 
   std::FILE *file_;
   fs::path filename_;

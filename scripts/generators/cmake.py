@@ -14,7 +14,7 @@ def format_txt(txt: str, opt: ConfigOption, *args, **kwargs) -> str:
     return txt.format(*args, **kwargs)
 
 
-def generate_func(opts: list[ConfigOption], f: Any = None, depth: int = 0) -> list[str]:
+def generate_func(opts: list[ConfigOption], f: Any = None, depth: int = 0, prefix: str = "") -> list[str]:
     if depth == 5:
         logger.warning("Maximum depth reached, skipping further generation")
         return []
@@ -22,14 +22,16 @@ def generate_func(opts: list[ConfigOption], f: Any = None, depth: int = 0) -> li
         f = open("cmake/Options.cmake", "w")
     for opt in opts:
         if opt.type == ConfigType.MENU or opt.type == ConfigType.DYNAMICMENU:
-            generate_func(opt.children, f, depth + 1)
+            if depth == 0:
+                generate_func(opt.children, f, depth + 1, "")
+            else:
+                generate_func(opt.children, f, depth + 1, prefix + opt.name.upper() + "_")
         if not opt.cmake_export:
             continue
-        logger.verbose_2(f"{opt=}")  # pyright: ignore
         plugin_name = os.path.dirname(opt.source_file).split(os.sep)[-1].upper()
         if opt.type == ConfigType.BOOL:
             f.write(
-                f"option({plugin_name}{"_" if plugin_name else ""}{opt.name.upper()} \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" {"ON" if opt.value else "OFF"})\n"
+                f"option({prefix}{opt.name.upper()} \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" {"ON" if opt.value else "OFF"})\n"
             )
         elif (
             opt.type == ConfigType.STRING
@@ -37,7 +39,7 @@ def generate_func(opts: list[ConfigOption], f: Any = None, depth: int = 0) -> li
             or opt.type == ConfigType.CHOICE
         ):
             f.write(
-                f"set(CACHE{{{plugin_name}{"_" if plugin_name else ""}{opt.name.upper()}}} TYPE STRING HELP \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" VALUE \"{opt.value}\")\n"
+                f"set(CACHE{{{prefix}{opt.name.upper()}}} TYPE STRING HELP \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" VALUE \"{opt.value}\")\n"
             )
     if depth == 0:
         f.close()

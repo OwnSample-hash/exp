@@ -65,7 +65,7 @@ def pl_generate_func(opt: list[ConfigOption]) -> list[str]:
 
             if xmacros:
                 f.write("\n// X-Macros\n")
-                f.write("#define CONFIG_OPTS \\\n")
+                f.write(f"#define CONFIG_{plugin_name}_OPTS \\\n")
                 for xm in xmacros:
                     if xm == xmacros[-1]:
                         f.write(f"  {xm}\n")
@@ -97,7 +97,7 @@ def tl_generate_func(opt: list[ConfigOption]) -> list[str]:
 
             if xmacros:
                 f.write("\n// X-Macros\n")
-                f.write("#define CONFIG_OPTS \\\n")
+                f.write(f"#define CONFIG_{tool_name}_OPTS \\\n")
                 for xm in xmacros:
                     if xm == xmacros[-1]:
                         f.write(f"  {xm}\n")

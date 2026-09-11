@@ -4,6 +4,7 @@
   help_text: Make executable for the tool.
   cmake_export: true
   default: true
+  runtime_export: false
 
 - name: LINK_STATIC
   prompt: Link static
@@ -11,6 +12,7 @@
   help_text: Link static for the tool.
   cmake_export: true
   default: false
+  runtime_export: false
 
 - name: ENABLE_LOGGING
   prompt: Enable logging
