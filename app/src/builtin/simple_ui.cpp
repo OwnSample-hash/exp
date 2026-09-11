@@ -1,11 +1,14 @@
 #include <builtin/simple_ui.hpp>
 #include <cmd.hpp>
-#include <fcntl.h>
 #include <iostream>
 #include <string>
-#include <termios.h>
 #include <unistd.h>
 #include <vector>
+
+#ifdef __linux__
+#include <fcntl.h>
+#include <termios.h>
+#endif
 
 namespace explo {
 namespace builtin {
@@ -145,19 +148,23 @@ void UI::runLoop() {
   }
 }
 
+#ifdef __linux__
 struct termios origTermios = {};
+#endif
 
 void UI::initialize() {
   logger->set_level(spdlog::level::trace);
   logger->flush_on(spdlog::level::trace);
   logger->info("Initializing simple UI...");
   logger->debug("Setting terminal to raw mode...");
+#ifdef __linux__
   struct termios newTermios;
   tcgetattr(STDIN_FILENO, &origTermios);
   atexit([]() { tcsetattr(STDIN_FILENO, TCSANOW, &origTermios); });
   std::memcpy(&newTermios, &origTermios, sizeof(newTermios));
   newTermios.c_lflag &= ~(ICANON | ECHO);
   tcsetattr(STDIN_FILENO, TCSANOW, &newTermios);
+#endif
   // signal(SIGINT, SIG_IGN);
   logger->debug("Terminal set to raw mode.");
   logger->debug("Registering command callbacks...");
