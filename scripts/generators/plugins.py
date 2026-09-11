@@ -49,7 +49,7 @@ def pl_generate_func(opt: list[ConfigOption]) -> list[str]:
     if not plugins_opt:
         return []
     for plugin in plugins_opt.children:
-        plugin_name = os.path.dirname(plugin.source_file).split("/")[-1].upper()
+        plugin_name = os.path.dirname(plugin.source_file).split(os.sep)[-1].upper()
         file_name = (
             os.path.dirname(plugin.source_file)
             + f"/include/{plugin_name.lower()}_config.hpp"
@@ -81,7 +81,7 @@ def tl_generate_func(opt: list[ConfigOption]) -> list[str]:
     if not tools_opt:
         return []
     for tool in tools_opt.children:
-        tool_name = os.path.dirname(tool.source_file).split("/")[-1].upper()
+        tool_name = os.path.dirname(tool.source_file).split(os.sep)[-1].upper()
         file_name = (
             os.path.dirname(tool.source_file)
             + f"/include/{tool_name.lower()}_config.hpp"
