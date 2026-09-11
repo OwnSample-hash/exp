@@ -26,7 +26,7 @@ def generate_func(opts: list[ConfigOption], f: Any = None, depth: int = 0) -> li
         if not opt.cmake_export:
             continue
         logger.verbose_2(f"{opt=}")  # pyright: ignore
-        plugin_name = os.path.dirname(opt.source_file).split("/")[-1].upper()
+        plugin_name = os.path.dirname(opt.source_file).split(os.sep)[-1].upper()
         if opt.type == ConfigType.BOOL:
             f.write(
                 f"option({plugin_name}{"_" if plugin_name else ""}{opt.name.upper()} \"{format_txt(opt.cmake_help if opt.cmake_help else '', opt, plugin_name=plugin_name)}\" {"ON" if opt.value else "OFF"})\n"
