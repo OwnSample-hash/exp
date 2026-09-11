@@ -78,6 +78,7 @@ struct socketInfo {
   int port;
   int domain;
   int type;
+  int timeOutCount = 0;
 };
 
 std::unordered_map<std::string, ConnectionStatus::Type>
@@ -86,8 +87,7 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
   std::unordered_map<std::string, ConnectionStatus::Type> connected;
   std::mutex connected_mutex;
   std::inplace_vector<socketInfo, CONFIG_LIB_SOCKET_LIMIT> fds;
-  int fd_index = 0;
-
+  std::vector<std::future<void>> futures;
   int step = CONFIG_LIB_SOCKET_LIMIT;
 
   const struct timespec timeout{
@@ -95,13 +95,13 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
       .tv_nsec = CONFIG_LIB_TIMEOUT_NSEC,
   };
   int epoll_fd = epoll_create1(0);
-  std::vector<std::future<void>> futures;
+  if (epoll_fd < 0) {
+    logger->error("Failed to create epoll instance: {}", strerror(errno));
+    throw std::runtime_error(fmt::format("Failed to create epoll instance: {}", strerror(errno)));
+  }
   logger->info("Starting async_scan with max={} and step={}", max, step);
   for (int i = 0; i < max; i += step) {
-    for (int j = 0; j < step && j + i < max; ++j) {
-      // std::string host;
-      // int port, domain, type;
-
+    for (int j = 0; j < step && (j + i) < max; j++) {
       auto [host, port, domain, type] = generator();
       if (host.empty() || port <= 0 || domain <= 0 || type <= 0) {
         logger->error("Invalid parameters for async_scan({}:{})): host='{}', port={}, domain={}, type={}", i, j, host,
@@ -178,9 +178,26 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
         } else {
           logger->error("epoll_wait timed out with {} sockets and reached the maximum retry limit of {}", remaining,
                         CONFIG_LIB_TIMEOUT_LIMIT);
+          std::lock_guard<std::mutex> lock(connected_mutex);
           for (const auto &si : fds) {
-            std::lock_guard<std::mutex> lock(connected_mutex);
-            connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::Timeout;
+            int serr = 0;
+            socklen_t len = sizeof(serr);
+            if (getsockopt(si.fd, SOL_SOCKET, SO_ERROR, &serr, &len) < 0) {
+              logger->error("asnyc:getsockopt(SO_ERROR) failed on fd {}: {}", si.fd, strerror(errno));
+              connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::Error;
+            } else {
+              if (serr == ECONNREFUSED) {
+                connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::Refused;
+              } else if (serr == ETIMEDOUT) {
+                connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::Timeout;
+              } else if (serr == EHOSTUNREACH) {
+                connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::HostUnreachable;
+              } else if (serr == ENETUNREACH) {
+                connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::NetworkUnreachable;
+              } else {
+                connected[formatResultKey(si.domain, si.type, si.host, si.port)] = ConnectionStatus::Error;
+              }
+            }
             close(si.fd);
           }
           fds.clear();
@@ -221,6 +238,12 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
                 } else if (serr == ETIMEDOUT) {
                   connected[formatResultKey(si_copy.domain, si_copy.type, si_copy.host, si_copy.port)] =
                       ConnectionStatus::Timeout;
+                } else if (serr == EHOSTUNREACH) {
+                  connected[formatResultKey(si_copy.domain, si_copy.type, si_copy.host, si_copy.port)] =
+                      ConnectionStatus::HostUnreachable;
+                } else if (serr == ENETUNREACH) {
+                  connected[formatResultKey(si_copy.domain, si_copy.type, si_copy.host, si_copy.port)] =
+                      ConnectionStatus::NetworkUnreachable;
                 } else {
                   connected[formatResultKey(si_copy.domain, si_copy.type, si_copy.host, si_copy.port)] =
                       ConnectionStatus::Error;
@@ -258,3 +281,4 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
   return connected;
 }
 } // namespace explo::lib::impl
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
