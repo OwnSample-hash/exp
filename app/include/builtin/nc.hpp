@@ -39,9 +39,8 @@ public:
 
   void execute() override;
 
-  void invoke(const std::string &prefix) override;
+  void invoke(std::string_view prefix, bool soft = false) override;
 
-  void invoke(const char *prefix) override { this->invoke(std::string(prefix)); }
   void suppress() override;
 
   const std::vector<std::string> &getTags() const override {

@@ -52,6 +52,7 @@ class ConfigOption:
     editable: bool = False
     cmake_export: bool = False
     cmake_help: Optional[str] = None
+    runtime_export: bool = True
 
     def __post_init__(self):
         if self.value is None:
@@ -204,7 +205,9 @@ class MenuConfig:
 
         ocwd = os.getcwd()
         os.chdir(os.path.dirname(in_file))
-        self.config: list[ConfigOption] = self._load_config_from_file(os.path.basename(in_file))
+        self.config: list[ConfigOption] = self._load_config_from_file(
+            os.path.basename(in_file)
+        )
         os.chdir(ocwd)
         self.current_selection: int = 0
         self.scroll_offset: int = 0
@@ -324,9 +327,16 @@ class MenuConfig:
         name_to_option = {o.name: o for o in all_options}
 
         for condition in opt.show_if:
-            logger.verbose_2(f"Evaluating show_if condition: {condition} {name_to_option[condition].value}")  # pyright: ignore
-            if condition not in name_to_option and not name_to_option[condition].value is None:
-                logger.warning("show_if condition references unknown option/None value: {condition}")
+            logger.verbose_2(  # pyright: ignore
+                f"Evaluating show_if condition: {condition} {name_to_option[condition].value}"
+            )
+            if (
+                condition not in name_to_option
+                and not name_to_option[condition].value is None
+            ):
+                logger.warning(
+                    "show_if condition references unknown option/None value: {condition}"
+                )
             if condition.startswith("!"):
                 opt_name = condition[1:]
                 if not name_to_option[opt_name].value:
@@ -339,10 +349,14 @@ class MenuConfig:
                     logger.verbose_1(  # pyright: ignore
                         f"Condition '{condition}' not satisfied because {condition} is not enabled"
                     )
-                    logger.verbose_2(f"{name_to_option[condition].value=}")  # pyright: ignore
+                    logger.verbose_2(  # pyright: ignore
+                        f"{name_to_option[condition].value=}"
+                    )
                     return False
 
-        logger.verbose_1(f"All show_if conditions satisfied for {opt.name}")  # pyright: ignore
+        logger.verbose_1(  # pyright: ignore
+            f"All show_if conditions satisfied for {opt.name}"
+        )
         return True
 
     def run(self, stdscr: curses.window):
@@ -1136,7 +1150,7 @@ class MenuConfig:
         """Load configuration definition from a YAML file"""
         logger.debug(f"Loading configuration from file: {filename}")
         logger.verbose_1(f"Current recursion depth: {depth}")  # pyright: ignore
-        logger.verbose_1(f"Current cwd: {os.getcwd()}") # pyright: ignore
+        logger.verbose_1(f"Current cwd: {os.getcwd()}")  # pyright: ignore
         if depth > 5:
             raise RecursionError("Maximum menu depth exceeded")
         with open(filename, "r") as f:
@@ -1170,10 +1184,13 @@ class MenuConfig:
                     cmake_help=opt_dict.get(
                         "cmake_help", "Enable {plugin_name} plugin"
                     ),
+                    runtime_export=False,
                 )
                 if depth > 0:
                     os.chdir(old_cwd)
-                logger.debug(f"Loaded submenu from {opt_dict['source']} for {opt_dict['name']}")
+                logger.debug(
+                    f"Loaded submenu from {opt_dict['source']} for {opt_dict['name']}"
+                )
                 return co
             elif opt_type == ConfigType.DYNAMICMENU:
                 old_cwd = os.getcwd()
@@ -1183,7 +1200,7 @@ class MenuConfig:
                 )
                 children = []
                 for file in glob(os.path.join(CWD, opt_dict["source"])):
-                    logger.verbose_2( # pyright: ignore
+                    logger.verbose_2(  # pyright: ignore
                         f"Loading dynamic submenu from file: {file}"
                     )
                     children.append(
@@ -1202,6 +1219,7 @@ class MenuConfig:
                             cmake_help=opt_dict.get(
                                 "cmake_help", "Enable {plugin_name} plugin"
                             ),
+                            runtime_export=False,
                         )
                     )
                 os.chdir(old_cwd)
@@ -1220,6 +1238,7 @@ class MenuConfig:
                     cmake_help=opt_dict.get(
                         "cmake_help", "Enable {plugin_name} plugin"
                     ),
+                    runtime_export=False,
                 )
             return ConfigOption(
                 name=opt_dict["name"],
@@ -1235,6 +1254,7 @@ class MenuConfig:
                 editable=editable,
                 cmake_export=opt_dict.get("cmake_export", False),
                 cmake_help=opt_dict.get("cmake_help", "Enable {plugin_name} plugin"),
+                runtime_export=opt_dict.get("runtime_export", True),
             )
 
         tmp = [parse_option(opt) for opt in data]
@@ -1371,13 +1391,11 @@ if __name__ == "__main__":
         print("Configuration definition files formatted.")
         sys.exit(0)
 
+    clean_vars = vars()
     for gen_file in glob(os.path.join(args.generator_dir, "*.py")):
         with open(gen_file, "r") as f:
             code = f.read()
-        exec(
-            code,
-            vars(),
-        )
+        exec(code, clean_vars.copy())
 
     if not generators:
         logger.warning("No generators found in directory")  # pyright: ignore
@@ -1404,4 +1422,4 @@ if __name__ == "__main__":
         import traceback
 
         traceback.print_exc()
-# Vim: set expandtab tabstop=4 shiftwidth=4:
+# Vim: set expandtab tabstop=4 shiftwidth=4 cc=120:

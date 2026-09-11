@@ -47,13 +47,21 @@ public:
    * @warning Don't rely on the constructor to do any work.
    */
   virtual void initialize(initArgs &) = 0;
+
+  /**
+   * @brief If the plugin registers any command line commands, this function is called to check the arguments for those
+   * commands.
+   *
+   * @return true if the command was found and processed, false otherwise.
+   */
+  virtual bool cmdCheck() { return false; };
 };
 
 /**
  * @typedef Registry
+ *
  * @brief The PluginRegistry is a type alias for a registry that holds instances
  * of IPlugin.
- *
  */
 typedef Registry<IPlugin> PluginRegistry;
 
@@ -61,4 +69,4 @@ typedef Registry<IPlugin> PluginRegistry;
  * @brief Explicit instantiation of the Registry template class for IPlugin.
  */
 extern template class Registry<IPlugin>;
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

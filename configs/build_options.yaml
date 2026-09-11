@@ -5,6 +5,7 @@
   help_text: Enable or disable building tests.
   cmake_export: true
   cmake_help: $help_text$
+  runtime_export: false
 
 - name: ENABLE_SANITIZERS
   prompt: Enable Sanitizers
@@ -13,6 +14,7 @@
   help_text: Enable or disable building with sanitizers (e.g., AddressSanitizer, UndefinedBehaviorSanitizer).
   cmake_export: true
   cmake_help: $help_text$ 
+  runtime_export: false
 
 - name: ENABLE_PCH
   prompt: Enable Precompiled Headers
@@ -21,6 +23,7 @@
   help_text: Enable or disable the use of precompiled headers to speed up compilation.
   cmake_export: true
   cmake_help: $help_text$
+  runtime_export: false
 
 - name: TLS_BACKEND
   prompt: TLS Backend

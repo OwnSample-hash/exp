@@ -1,8 +1,7 @@
-#include "cmd/command_processor.hpp"
-#include "cmd/variable.hpp"
 #include <args.hxx>
 #include <cmd.hpp>
 #include <config.hpp>
+#include <config/config.hpp>
 #include <filesystem>
 #include <interfaces/renderer.hpp>
 #include <interfaces/tool.hpp>
@@ -23,8 +22,6 @@
 #include <unordered_map>
 
 using namespace explo;
-
-void load_module_dynamic(const char *name) {}
 
 INSTANTIATE_REGISTRY(PluginRegistry);
 
@@ -89,52 +86,96 @@ thread_local std::shared_ptr<ITool> currentTool = nullptr;
 [[noreturn]] void shutdown(int code = 0);
 
 int main(int argc, const char **argv, const char **envp) {
-  args::ArgumentParser parser("Explo - A modular exploitation framework");
+  args::ArgumentParser parser(
+      "Explo - A modular exploitation framework\nAny option under \"Global Options\" are parsed before any plugin "
+      "options. Plugin options are parsed after the global options and are specific to each plugin.");
   args::CompletionFlag completion(parser, {"complete"});
   parser.Prog(argv[0]);
 
-  args::ValueFlag<spdlog::level::level_enum> logLevel(parser, "log-level",
+  args::Group globalGroup(parser, "Global Options");
+
+  args::ValueFlag<spdlog::level::level_enum> logLevel(globalGroup, "log-level",
                                                       "Set log level (trace, debug, info, warn, error, critical)",
                                                       {'l', "log-level"}, spdlog::level::info);
 
-  args::ValueFlag<std::string> logFile(parser, "log-file", "Set log file path (default: explo.log)", {'f', "log-file"},
-                                       std::string("explo.log"));
+  args::ValueFlag<std::string> logFile(globalGroup, "log-file", "Set log file path (default: explo.log)",
+                                       {'f', "log-file"}, std::string("explo.log"));
 
-  args::ValueFlag<std::string> logDir(parser, "log-dir", "Set log directory (default: " CONFIG_LOG_DIR ")",
+  args::ValueFlag<std::string> logDir(globalGroup, "log-dir", "Set log directory (default: " CONFIG_LOG_DIR ")",
                                       {'d', "log-dir"}, std::string(CONFIG_LOG_DIR));
 
-  args::ValueFlag<std::string> pluginDir(parser, "plugin-dir",
+  args::ValueFlag<std::string> pluginDir(globalGroup, "plugin-dir",
                                          "Set plugin directory (default: " CONFIG_PLUGIN_INSTALL_DIR ")",
                                          {'p', "plugin-dir"}, std::string(CONFIG_PLUGIN_INSTALL_DIR));
 
-  args::ValueFlag<std::string> configFile(parser, "config-file",
+  args::ValueFlag<std::string> configFile(globalGroup, "config-file",
                                           "Set configuration file path (default: " CONFIG_DEFAULT_CONFIG_FILE ")",
                                           {'c', "config-file"}, std::string(CONFIG_DEFAULT_CONFIG_FILE));
 
-  args::ValueFlag<std::string> preferredUI(parser, "preferred-ui",
+  args::ValueFlag<std::string> preferredUI(globalGroup, "preferred-ui",
                                            "Set preferred UI (default: " CONFIG_DEFAULT_PREFERRED_UI ")",
                                            {'U', "preferred-ui"}, std::string(CONFIG_DEFAULT_PREFERRED_UI));
 
-  args::ValueFlag<std::string> callTool(parser, "call-tool", "Call a specific tool by name", {'C', "call-tool"});
-
-  args::ValueFlagList<std::string> envVars(parser, "env", "Set environment variables (format: VAR=value)",
-                                           {'e', "env"});
+  args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
 
   auto res = parser.ParseCLI(argc, argv);
-  if (!res) {
-    /* */
-  }
+  using args::Error;
+  switch (parser.GetError()) {
+  case Error::Usage:
+    std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Validation:
+    std::cerr << "Error validating arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Required:
+    std::cerr << "Error: Missing required arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Map:
+    std::cerr << "Error mapping arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Extra:
+    std::cerr << "Error: Unrecognized arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Subparser:
+    std::cerr << "Error parsing subcommand: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Completion:
+    std::cout << parser.GetErrorMsg();
+    shutdown();
+  case Error::Help:
+  case Error::Parse:
+  case Error::None:
+    break;
+  default:
+    spdlog::error("Unknown argument parsing error: {}", parser.GetErrorMsg());
+    std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  };
 
-  args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+  try {
+    explo::Config config(configFile.Get(), envp, []() -> explo::ConfigMap {
+      return {
+#define X(key, value) {key, value},
+          CONFIG_OPTS
+#undef X
+      };
+    });
+  } catch (const std::exception &e) {
+    std::cerr << "Error loading configuration file: " << e.what() << std::endl;
+  }
 
   std::filesystem::create_directories(std::filesystem::path(logDir.Get()));
   spdlog::set_default_logger(spdlog::basic_logger_mt("main", logDir.Get() + "/" + normalizePath(logFile.Get()), true));
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
   spdlog::basic_logger_mt("lib", logDir.Get() + "/lib.log", true);
-
-  const std::vector<std::string> envVV(envVars.Get());
-  const std::string toolToCall(callTool.Get());
 
   PluginLoader &loader = PluginLoader::instance();
 
@@ -171,61 +212,64 @@ int main(int argc, const char **argv, const char **envp) {
   }
 
   res = parser.ParseCLI(argc, argv);
-  spdlog::debug("Parsed command line arguments successfully {}", res);
-  if (!res) {
-    spdlog::error("Error parsing arguments: {}", parser.GetErrorMsg());
-    spdlog::debug("Argument parsing error: {}", static_cast<int>(parser.GetError()));
-    using args::Error;
-    switch (parser.GetError()) {
-    case Error::Usage:
-      std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    case Error::Parse:
-      std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    case Error::Validation:
-      std::cerr << "Error validating arguments: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    case Error::Required:
-      std::cerr << "Error: Missing required arguments: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    case Error::Map:
-      std::cerr << "Error mapping arguments: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    case Error::Extra:
-      std::cerr << "Error: Unrecognized arguments: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    case Error::Help:
-      std::cout << parser << std::endl;
-      std::exit(0);
-    case Error::Subparser:
-      std::cerr << "Error parsing subcommand: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      std::exit(1);
-    case Error::Completion:
-      std::cout << parser.GetErrorMsg();
-      shutdown();
-    case Error::None:
-      break;
-    default:
-      spdlog::error("Unknown argument parsing error: {}", parser.GetErrorMsg());
-      std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
-      std::cerr << parser;
-      shutdown(1);
-    };
-  }
+  spdlog::debug("2. Parsed command line arguments successfully {} {}", res, parser.GetErrorMsg());
+  spdlog::error("2. Error parsing arguments: {}", parser.GetErrorMsg());
+  spdlog::debug("2. Argument parsing error: {}", static_cast<int>(parser.GetError()));
+  switch (parser.GetError()) {
+  case Error::Usage:
+    std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Parse:
+    std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Validation:
+    std::cerr << "Error validating arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Required:
+    std::cerr << "Error: Missing required arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Map:
+    std::cerr << "Error mapping arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Extra:
+    std::cerr << "Error: Unrecognized arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Subparser:
+    std::cerr << "Error parsing subcommand: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  case Error::Completion:
+    std::cout << parser.GetErrorMsg();
+    shutdown();
+  case Error::Help:
+    std::cout << parser << std::endl;
+    shutdown();
+  case Error::None:
+    break;
+  default:
+    spdlog::error("Unknown argument parsing error: {}", parser.GetErrorMsg());
+    std::cerr << "Error parsing arguments: " << parser.GetErrorMsg() << std::endl;
+    std::cerr << parser;
+    shutdown(1);
+  };
 
   // Command
 
   spdlog::info("Registering global commands...");
 
 #include <commands.hpp>
+
+  for (const auto &plugin : get_loaded_plugins()) {
+    if (plugin->cmdCheck()) {
+      shutdown(0);
+    }
+  }
 
   spdlog::info("Initializing tools...");
   for (const auto &[plugin, args] : pluginInitArgs) {
@@ -271,65 +315,12 @@ int main(int argc, const char **argv, const char **envp) {
     }
   }
 
-  spdlog::trace("Environment variables: {}", envVV.empty() ? "None" : "<list>");
-  spdlog::trace("Tool to call: {}", toolToCall);
-  auto &vars = cmd::CommandProcessor::instance().vars();
-  auto &cp = cmd::CommandProcessor::instance();
-
   IRenderer *rendererModule = nullptr;
 
   rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
   if (!rendererModule) {
     spdlog::error("Error initializing display module: No valid display module found");
     goto quit;
-  }
-
-  for (const auto &var : envVV) {
-    auto pos = var.find('=');
-    if (pos != std::string::npos) {
-      std::string name = var.substr(0, pos);
-      std::string value = var.substr(pos + 1);
-      if (value.size() > 2 && value[0] == '%') {
-        if (value[1] == 's')
-          vars.set(name, cmd::VarValue(value.substr(2)));
-        else if (value[1] == 'd')
-          vars.set(name, cmd::VarValue(std::stoll(value.substr(2))));
-        else if (value[1] == 'f')
-          vars.set(name, cmd::VarValue(std::stod(value.substr(2))));
-        else if (value[1] == 'b') {
-          std::string val = value.substr(2);
-          std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-          if (val == "true" || val == "1")
-            vars.set(name, cmd::VarValue(true));
-          else if (val == "false" || val == "0")
-            vars.set(name, cmd::VarValue(false));
-        }
-      } else {
-        vars.set(name, cmd::VarValue(value));
-      }
-      spdlog::debug("Set environment variable: {}={}", name, value);
-    } else {
-      spdlog::warn("Invalid environment variable format: {}", var);
-    }
-  }
-
-  if (!toolToCall.empty()) {
-    auto it = tools.find(toolToCall);
-    if (it != tools.end()) {
-      currentTool = it->second;
-      currentTool->invoke(currentTool->getName(), true);
-      spdlog::info("Calling tool: {}", toolToCall);
-      cp.switchContext(toolToCall);
-      cp.vars().set("prompt", cmd::VarValue(std::string("(" + toolToCall + ") \33[33m>\33[0m ")));
-      cp.vars().set("current_tool", cmd::VarValue(toolToCall));
-      currentTool->execute();
-      currentTool->suppress();
-      spdlog::info("Tool execution completed: {}", toolToCall);
-      shutdown(0);
-    } else {
-      spdlog::error("Tool not found: {}", toolToCall);
-      std::cout << "\033[41mTool not found: " << toolToCall << "\033[0m" << std::endl;
-    }
   }
 
   rendererModule->initialize();

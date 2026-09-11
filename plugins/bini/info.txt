@@ -8,6 +8,6 @@ Info about the variables:
         summary: Provides a summary of the analysis results. Includes NX, ASLR,
         PIE, stack canaries.
 
-        fucntions: Lists the functions found in the target.
+        functions: Lists the functions found in the target.
 
         strings: Extracts and lists the strings found in the target.

@@ -2,6 +2,7 @@ file(GLOB_RECURSE main_app_SOURCE src/*.cpp)
 
 add_executable(main_app
   ${main_app_SOURCE}
+  config/yaml.cpp
 )
 
 if (${TLS_BACKEND} STREQUAL "openssl")
@@ -18,7 +19,7 @@ elseif(${TLS_BACKEND} STREQUAL "mbedtls")
   )
 endif()
 
-target_link_libraries(main_app PRIVATE spdlog::spdlog)
+target_link_libraries(main_app PRIVATE spdlog::spdlog_static yaml-cpp::yaml-cpp)
 target_include_directories(main_app PRIVATE ../include ./include)
 set_target_properties(main_app PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

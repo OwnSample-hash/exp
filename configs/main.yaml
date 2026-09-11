@@ -10,13 +10,19 @@
   default: logs
   help_text: Directory where logs will be placed.
 
-- name: DEFAULT_CONFIG_FILE
+- name: CONFIG_FILE
   prompt: Default config file
   type: string
   default: config.yaml
   help_text: Default configuration file to use if no other is specified.
 
-- name: DEFAULT_PREFERRED_UI
+- name: CONFIG_DIR
+  prompt: Config directory
+  type: string
+  default: configs
+  help_text: Directory where plugin configuration files will be loaded from.
+
+- name: PREFERRED_UI
   prompt: Default UI type
   type: string
   default: simple_ui

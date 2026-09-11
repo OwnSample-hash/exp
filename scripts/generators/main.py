@@ -4,28 +4,43 @@ if TYPE_CHECKING:
     from conf import *
 
 
-def dump_entry(f, entry, prefix="CONFIG_"):
+xmacros = []
+
+
+def dump_entry(f, entry: ConfigOption, prefix="CONFIG_"):
     match entry.type:
         case ConfigType.BOOL:
             f.write(f"#define {prefix}{entry.name} {1 if entry.value else 0}\n")
+            if entry.runtime_export:
+                xmacros.append(f'X("{entry.name.lower()}", {1 if entry.value else 0})')
         case ConfigType.INT:
             f.write(f"#define {prefix}{entry.name} {entry.value}\n")
+            if entry.runtime_export:
+                xmacros.append(f'X("{entry.name.lower()}", {entry.value})')
         case ConfigType.STRING:
             f.write(f'#define {prefix}{entry.name} "{entry.value}"\n')
+            if entry.runtime_export:
+                xmacros.append(f'X("{entry.name.lower()}", "{entry.value}")')
         case ConfigType.CHOICE:
             opt = ""
-            for choice,i in zip(entry.choices, range(len(entry.choices))): 
+            for choice, i in zip(entry.choices, range(len(entry.choices))):
                 f.write(f"#define {prefix}{entry.name}_{choice["name"].upper()} {i}\n")
                 if entry.value == choice["name"]:
                     opt = f"{prefix}{entry.name}_{choice['name'].upper()}"
             f.write(f"#define {prefix}{entry.name} {opt}\n")
+            if entry.runtime_export:
+                xmacros.append(f'X("{entry.name.lower()}", {opt})')
         case ConfigType.MENU | ConfigType.DYNAMICMENU:
             for e in entry.children:
-                dump_entry(f, e, prefix=prefix + entry.name + "_")
+                dump_entry(f, e, prefix=(prefix + entry.name + "_"))
         case ConfigType.TRISTATE:
             f.write(
                 f"#define {prefix}{entry.name} {2 if entry.value == 'm' else 1 if entry.value == 'y' else 0}\n"
             )
+            if entry.runtime_export:
+                xmacros.append(
+                    f"X(\"{entry.name.lower()}\", {2 if entry.value == 'm' else 1 if entry.value == 'y' else 0})"
+                )
         case _:
             raise ValueError(f"Unknown type: {entry.type}")
 
@@ -40,6 +55,16 @@ def generate_func_main(opt: list[ConfigOption]) -> list[str]:
             if entry.name == "MODULES" or entry.name == "TOOLS":
                 continue
             dump_entry(f, entry)
+
+        if xmacros:
+            f.write("\n// X-Macros\n")
+            f.write("#define CONFIG_OPTS \\\n")
+            for xm in xmacros:
+                if xm == xmacros[-1]:
+                    f.write(f"  {xm}\n")
+                else:
+                    f.write(f"  {xm} \\\n")
+        f.write("\n")
     return [args.header]
 
 
@@ -52,4 +77,4 @@ def gen():
     )
 
 
-# Vim: set expandtab tabstop=4 shiftwidth=4:
+# Vim: set expandtab tabstop=4 shiftwidth=4 cc=120:
