@@ -1205,13 +1205,13 @@ class MenuConfig:
                     )
                     children.append(
                         ConfigOption(
-                            name=os.path.dirname(file).split("/")[-1],
-                            prompt=os.path.dirname(file).split("/")[-1],
+                            name=os.path.dirname(file).split(os.sep)[-1],
+                            prompt=os.path.dirname(file).split(os.sep)[-1],
                             type=ConfigType.MENU,
                             children=self._load_config_from_file(file, depth=depth + 1),
                             source_file=file,
                             help_text=opt_dict.get("help_text_fmt", "").format(
-                                filename=os.path.dirname(file).split("/")[-1]
+                                filename=os.path.dirname(file).split(os.sep)[-1]
                             ),
                             show_if=opt_dict.get("show_if", None),
                             editable=False,  # Dynamic submenus are not editable since they are generated from files
