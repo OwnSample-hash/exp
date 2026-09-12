@@ -25,7 +25,11 @@ if (LUA_EXP_ENABLE)
       PUBLIC ${lua_headers}
     )
 
-    target_compile_definitions(lua PRIVATE LUA_USE_LINUX)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      target_compile_definitions(lua PRIVATE LUA_USE_LINUX)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+      target_compile_definitions(lua PRIVATE LUA_USE_WINDOWS)
+    endif()
 
     set_target_properties(lua PROPERTIES
       POSITION_INDEPENDENT_CODE ON

@@ -16,7 +16,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(exp LANGUAGES C CXX VERSION 0.0.1 SPDX_LICENSE "GPL-3.0-or-later")
 
-add_compile_options("-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options("-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=")
+endif()
 
 include(cmake/CPM.cmake)
 CPMUsePackageLock("cpm-package-lock.cmake")
