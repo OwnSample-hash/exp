@@ -13,7 +13,7 @@ void luaLoader::initialize() {
       this->logger->info("Found Lua script: {}", entry.path().string());
       auto path = entry.path();
       path.replace_extension("");
-      auto tool = std::make_shared<luaTool>(this->logger, path.string());
+      auto tool = std::make_shared<luaTool>(this->logger, path.string(), this->parser);
       this->tools.emplace(tool->getName(), std::move(tool));
     }
   }

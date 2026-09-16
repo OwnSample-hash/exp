@@ -23,4 +23,4 @@ struct Module {
 };
 
 } // namespace explo
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

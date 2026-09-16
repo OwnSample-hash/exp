@@ -1,5 +1,6 @@
 #pragma once
 
+#include <args.hxx>
 #include <interfaces/tool.hpp>
 #include <llib.hpp>
 #include <lua.h>
@@ -32,7 +33,11 @@ public:
   luaTool(const luaTool &) = delete;
   luaTool(luaTool &&) = delete;
 
-  luaTool(std::shared_ptr<spdlog::logger> logger, const std::string &file) : logger(std::move(logger)), file(file) {
+  luaTool &operator=(const luaTool &) = delete;
+  luaTool &operator=(luaTool &&) = delete;
+
+  luaTool(std::shared_ptr<spdlog::logger> logger, const std::string &file, std::shared_ptr<args::Group> parser)
+      : logger(std::move(logger)), file(file) {
     L = luaL_newstate();
     if (!L)
       throw std::runtime_error("Failed to create Lua state");
@@ -66,15 +71,21 @@ public:
     }
 
     lua(file);
-    name = lua["name"].as<std::string>("Unnamed Lua Tool");
-    version = lua["version"].as<std::string>("0.1");
-    description = lua["description"].as<std::string>("No description provided.");
+    name = lua["name"].as("Unnamed Lua Tool");
+    version = lua["version"].as("0.1");
+    description = lua["description"].as("No description provided.");
     this->logger->info("Initialized Lua tool: {} v{}", name, version);
-    int res;
+    int res = 0;
     if ((res = lua.insert("name", luaVartype{name}))) {
       this->logger->warn("Failed to insert 'name' into Lua table for tool '{}' "
                          "with error code {}",
                          name, res);
+    }
+    LTW desc;
+    try {
+      desc = lua["desc"].as<LTW>();
+    } catch (std::bad_variant_access &e) {
+      this->logger->warn("Failed to retrieve 'desc' table for tool '{}' with error: {}", name, e.what());
     }
   }
 

@@ -35,4 +35,4 @@ target_sources(main_app PRIVATE ${impl} ${CMAKE_CURRENT_SOURCE_DIR}/lib/tls/${TL
 
 add_pch(main_app)
 
-# Vim: set expandtab tabstop=2 shiftwidth=2:
+# Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

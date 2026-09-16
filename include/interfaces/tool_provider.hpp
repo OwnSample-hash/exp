@@ -17,9 +17,8 @@ class IToolProvider : public IMod {
 public:
   virtual ~IToolProvider() = default;
 
-  virtual const std::map<std::string, std::shared_ptr<ITool>> &
-  getTools() const = 0;
+  virtual const std::map<std::string, std::shared_ptr<ITool>> &getTools() const = 0;
 };
 
 } // namespace explo
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

@@ -55,12 +55,11 @@ struct UIWidget {
   std::vector<UIWidget> child;
 
   // returns true if the ui should be invalidated and redrawn
-  using ER =
-      eventRegistry<bool, UIWidget &, UIEvent, const EventData &, void *>;
+  using ER = eventRegistry<bool, UIWidget &, UIEvent, const EventData &, void *>;
   ER events = ER();
 
   void *data = nullptr;
 };
 
 } // namespace explo
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

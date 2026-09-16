@@ -163,4 +163,4 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

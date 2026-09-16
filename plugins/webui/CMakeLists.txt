@@ -35,4 +35,4 @@ if(WEBUI_ENABLE)
    add_subdirectory(tests)
   endif()
 endif()
-# Vim: set expandtab tabstop=2 shiftwidth=2:
+# Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

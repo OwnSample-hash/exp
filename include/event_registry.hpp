@@ -31,17 +31,13 @@ public:
   eventRegistry(onEventFN handler) { handlers.push_back(handler); }
 
   void operator+=(onEventFN handler) {
-    spdlog::debug("Adding event handler of type: {}",
-                  handler.target_type().name());
+    spdlog::debug("Adding event handler of type: {}", handler.target_type().name());
     handlers.push_back(handler);
   }
 
   void operator-=(const onEventFN &handler) {
-    spdlog::debug("Removing event handler of type: {}",
-                  handler.target_type().name());
-    std::erase_if(handlers, [&handler](const auto &h) {
-      return h.target_type() == handler.target_type();
-    });
+    spdlog::debug("Removing event handler of type: {}", handler.target_type().name());
+    std::erase_if(handlers, [&handler](const auto &h) { return h.target_type() == handler.target_type(); });
   }
 
   // template <typename T> T fire(Args &&...args) {
@@ -73,4 +69,4 @@ public:
 };
 
 } // namespace explo
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

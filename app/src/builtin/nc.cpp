@@ -1,4 +1,3 @@
-#define _GNU_SOURCE 1
 #include <arpa/inet.h>
 #include <builtin/nc.hpp>
 #include <cmd.hpp>
@@ -195,3 +194,4 @@ void NC::set_nonblocking(int fd) {
 
 } // namespace builtin
 } // namespace explo
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

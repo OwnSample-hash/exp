@@ -13,15 +13,20 @@ return {
     test_port = "443",
     method = "tcp",
   },
+  desc = {
+    target = "Target IPs to scan. Comma separated list or single. Both IPv4 and IPv6 are supported. Ranges must use CIDR notation.",
+    ports = "Ports to scan, single or comma separated list or range. Range is specified with a dash, e.g. 1-10000 includes all ports from 1 to 10000",
+    test_port = "Port to test if host is up. Default is 443",
+    method = "Scan method to use. Comma separated list of methods. Supported methods are: tcp.",
+  },
   initialize = function()
-    explo.info("Initializing pmap")
+    explo.info("Initializing dnet")
   end,
   shutdown = function()
-    explo.info("Shutting down pmap")
+    explo.info("Shutting down dnet")
   end,
   execute = function()
     local start = explo.clock()
-    explo.info("Executing dnet")
     local target = explo.var("target")
     local port = explo.var("ports")
     local test_port = explo.var("test_port")
@@ -188,4 +193,4 @@ return {
     return result
   end,
 }
--- Vim: set expandtab tabstop=2 shiftwidth=2:
+-- Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

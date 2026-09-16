@@ -44,16 +44,12 @@ template <typename... Types> struct MultiValue {
   }
 
   // Check if the current active type is T
-  template <typename T> bool is() const {
-    return std::holds_alternative<T>(data);
-  }
+  template <typename T> bool is() const { return std::holds_alternative<T>(data); }
 
   // Get a pointer to T, or nullptr if wrong type (non-throwing)
   template <typename T> T *try_as() { return std::get_if<T>(&data); }
 
-  template <typename T> const T *try_as() const {
-    return std::get_if<T>(&data);
-  }
+  template <typename T> const T *try_as() const { return std::get_if<T>(&data); }
 
   operator const std::variant<Types...>() const { return data; }
 };

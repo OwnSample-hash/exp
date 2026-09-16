@@ -39,4 +39,4 @@ std::string base64_decode(const std::string &in) {
   }
   return out;
 }
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

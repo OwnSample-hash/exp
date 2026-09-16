@@ -76,4 +76,4 @@ return {
     return string.format("\27[48;2;%d;%d;%dm", r, g, b)
   end,
 }
--- Vim: set expandtab tabstop=2 shiftwidth=2:
+-- Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

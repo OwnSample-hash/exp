@@ -22,8 +22,7 @@ struct DynamicOption {
   std::regex regex;
   std::string description;
   DynamicOption(std::string pat, const std::string &reStr, std::string desc)
-      : pattern(std::move(pat)),
-        regex(reStr, std::regex::ECMAScript | std::regex::optimize),
+      : pattern(std::move(pat)), regex(reStr, std::regex::ECMAScript | std::regex::optimize),
         description(std::move(desc)) {}
 };
 
@@ -53,9 +52,7 @@ inline std::string optionHint(const Option &opt) {
       opt);
 }
 
-inline bool isStatic(const Option &opt) {
-  return std::holds_alternative<StaticOption>(opt);
-}
+inline bool isStatic(const Option &opt) { return std::holds_alternative<StaticOption>(opt); }
 
 // ── CommandDef
 // ────────────────────────────────────────────────────────────────
@@ -81,8 +78,7 @@ struct CommandDef {
     options.push_back(StaticOption{val, desc});
     return *this;
   }
-  CommandDef &addDynamic(const std::string &hint, const std::string &reStr,
-                         const std::string &desc = "") {
+  CommandDef &addDynamic(const std::string &hint, const std::string &reStr, const std::string &desc = "") {
     options.emplace_back(DynamicOption{hint, reStr, desc});
     return *this;
   }

@@ -252,4 +252,4 @@ template <typename ELFT> summary analyzeELF(const ELFObjectFile<ELFT> &Obj) {
   return result;
 }
 
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

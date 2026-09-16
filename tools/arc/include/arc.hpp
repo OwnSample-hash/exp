@@ -2,12 +2,23 @@
 #include "arc_config.hpp"
 #include <cstdint>
 #include <filesystem>
-#include <fuse3/fuse.h>
 #include <iterator.hpp>
 #include <iterator>
 #include <span>
 #include <string>
 #include <vector>
+
+#ifdef CONFIG_ARC_FUSE_ENABLE
+#include <fuse3/fuse.h>
+#endif
+
+#ifdef __GNUC__
+#define PACK(__Declaration__) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK(__Declaration__) __pragma(pack(push, 1)) __Declaration__ __pragma(pack(pop))
+#endif
 
 namespace fs = std::filesystem;
 
@@ -60,7 +71,7 @@ uint32_t crc32(const std::span<const std::byte> &data);
 #define SMARKER 0xDEADBEEFC0FEBABE
 #define EMARKER 0xDEADBEEF
 
-struct __attribute__((__packed__)) Piece {
+PACK(struct Piece {
   uint64_t smarker = SMARKER; //< Marker to identify the start of a piece
   int64_t name_offset;        //< Offset from the start of the file to the name string
   uint64_t name_size;         //< Size of the name string (not including null terminator)
@@ -72,11 +83,11 @@ struct __attribute__((__packed__)) Piece {
   // excluded from serialization
   const char *name;            //< Name of the file (null-terminated string)
   std::vector<std::byte> data; //< Pointer to the data (not null-terminated)
-};
+});
 
 constexpr size_t PIECE_SIZE = sizeof(Piece) - sizeof(const char *) - sizeof(std::vector<std::byte>);
 
-struct __attribute__((__packed__)) Header {
+PACK(struct Header {
   uint8_t magic[4] = ARC_MAGIC_M; //< Magic number to identify the archive format
   uint32_t version;               //< Version of the archive format
   uint32_t file_count;            //< Number of files in the archive
@@ -84,7 +95,7 @@ struct __attribute__((__packed__)) Header {
 
   // excluded from serialization
   std::vector<Piece> pieces; //< Pointer to an array of Piece structures
-};
+});
 
 constexpr size_t HEADER_SIZE = sizeof(Header) - sizeof(std::vector<Piece>);
 

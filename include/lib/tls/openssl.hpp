@@ -5,7 +5,6 @@
 #endif
 
 #include "../../itls.hpp"
-#include <netdb.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <string_view>

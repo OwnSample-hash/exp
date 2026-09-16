@@ -16,4 +16,4 @@ add_custom_target(sveltekit_build
 
 add_dependencies(sveltekit_build arc_exec)
 add_dependencies(${MOD_NAME} sveltekit_build)
-# Vim: set expandtab tabstop=2 shiftwidth=2:
+# Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

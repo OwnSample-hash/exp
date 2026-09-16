@@ -12,4 +12,4 @@ void PL_cpr::initialize(initArgs &args) {
 }
 
 static PluginRegistry::Add<PL_cpr> cprRegister("cpr");
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

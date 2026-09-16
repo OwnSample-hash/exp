@@ -136,4 +136,4 @@ void bini::execute() {
     llvm::outs() << "Detailed information not implemented yet.\n";
   }
 }
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

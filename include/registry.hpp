@@ -41,9 +41,7 @@ template <typename T, typename... CTorParamTypes> class SRE {
   FactoryFN Ctor;
 
 public:
-  SRE(const std::string &name, FactoryFN ctor) : Name(name), Ctor(ctor) {
-    spdlog::debug("Registering SRE: {}", Name);
-  }
+  SRE(const std::string &name, FactoryFN ctor) : Name(name), Ctor(ctor) { spdlog::debug("Registering SRE: {}", Name); }
 
   /**
    * @brief Returns the name of the registry entry.
@@ -59,9 +57,7 @@ public:
    * to the factory function.
    * @return A std::unique_ptr to the created instance of type T.
    */
-  std::unique_ptr<T> create(CTorParamTypes &&...params) const {
-    return Ctor(std::forward<CTorParamTypes>(params)...);
-  }
+  std::unique_ptr<T> create(CTorParamTypes &&...params) const { return Ctor(std::forward<CTorParamTypes>(params)...); }
 };
 
 template <typename T, typename... CTorParamTypes> class Registry;
@@ -72,14 +68,12 @@ struct IsRegistryType<Registry<T, CTorParamTypes...>> : std::true_type {};
 
 // Registry for plugin factories
 template <typename T, typename... CTorParamTypes> class Registry {
-  static_assert(!IsRegistryType<T>::value,
-                "Nested Registry types are not allowed");
+  static_assert(!IsRegistryType<T>::value, "Nested Registry types are not allowed");
 
 public:
   using type = T;
   using entry = SRE<T, CTorParamTypes...>;
-  static constexpr bool HasCtorParams =
-      sizeof...(CTorParamTypes) != 0; // Check if there are constructor params
+  static constexpr bool HasCtorParams = sizeof...(CTorParamTypes) != 0; // Check if there are constructor params
 
   class node;
   class iterator;
@@ -112,17 +106,13 @@ public:
     Tail = N;
   }
 
-  class iterator
-      : public explo::IteratorFacade<iterator, std::forward_iterator_tag,
-                                     const entry> {
+  class iterator : public explo::IteratorFacade<iterator, std::forward_iterator_tag, const entry> {
     const node *Current;
 
   public:
     explicit iterator(const node *start) : Current(start) {}
 
-    bool operator==(const iterator &That) const {
-      return Current == That.Current;
-    }
+    bool operator==(const iterator &That) const { return Current == That.Current; }
 
     iterator &operator++() {
       Current = Current->Next;
@@ -134,9 +124,7 @@ public:
   static iterator begin() { return iterator(Head); }
   static iterator end() { return iterator(nullptr); }
 
-  static explo::iterator_range<iterator> entries() {
-    return explo::iterator_range<iterator>(begin(), end());
-  }
+  static explo::iterator_range<iterator> entries() { return explo::iterator_range<iterator>(begin(), end()); }
 
   template <typename V>
     requires std::is_base_of<T, V>::value
@@ -149,15 +137,12 @@ public:
     }
 
   public:
-    Add(const std::string &name) : Entry(name, CtorFn), Node(Entry) {
-      add_node(&Node);
-    }
+    Add(const std::string &name) : Entry(name, CtorFn), Node(Entry) { add_node(&Node); }
   };
 };
 
-#define INSTANTIATE_REGISTRY(REGISTRY_CLASS)                                   \
-  template class Registry<REGISTRY_CLASS::type>;                               \
-  static_assert(!REGISTRY_CLASS::HasCtorParams,                                \
-                "Constructor parameters not supported");
+#define INSTANTIATE_REGISTRY(REGISTRY_CLASS)                                                                           \
+  template class Registry<REGISTRY_CLASS::type>;                                                                       \
+  static_assert(!REGISTRY_CLASS::HasCtorParams, "Constructor parameters not supported");
 
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

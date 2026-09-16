@@ -96,4 +96,4 @@ private:
   std::vector<LibHandle> handles_;
   std::string lastError_;
 };
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

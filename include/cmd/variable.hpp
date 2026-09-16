@@ -20,13 +20,11 @@ struct VarValue {
 
   // Constructors
   VarValue() = default;
-  explicit VarValue(std::string s)
-      : type(VarType::String), sval(std::move(s)) {}
+  explicit VarValue(std::string s) : type(VarType::String), sval(std::move(s)) {}
   explicit VarValue(const char *s) : type(VarType::String), sval(s) {}
   explicit VarValue(long long i) : type(VarType::Integer), ival(i) {}
   explicit VarValue(double d) : type(VarType::Float), fval(d) {}
-  explicit VarValue(std::vector<std::string> a)
-      : type(VarType::Array), aval(std::move(a)) {}
+  explicit VarValue(std::vector<std::string> a) : type(VarType::Array), aval(std::move(a)) {}
   explicit VarValue(bool b) : type(VarType::Bool), ival(b ? 1 : 0) {}
 
   // Coercion to string (for expansion)

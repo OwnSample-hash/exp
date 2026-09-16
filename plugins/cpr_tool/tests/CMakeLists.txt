@@ -15,4 +15,4 @@ if (MODULE_CPR_DYNAMIC)
 endif()
 
 add_test(NAME ${MOD_NAME}_module_tests COMMAND ${MOD_NAME})
-# Vim: set expandtab tabstop=2 shiftwidth=2:
+# Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
