@@ -6,7 +6,22 @@
 
 #pragma once
 
+#include <args.hxx>
+#include <memory>
+#include <registry.hpp>
+
 namespace explo {
+
+enum class ModuleType {
+  RENDERER,
+  TOOLPROVIDER,
+  TOOL,
+};
+
+struct initArgs {
+  std::shared_ptr<args::Group> parser;
+  std::shared_ptr<spdlog::logger> logger;
+};
 
 /**
  * @class IMod
@@ -35,13 +50,17 @@ public:
    * @brief Method to initialize the module, performing any necessary setup or
    * configuration before the module can be used.
    */
-  virtual void initialize() = 0;
+  virtual void initialize(initArgs &) = 0;
 
   /**
    * @brief Method to shut down the module, performing any necessary cleanup or
    * resource deallocation when the module is no longer needed.
    */
   virtual void shutdown() = 0;
+
+  virtual ModuleType getModuleType() const = 0;
+
+  virtual bool cmdCheck() { return false; };
 };
 
 } // namespace explo

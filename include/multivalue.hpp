@@ -25,22 +25,14 @@ template <typename... Types> struct MultiValue {
 
   template <typename T> const T &as() const { return std::get<T>(data); }
 
-  template <typename T> T &as(T defaultValue) {
-    if (auto ptr = std::get_if<T>(&data)) {
-      return *ptr;
-    } else {
-      data = defaultValue;
-      return std::get<T>(data);
-    }
+  template <typename T> T as(T defaultValue) {
+    auto *ptr = std::get_if<T>(&data);
+    return ptr ? *ptr : defaultValue;
   }
 
-  template <typename T> const T &as(T defaultValue) const {
-    if (auto ptr = std::get_if<T>(&data)) {
-      return *ptr;
-    } else {
-      data = defaultValue;
-      return std::get<T>(data);
-    }
+  template <typename T> const T as(T defaultValue) const {
+    auto *ptr = std::get_if<T>(&data);
+    return ptr ? *ptr : defaultValue;
   }
 
   // Check if the current active type is T
@@ -55,3 +47,4 @@ template <typename... Types> struct MultiValue {
 };
 
 } // namespace explo
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

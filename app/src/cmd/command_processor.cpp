@@ -184,6 +184,7 @@ CommandProcessor::~CommandProcessor() {}
 // ─────────────────────────────────────────────────────────────────────────────
 
 void CommandProcessor::registerContext(std::shared_ptr<Context> ctx) {
+  spdlog::debug("Registering context: {}", ctx->name());
   contexts_[ctx->name()] = std::move(ctx);
   // if (!currentCtx_)
   //   currentCtx_ = contexts_.begin()->second;

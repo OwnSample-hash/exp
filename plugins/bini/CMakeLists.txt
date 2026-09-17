@@ -3,7 +3,6 @@ if(BINI_ENABLE)
   set(MOD_SRC 
     src/bini.cpp
     src/summary.cpp
-    src/tool.cpp
   )
 
   find_package(LLVM REQUIRED CONFIG COMPONENTS Object Support BinaryFormat)

@@ -13,18 +13,21 @@ class UI final : public IRenderer {
 
   std::shared_ptr<spdlog::logger> logger;
 
+  bool basicInitDone = false;
+
 public:
   UI() = default;
-  UI(std::shared_ptr<spdlog::logger> logger) : logger(logger) {};
   ~UI() override = default;
 
   const char *getName() const override { return "simple_ui"; }
   const char *getVersion() const override { return "1.0.0"; }
 
-  void initialize() override;
+  void initialize(initArgs &) override;
   void shutdown() override {};
 
   void runLoop() override;
+
+  ModuleType getModuleType() const override { return ModuleType::RENDERER; }
 };
 
 } // namespace builtin

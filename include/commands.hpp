@@ -56,7 +56,7 @@
     c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
       std::stringstream result;
       result << "Loaded plugins:\n";
-      for (const auto &entry : get_loaded_plugins()) {
+      for (const auto &entry : get_loaded_plugins2()) {
         result << " - " << entry->getName() << " version: " << entry->getVersion() << "\n";
       }
       return result.str();
@@ -103,24 +103,6 @@
     c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
       std::cout << "\033[2J\033[H"; // ANSI escape code to clear screen
       return "";
-    };
-    cp.registerGlobalCommand(c);
-  }
-  if (CHECK(cmds, "mods")) {
-    cmd::CommandDef c;
-    c.name = "mods";
-    c.description = "List loaded modules";
-    c.variadic = false;
-    c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
-      std::stringstream result;
-      result << "Loaded modules:\n";
-      for (const auto &[plugin, args] : pluginInitArgs) {
-        result << "Plugin: " << plugin << "\n";
-        for (const auto &mod : *args.modules) {
-          result << "  - " << mod.instance->getName() << " " << mod.instance->getVersion() << "\n";
-        }
-      }
-      return result.str();
     };
     cp.registerGlobalCommand(c);
   }

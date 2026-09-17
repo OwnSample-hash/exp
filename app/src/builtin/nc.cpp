@@ -16,9 +16,8 @@
 namespace explo {
 namespace builtin {
 
-void NC::initialize() {
+void NC::initialize(initArgs &args) {
   auto ctx = std::make_shared<cmd::Context>(this->getName());
-
   {
     {
       cmd::CommandDef c;
@@ -43,6 +42,7 @@ void NC::initialize() {
   }
 
   cmd::CommandProcessor::instance().registerContext(ctx);
+  this->logger = args.logger;
 }
 
 void NC::invoke(std::string_view prefix, bool soft) {

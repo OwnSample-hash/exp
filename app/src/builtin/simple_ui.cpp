@@ -152,7 +152,15 @@ void UI::runLoop() {
 struct termios origTermios = {};
 #endif
 
-void UI::initialize() {
+void UI::initialize(initArgs &args) {
+  if (!basicInitDone) {
+    this->logger = args.logger;
+    basicInitDone = true;
+    logger->info("Initializing web UI module");
+    return;
+  }
+  assert(this->logger != nullptr);
+
   logger->set_level(spdlog::level::trace);
   logger->flush_on(spdlog::level::trace);
   logger->info("Initializing simple UI...");

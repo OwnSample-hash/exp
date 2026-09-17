@@ -23,14 +23,24 @@
 
 using namespace explo;
 
-INSTANTIATE_REGISTRY(PluginRegistry);
+INSTANTIATE_REGISTRY(ToolRegistry);
+INSTANTIATE_REGISTRY(ToolProviderRegistry);
+INSTANTIATE_REGISTRY(RendererRegistry);
 
-const std::list<std::unique_ptr<IPlugin>> &get_loaded_plugins() {
-  static std::list<std::unique_ptr<IPlugin>> plugins;
+const std::vector<std::unique_ptr<IMod>> &get_loaded_plugins2(bool forceReload = false) {
+  static std::vector<std::unique_ptr<IMod>> plugins;
   if (plugins.empty()) {
     spdlog::info("Loading registered plugins...");
-    for (const auto &entry : PluginRegistry::entries()) {
-      spdlog::info("Instantiating plugin: {}", entry.getName());
+    for (const auto &entry : RendererRegistry::entries()) {
+      spdlog::info("Instantiating renderer: {}", entry.getName());
+      plugins.emplace_back(entry.create());
+    }
+    for (const auto &entry : ToolProviderRegistry::entries()) {
+      spdlog::info("Instantiating tool provider: {}", entry.getName());
+      plugins.emplace_back(entry.create());
+    }
+    for (const auto &entry : ToolRegistry::entries()) {
+      spdlog::info("Instantiating tool: {}", entry.getName());
       plugins.emplace_back(entry.create());
     }
   }
@@ -77,11 +87,11 @@ std::istream &operator>>(std::istream &is, spdlog::level::level_enum &level) {
 } // namespace level
 } // namespace spdlog
 
-std::map<std::string, std::shared_ptr<ITool>> tools;
+std::map<std::string, ITool *> tools = {};
 
-std::unordered_map<std::string, initArgs> pluginInitArgs;
+std::unordered_map<std::string, explo::initArgs> pluginInitArgs = {};
 
-thread_local std::shared_ptr<ITool> currentTool = nullptr;
+thread_local ITool *currentTool = nullptr;
 
 [[noreturn]] void shutdown(int code = 0);
 
@@ -90,6 +100,7 @@ int main(int argc, const char **argv, const char **envp) {
       "Explo - A modular exploitation framework\nAny option under \"Global Options\" are parsed before any plugin "
       "options. Plugin options are parsed after the global options and are specific to each plugin.");
   args::CompletionFlag completion(parser, {"complete"});
+  parser.RequireCommand(false);
   parser.Prog(argv[0]);
 
   args::Group globalGroup(parser, "Global Options");
@@ -192,21 +203,32 @@ int main(int argc, const char **argv, const char **envp) {
     }
   }
 
-  spdlog::info("Available plugins:");
-  for (const auto &entry : get_loaded_plugins()) {
-    spdlog::info(" - Plugin: {} version: {}", entry->getName(), entry->getVersion());
-  }
-
-  for (const auto &plugin : get_loaded_plugins()) {
-    std::shared_ptr<std::vector<explo::Module>> plModules = std::make_shared<std::vector<explo::Module>>();
+  for (const auto &plugin : get_loaded_plugins2()) {
+    spdlog::info(" - Module: {} version: {}", plugin->getName(), plugin->getVersion());
     std::shared_ptr<args::Group> pluginGroup = std::make_shared<args::Group>(parser, plugin->getName());
     std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
         plugin->getName(), std::string(CONFIG_LOG_DIR "/") + normalizePath(plugin->getName()) + ".log", true);
     plLogger->set_level(logLevel.Get());
     plLogger->flush_on(spdlog::level::debug);
 
-    auto iA = initArgs{plModules, pluginGroup, plLogger};
+    auto iA = explo::initArgs{pluginGroup, plLogger};
     plugin->initialize(iA);
+
+    switch (plugin->getModuleType()) {
+    case explo::ModuleType::TOOL:
+      tools.emplace(plugin->getName(), dynamic_cast<explo::ITool *>(plugin.get()));
+      break;
+    case explo::ModuleType::TOOLPROVIDER:
+      for (const auto &[name, tool] : dynamic_cast<explo::IToolProvider *>(plugin.get())->getTools()) {
+        tools.emplace(name, std::dynamic_pointer_cast<explo::ITool>(tool).get());
+      }
+      break;
+    case explo::ModuleType::RENDERER:
+    default:
+      spdlog::debug("entry: {} version: {} type: {}", plugin->getName(), plugin->getVersion(),
+                    static_cast<int>(plugin->getModuleType()));
+      break;
+    }
 
     pluginInitArgs.emplace(plugin->getName(), iA);
   }
@@ -261,71 +283,46 @@ int main(int argc, const char **argv, const char **envp) {
 
   // Command
 
-  spdlog::info("Registering global commands...");
-
-#include <commands.hpp>
-
-  for (const auto &plugin : get_loaded_plugins()) {
+  for (const auto &plugin : get_loaded_plugins2()) {
     if (plugin->cmdCheck()) {
       shutdown(0);
     }
   }
 
+  spdlog::info("Registering global commands...");
+
+#include <commands.hpp>
+
   spdlog::info("Initializing tools...");
-  for (const auto &[plugin, args] : pluginInitArgs) {
-    for (const auto &mod : *args.modules) {
-      if (mod.type == explo::ModuleType::TOOL) {
-        spdlog::debug("Tool: {} version: {}", mod.instance->getName(), mod.instance->getVersion());
-        mod.instance->initialize();
-        tools.emplace(mod.instance->getName(), std::static_pointer_cast<ITool>(mod.instance));
-      }
-      if (mod.type == explo::ModuleType::TOOLPROVIDER) {
-        auto *provider = dynamic_cast<explo::IToolProvider *>(mod.instance.get());
-        spdlog::debug("Tool Provider: {} version: {}", provider->getName(), provider->getVersion());
-        provider->initialize();
-        for (const auto &[name, tool] : provider->getTools()) {
-          spdlog::debug("  - Tool: {} version: {}", tool->getName(), tool->getVersion());
-          tool->initialize();
-          tools.emplace(tool->getName(), std::static_pointer_cast<ITool>(tool));
-        }
-      }
-    }
-  }
 
   std::string_view preferredRenderer = preferredUI.Get();
   IMod *rendererModuleRaw = nullptr;
-  for (const auto &[name, args] : pluginInitArgs) {
-    for (const auto &mod : *args.modules) {
-      if (mod.type == explo::ModuleType::RENDERER) {
-        if (!preferredRenderer.empty() && mod.name != preferredRenderer) {
-          spdlog::debug("Skipping renderer module: '{}' from plugin: {} as it "
-                        "does not match preferred renderer: '{}'",
-                        mod.name, name, preferredRenderer);
-          continue;
-        }
-        rendererModuleRaw = mod.instance.get();
-        spdlog::info("Using display module: {} from plugin: {}", mod.name, name);
-        break;
-      } else {
-        spdlog::debug("Module: {} from plugin: {} is not a display module", mod.name, name);
+  for (const auto &mod : get_loaded_plugins2()) {
+    if (mod->getModuleType() == explo::ModuleType::RENDERER) {
+      if (!preferredRenderer.empty() && mod->getName() != preferredRenderer) {
+        spdlog::debug("Skipping renderer module: '{}' as it does not match preferred renderer: '{}'", mod->getName(),
+                      preferredRenderer);
+        continue;
       }
+      rendererModuleRaw = mod.get();
+      spdlog::info("Using display module: {}", mod->getName());
+      break;
+    } else {
+      spdlog::debug("Module: {} is not a display module", mod->getName());
     }
     if (rendererModuleRaw) {
       break;
     }
   }
 
-  IRenderer *rendererModule = nullptr;
-
-  rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
+  IRenderer *rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
   if (!rendererModule) {
     spdlog::error("Error initializing display module: No valid display module found");
     goto quit;
   }
 
-  rendererModule->initialize();
+  rendererModule->initialize(pluginInitArgs[rendererModule->getName()]);
   rendererModule->runLoop();
-  rendererModule->shutdown();
 
 quit:
   shutdown(0);
@@ -334,23 +331,16 @@ quit:
 
 void shutdown(int code) {
   spdlog::info("Shutting down tools...");
-  for (const auto &[name, arg] : pluginInitArgs) {
-    for (const auto &mod : *arg.modules) {
-      spdlog::debug("Shutting down module: {} from plugin: {}", mod.name, name);
-      if (mod.type == explo::ModuleType::TOOLPROVIDER) {
-        auto *provider = dynamic_cast<explo::IToolProvider *>(mod.instance.get());
-        for (const auto &[name, tool] : provider->getTools()) {
-          tool->shutdown();
-        }
-      } else
-        mod.instance->shutdown();
-    }
-    arg.modules->clear();
+  tools.clear();
+  currentTool = nullptr;
+
+  for (const auto &plugin : get_loaded_plugins2()) {
+    plugin->shutdown();
   }
+
   pluginInitArgs.clear();
 
   // clear tools to release resources before plugins are unloaded
-  tools.clear();
   std::exit(code);
 }
 

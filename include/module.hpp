@@ -4,12 +4,6 @@
 
 namespace explo {
 
-enum class ModuleType {
-  RENDERER,
-  TOOLPROVIDER,
-  TOOL,
-};
-
 struct Module {
   const char *name;
   ModuleType type;

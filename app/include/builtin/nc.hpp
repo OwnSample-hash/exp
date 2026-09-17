@@ -28,13 +28,12 @@ class NC final : public ITool {
 
 public:
   NC() {};
-  NC(std::shared_ptr<spdlog::logger> logger) : logger(std::move(logger)) {};
   ~NC() override = default;
 
   const char *getName() const override { return "nc"; }
   const char *getVersion() const override { return "0.0.1"; }
 
-  void initialize() override;
+  void initialize(initArgs &) override;
   void shutdown() override;
 
   void execute() override;
@@ -42,6 +41,8 @@ public:
   void invoke(std::string_view prefix, bool soft = false) override;
 
   void suppress() override;
+
+  ModuleType getModuleType() const override { return ModuleType::TOOL; }
 
   const std::vector<std::string> &getTags() const override {
     static std::vector<std::string> tags = {"network", "utility"};

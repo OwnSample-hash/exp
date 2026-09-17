@@ -2,7 +2,6 @@ if(WEBUI_ENABLE)
   set(MOD_NAME webui)
   set(MOD_SRC 
     src/webui.cpp
-    src/tool.cpp
     src/ws_loop.cpp
     src/convert.cpp
     src/b64.cpp

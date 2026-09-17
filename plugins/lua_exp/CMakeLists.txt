@@ -2,7 +2,6 @@ if (LUA_EXP_ENABLE)
   set(MOD_NAME lua_exp)
   set(MOD_SRC 
     src/lua_exp.cpp
-    src/loader.cpp
     src/tool.cpp
     src/lib.cpp
   )

@@ -7,7 +7,8 @@
 
 using namespace explo;
 
-void luaTool::initialize() {
+void luaTool::initialize(initArgs &args) {
+  this->logger = args.logger;
   this->logger->info("Initializing Lua tool: {} v{}...", name, version);
   {
     auto ctx = std::make_shared<cmd::Context>(this->getName());

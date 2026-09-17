@@ -1,18 +1,22 @@
-#include <arpa/inet.h>
 #include <cmd.hpp>
 #include <cmd/variable.hpp>
 #include <fcntl.h>
 #include <lib.hpp>
 #include <llib.hpp>
-#include <lua.h>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
-#include <sys/select.h>
 #include <tls.hpp>
-#include <unistd.h>
 #include <utils.hpp>
+
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
+extern "C" {
+#include <lua.h>
+}
 
 using json = nlohmann::json;
 

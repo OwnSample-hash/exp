@@ -8,6 +8,8 @@
 #include <spdlog/logger.h>
 #include <utils.hpp>
 
+using namespace std::literals;
+
 using namespace explo;
 
 class luaTool final : public ITool {
@@ -37,7 +39,7 @@ public:
   luaTool &operator=(luaTool &&) = delete;
 
   luaTool(std::shared_ptr<spdlog::logger> logger, const std::string &file, std::shared_ptr<args::Group> parser)
-      : logger(std::move(logger)), file(file) {
+      : logger(logger), file(file) {
     L = luaL_newstate();
     if (!L)
       throw std::runtime_error("Failed to create Lua state");
@@ -71,9 +73,9 @@ public:
     }
 
     lua(file);
-    name = lua["name"].as("Unnamed Lua Tool");
-    version = lua["version"].as("0.1");
-    description = lua["description"].as("No description provided.");
+    name = lua["name"].as("Unnamed Lua Tool"s);
+    version = lua["version"].as("0.1"s);
+    description = lua["description"].as("No description provided."s);
     this->logger->info("Initialized Lua tool: {} v{}", name, version);
     int res = 0;
     if ((res = lua.insert("name", luaVartype{name}))) {
@@ -93,7 +95,7 @@ public:
   const char *getVersion() const override { return version.c_str(); }
   const std::vector<std::string> &getTags() const override { return tags; }
 
-  void initialize() override;
+  void initialize(initArgs &) override;
 
   void shutdown() override;
 
@@ -102,5 +104,7 @@ public:
   void invoke(std::string_view prefix, bool soft = false) override;
 
   void suppress() override;
+
+  ModuleType getModuleType() const override { return ModuleType::TOOL; }
 };
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

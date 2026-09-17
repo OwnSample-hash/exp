@@ -7,15 +7,15 @@
 #include <nlohmann/json.hpp>
 #include <queue>
 #include <spdlog/fmt/bundled/format.h>
-#include <tool.hpp>
+#include <webui.hpp>
 
 using json = nlohmann::json;
 using namespace explo;
 
-extern std::map<std::string, std::shared_ptr<explo::ITool>> tools;
+extern std::map<std::string, ITool *> tools;
 extern std::unordered_map<std::string, initArgs> pluginInitArgs;
-extern thread_local std::shared_ptr<ITool> currentTool;
-extern const std::list<std::unique_ptr<IPlugin>> &get_loaded_plugins();
+extern thread_local ITool *currentTool;
+extern const std::vector<std::unique_ptr<IMod>> &get_loaded_plugins2(bool forceReload = false);
 extern void shutdown [[noreturn]] (int code = 0);
 
 void webui::ws_loop(const httplib::Request &req, httplib::ws::WebSocket &ws) {
@@ -58,25 +58,6 @@ void webui::ws_loop(const httplib::Request &req, httplib::ws::WebSocket &ws) {
   vars.set("version", cmd::VarValue(std::string("1.0.0")));
   vars.set("current_tool", cmd::VarValue(std::string("no tool")));
   vars.set("prompt", cmd::VarValue(std::string("${current_tool} \33[33m>\33[0m ")));
-
-  logger->info("Initializing tools...");
-  for (const auto &[plugin, args] : pluginInitArgs) {
-    for (const auto &mod : *args.modules) {
-      if (mod.type == explo::ModuleType::TOOL) {
-        spdlog::debug("Tool: {} version: {}", mod.instance->getName(), mod.instance->getVersion());
-        mod.instance->initialize();
-      }
-      if (mod.type == explo::ModuleType::TOOLPROVIDER) {
-        auto *provider = dynamic_cast<explo::IToolProvider *>(mod.instance.get());
-        logger->debug("Tool Provider: {} version: {}", provider->getName(), provider->getVersion());
-        provider->initialize();
-        for (const auto &[name, tool] : provider->getTools()) {
-          logger->debug("  - Tool: {} version: {}", tool->getName(), tool->getVersion());
-          tool->initialize();
-        }
-      }
-    }
-  }
 
 #include <commands.hpp>
 
