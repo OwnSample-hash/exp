@@ -16,7 +16,6 @@ class FileTemplate:
     def __init__(
         self,
         name: str | function,
-        fargs: list[str] | function,
         skip_first_line: bool,
         template_file: str | function,
     ):
@@ -27,12 +26,6 @@ class FileTemplate:
             self.name = name
         else:
             raise TypeError("name must be a string or a callable returning a string")
-        if callable(fargs):
-            self.fargs = fargs(self.name, config_data)
-        elif isinstance(fargs, list):
-            self.fargs = fargs
-        else:
-            raise TypeError("fargs must be a list or a callable returning a list")
         self.skip_first_line = skip_first_line
         if callable(template_file):
             self.template_file = template_file(config_data)
@@ -42,16 +35,6 @@ class FileTemplate:
             raise TypeError(
                 "template_file must be a string or a callable returning a string"
             )
-        self.fargs = self.lookup_fargs(config_data)
-
-    def lookup_fargs(self, config_data: dict) -> list[str]:
-        resolved_fargs = []
-        for arg in self.fargs:
-            try:
-                resolved_fargs.append(config_data[arg])
-            except KeyError:
-                resolved_fargs.append(arg)
-        return resolved_fargs
 
 
 templates: list[FileTemplate] = []
@@ -78,48 +61,25 @@ def generate_templates() -> list[FileTemplate]:
     return [
         FileTemplate(
             name="CMakeLists.txt",
-            fargs=[
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-            ],
             skip_first_line=False,
             template_file="templates/CMakeLists.txt",
         ),
         FileTemplate(
             name="tests/CMakeLists.txt",
-            fargs=[
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-            ],
             skip_first_line=False,
             template_file="templates/tests/CMakeLists.txt",
         ),
         FileTemplate(
             name=(
-                lambda x: f"tests/test_{x["CONFIG_NEW_MODULE_NAME"]}.cpp"  # pyright: ignore
+                lambda x: f"tests/src/test_{x["CONFIG_NEW_MODULE_NAME"]}.cpp"  # pyright: ignore
             ),
-            fargs=[
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_UP_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-                "CONFIG_NEW_MODULE_NAME",
-            ],
             skip_first_line=True,
-            template_file="templates/tests/test.cpp",
+            template_file="templates/tests/src/test.cpp",
         ),
         FileTemplate(
             name=(
                 lambda x: f"src/{x["CONFIG_NEW_MODULE_NAME"]}.cpp"  # pyright: ignore
             ),
-            fargs=load_fargs,  # pyright: ignore
             skip_first_line=True,
             template_file=(
                 lambda x: f"templates/src/template_{x["CONFIG_NEW_MODULE_TYPE"]}.cpp"
@@ -129,7 +89,6 @@ def generate_templates() -> list[FileTemplate]:
             name=(
                 lambda x: f"include/{x["CONFIG_NEW_MODULE_NAME"]}.hpp"  # pyright: ignore
             ),
-            fargs=load_fargs,  # pyright: ignore
             skip_first_line=True,
             template_file=(
                 lambda x: f"templates/include/template_{x["CONFIG_NEW_MODULE_TYPE"]}.hpp"
@@ -137,7 +96,6 @@ def generate_templates() -> list[FileTemplate]:
         ),
         FileTemplate(
             name="config.yaml",
-            fargs=to_bool,  # pyright: ignore
             skip_first_line=False,
             template_file="templates/config.yaml",
         ),
@@ -170,8 +128,11 @@ if __name__ == "__main__":
         with open(args.config, "r") as f:
             global config_data
             config_data = json.load(f)
-            config_data["CONFIG_NEW_MODULE_UP_NAME"] = config_data[
+            config_data["CONFIG_NEW_MODULE_NAME_UP"] = config_data[
                 "CONFIG_NEW_MODULE_NAME"
+            ].upper()
+            config_data["CONFIG_NEW_MODULE_TYPE_UP"] = config_data[
+                "CONFIG_NEW_MODULE_TYPE"
             ].upper()
     except Exception as e:
         print(f"Error reading config file: {e}")
@@ -233,11 +194,14 @@ if __name__ == "__main__":
                     template_lines = tf.readlines()
                 if template.skip_first_line:
                     template_lines = template_lines[1:]
-                print(f"--- {target_path} ---")
+                print(f"--- \033[34m{target_path}\033[0m ---")
                 try:
-                    content = "".join(template_lines) % tuple(template.fargs)
+                    # content = "".join(template_lines) % tuple(template.fargs)
+                    content = ("".join(template_lines)).format_map(config_data)
                 except Exception as e:
-                    print(f"Error formatting template {template.template_file}: {e}")
+                    print(f"\033[31mError formatting template {template.template_file}\033[0m")
+                    print(f"\033[31m{e}\033[0m")
+                    print(type(e))
                     content = "".join(template_lines)
                 print(content)
                 print(f"--- End of {target_path} ---\n")
@@ -255,7 +219,8 @@ if __name__ == "__main__":
                 template_lines = tf.readlines()
             if template.skip_first_line:
                 template_lines = template_lines[1:]
-            content = "".join(template_lines) % tuple(template.fargs)
+            # content = "".join(template_lines) % tuple(template.fargs)
+            content = "".join(template_lines).format_map(config_data)
             with open(target_path, "w") as out_file:
                 out_file.write(content)
         print(f"Module {config_data['CONFIG_NEW_MODULE_NAME']} created successfully.")

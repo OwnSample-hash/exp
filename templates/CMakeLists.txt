@@ -1,17 +1,17 @@
-if(ENABLE_%s)
-  set(MOD_NAME %s)
-  set(MOD_SRC src/%s.cpp)
+if({CONFIG_NEW_MODULE_NAME_UP}_ENABLE)
+  set(MOD_NAME {CONFIG_NEW_MODULE_NAME})
+  set(MOD_SRC src/{CONFIG_NEW_MODULE_NAME}.cpp)
 
-  add_library(${MOD_NAME} SHARED ${MOD_SRC})
-  target_sources(${MOD_NAME} PUBLIC ${MOD_SRC})
-  target_sources(${MOD_NAME} PUBLIC ${MOD_SRC})
-  target_include_directories(${MOD_NAME} PUBLIC include ../../include/)
-  target_link_libraries(${MOD_NAME} PRIVATE spdlog::spdlog)
-  target_compile_definitions(${MOD_NAME} PRIVATE MODULE_NAME="${MOD_NAME}")
-  set_property(TARGET ${MOD_NAME} PROPERTY PREFIX "")
+  add_library(${{MOD_NAME}} SHARED ${{MOD_SRC}})
+  target_sources(${{MOD_NAME}} PUBLIC ${{MOD_SRC}})
+  target_sources(${{MOD_NAME}} PUBLIC ${{MOD_SRC}})
+  target_include_directories(${{MOD_NAME}} PUBLIC include ../../include/)
+  target_link_libraries(${{MOD_NAME}} PRIVATE spdlog::spdlog)
+  target_compile_definitions(${{MOD_NAME}} PRIVATE MODULE_NAME="${{MOD_NAME}}")
+  set_property(TARGET ${{MOD_NAME}} PROPERTY PREFIX "")
 
-  add_custom_command(TARGET ${MOD_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${MOD_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/../$<TARGET_FILE_NAME:${MOD_NAME}>
+  add_custom_command(TARGET ${{MOD_NAME}} POST_BUILD
+    COMMAND ${{CMAKE_COMMAND}} -E create_symlink $<TARGET_FILE:${{MOD_NAME}}> ${{CMAKE_CURRENT_BINARY_DIR}}/../$<TARGET_FILE_NAME:${{MOD_NAME}}>
   )
 
   if(ENABLE_TESTS)

@@ -14,10 +14,12 @@
 namespace explo {
 
 class IToolProvider : public IMod {
+  std::map<std::string, std::shared_ptr<ITool>> Tools;
+
 public:
   virtual ~IToolProvider() = default;
 
-  virtual const std::map<std::string, std::shared_ptr<ITool>> &getTools() const = 0;
+  virtual const std::map<std::string, std::shared_ptr<ITool>> &getTools() const { return Tools; }
 };
 
 } // namespace explo

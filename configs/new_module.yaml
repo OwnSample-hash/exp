@@ -10,14 +10,12 @@
   help_text: Select the type of the new module.
   default: Tool
   choices:
-    - name: BasicPlugin
-      description: basic plugin with no modul 
     - name: Tool
       description: Tool module
     - name: ToolProvider
       description: Tool provider module
-    - name: Display
-      description: display module
+    - name: Renderer
+      description: Renderer module
 
 - name: CONFIG_NEW_MODULE_ENABLED
   prompt: Enable New Module

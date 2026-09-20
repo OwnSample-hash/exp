@@ -1,6 +1,6 @@
 - name: ENABLE
-  prompt: Enable Plugin
+  prompt: Enable {CONFIG_NEW_MODULE_NAME}?
   type: bool
-  help_text: Enable or disable the plugin.
+  help_text: Enable or disable the {CONFIG_NEW_MODULE_TYPE}.
   cmake_export: true
-  default: %s
+  default: {CONFIG_NEW_MODULE_ENABLED}

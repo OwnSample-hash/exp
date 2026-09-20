@@ -6,29 +6,22 @@
 
 using namespace explo;
 
-class PL_%s final : public IPlugin {
+class {CONFIG_NEW_MODULE_NAME} final : public IToolProvider {{
+std::map<std::string, std::shared_ptr<ITool>> Tools;
+
 public:
-  PL_%s() = default;
-  ~PL_%s() = default;
-  const char *getName() const override;
-  const char *getVersion() const override;
-  void initialize(initArgs &args) override;
-};
+  {CONFIG_NEW_MODULE_NAME}() = default;
+  ~{CONFIG_NEW_MODULE_NAME}() = default;
+  const char *getName() const override {{ return "{CONFIG_NEW_MODULE_NAME}"; }}
+  const char *getVersion() const override {{ return "0.0.1";}}
 
-
-class %s final : public IToolProvider {
-public:
-  %s() = default;
-  ~%s() = default;
-  const char *getName() const override { return "%s"; }
-  const char *getVersion() const override { return "%s";}
-
-  virtual const std::map<std::string, std::shared_ptr<ITool>> & 
-  getTools() const = 0;
+  virtual const std::map<std::string, std::shared_ptr<ITool>> &getTools() const override {{ return Tools;}};
   
-  void initialize() override;
+  void initialize(initArgs &) override;
 
   void shutdown() override;
-};
 
-// Vim: set expandtab tabstop=2 shiftwidth=2:
+  ModuleType getModuleType() const override {{ return ModuleType::TOOLPROVIDER; }}
+}};
+
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
