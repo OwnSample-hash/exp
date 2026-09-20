@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <atomic>
 #include <cassert>
 #include <config.hpp>
 #include <ctime>
@@ -72,6 +73,41 @@ std::string formatResultKey(int domain, int socktype, std::string_view host, int
   return formatResultKey(dom2a(domain), sock2a(socktype), host, port);
 }
 
+std::atomic<bool> reservingFileDescriptors{false};
+
+bool reserveFileDescriptors(unsigned long int req) {
+  static unsigned long int reserved;
+  struct rlimit rl = {};
+  while (reservingFileDescriptors.exchange(true)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  auto &logger = getLogger();
+  logger->trace("Reserving {} file descriptors (currently) reserved: {})", req, reserved);
+  if (req & (1UL << (sizeof(req) * 8 - 1))) {
+    reserved += req;
+    return true;
+  }
+  if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+    logger->error("Failed to get file descriptor limit: {}", strerror(errno));
+    return false;
+  }
+  if (rl.rlim_cur < req) [[unlikely]] {
+    rl.rlim_cur = rl.rlim_max;
+    if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
+      logger->error("Failed to set file descriptor limit: {}", strerror(errno));
+      return false;
+    }
+  }
+  if (reserved + req > rl.rlim_cur) {
+    logger->error("Not enough file descriptors available. Requested: {}, Reserved: {}, Available: {}", req, reserved,
+                  rl.rlim_cur);
+    return false;
+  }
+  reserved += req;
+  reservingFileDescriptors = false;
+  return true;
+}
+
 struct socketInfo {
   int fd;
   std::string host;
@@ -83,6 +119,9 @@ struct socketInfo {
 
 std::unordered_map<std::string, ConnectionStatus::Type>
 async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> generator) noexcept(false) {
+  if (!reserveFileDescriptors(CONFIG_LIB_SOCKET_LIMIT)) {
+    throw std::runtime_error("Failed to reserve file descriptors for async_scan");
+  }
   auto &logger = getLogger();
   std::unordered_map<std::string, ConnectionStatus::Type> connected;
   std::mutex connected_mutex;
@@ -278,6 +317,7 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
   futures.clear();
   close(epoll_fd);
 
+  reserveFileDescriptors(CONFIG_LIB_SOCKET_LIMIT * -1); // release reserved file descriptors
   return connected;
 }
 } // namespace explo::lib::impl
