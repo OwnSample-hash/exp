@@ -1,17 +1,24 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
-void gets_replica(char *buf) {
+char *gets_replica(char *buf) {
   // Simulate a vulnerable function that reads input into a buffer
-  read(STDIN_FILENO, buf, 128); // intentionally unsafe: can overflow buf
+  // read(STDIN_FILENO, buf, 128); // intentionally unsafe: can overflow buf
+  __asm__("mov eax, 0x0\n"
+          "mov edi, 0x0\n"
+          "mov esi, %0\n"
+          "mov edx, 0x80\n"
+          "syscall\n"
+          :
+          : "r"(buf)
+          : "eax", "edi", "esi", "edx");
+  return buf;
 }
 
 void vuln() {
-  char buf[64];
-
-  puts("Enter some text:");
+  char buf[64] = {};
   gets_replica(buf); // intentionally unsafe: vulnerable to stack overflow
-  puts("Done.");
   __asm__("int3");
 }
 
@@ -20,7 +27,7 @@ int main() {
   setbuf(stdout, NULL);
 
   // Print a libc address to make demo easier (simulates an info leak)
-  printf("puts() is at: %p\n", puts);
+  printf("system() is at: %p\n", system);
 
   vuln();
 
