@@ -22,6 +22,7 @@ struct ConfigValue {
   ConfigValue() : value(std::monostate{}) {};
   ConfigValue(std::monostate) : value(std::monostate{}) {}
   ConfigValue(const std::string &str) : value(str) {}
+  ConfigValue(const char *str) : value(str) {}
   ConfigValue(int i) : value(i) {}
   ConfigValue(double d) : value(d) {}
   ConfigValue(bool b) : value(b) {}
@@ -30,8 +31,8 @@ struct ConfigValue {
 
   template <typename T>
     requires MakesVaraint<ValueType, T>
-  T get(T def = T()) const {
-    T *ptr = std::get_if<T>(&value);
+  const T get(T def = T()) const {
+    const T *ptr = std::get_if<T>(&value);
     return ptr ? *ptr : def;
   }
 };

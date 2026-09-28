@@ -1,8 +1,8 @@
-#include "config/type.hpp"
-#include "interfaces/config_serializer.hpp"
+#include <config/type.hpp>
 #include <config/yaml.hpp>
 #include <filesystem>
 #include <fstream>
+#include <interfaces/config_serializer.hpp>
 #include <yaml-cpp/yaml.h>
 
 namespace fs = std::filesystem;
@@ -53,8 +53,7 @@ void YAMLSerializer::serialize(const ConfigMap &config, const std::string_view f
   fs::path path(file_path);
   path.parent_path().make_preferred();
   if (!fs::exists(path)) {
-    fs::create_directories(path.parent_path());
-    throw FileNotFoundError(path.string());
+    fs::create_directories(fs::absolute(path).parent_path());
   }
   YAML::Node root = convertConfigMapToYAML(config);
   std::ofstream fout;

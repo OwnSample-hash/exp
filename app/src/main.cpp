@@ -2,11 +2,12 @@
 #include <cmd.hpp>
 #include <config.hpp>
 #include <config/config.hpp>
+#include <config/json.hpp>
+#include <config/yaml.hpp>
 #include <filesystem>
 #include <interfaces/renderer.hpp>
 #include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
-#include <list>
 #include <map>
 #include <memory>
 #include <module.hpp>
@@ -22,6 +23,7 @@
 #include <unordered_map>
 
 using namespace explo;
+using namespace std::literals;
 
 INSTANTIATE_REGISTRY(ToolRegistry);
 INSTANTIATE_REGISTRY(ToolProviderRegistry);
@@ -87,6 +89,12 @@ std::istream &operator>>(std::istream &is, spdlog::level::level_enum &level) {
 } // namespace level
 } // namespace spdlog
 
+namespace explo {
+
+ConfigMap envVars{};
+
+}
+
 std::map<std::string, ITool *> tools = {};
 
 std::unordered_map<std::string, explo::initArgs> pluginInitArgs = {};
@@ -95,7 +103,14 @@ thread_local ITool *currentTool = nullptr;
 
 [[noreturn]] void shutdown(int code = 0);
 
+ConfigMap &config();
+
 int main(int argc, const char **argv, const char **envp) {
+  Config &instance = Config::instance();
+  instance.addSerializer("yaml", std::make_unique<YAMLSerializer>());
+  instance.addSerializer("json", std::make_unique<JSONSerializer>());
+  instance.addEnvVars(envp);
+
   args::ArgumentParser parser(
       "Explo - A modular exploitation framework\nAny option under \"Global Options\" are parsed before any plugin "
       "options. Plugin options are parsed after the global options and are specific to each plugin.");
@@ -157,8 +172,6 @@ int main(int argc, const char **argv, const char **envp) {
     std::cerr << parser;
     shutdown(1);
   case Error::Completion:
-    std::cout << parser.GetErrorMsg();
-    shutdown();
   case Error::Help:
   case Error::Parse:
   case Error::None:
@@ -170,27 +183,43 @@ int main(int argc, const char **argv, const char **envp) {
     shutdown(1);
   };
 
-  try {
-    explo::Config config(configFile.Get(), envp, []() -> explo::ConfigMap {
-      return {
-#define X(key, value) {key, value},
-          CONFIG_OPTS
+  fs::path configFilePath(configFile.Get());
+  instance.addHive("global", configFilePath,
+                   ConfigMap{
+#define X(k, v) {k, v},
+                       CONFIG_OPTS
 #undef X
-      };
-    });
-  } catch (const std::exception &e) {
-    std::cerr << "Error loading configuration file: " << e.what() << std::endl;
+                   },
+                   "yaml", LookUpOrder::ENV_THEN_CONFIG);
+
+  if (!instance.loadHive(configFilePath.string(), "global", "yaml")) {
+    spdlog::warn("Failed to load configuration file: {}.", configFilePath.string());
+    instance.saveConfigFile("global");
+  } else {
+    spdlog::info("Loaded configuration file: {}", configFilePath.string());
   }
 
-  std::filesystem::create_directories(std::filesystem::path(logDir.Get()));
-  spdlog::set_default_logger(spdlog::basic_logger_mt("main", logDir.Get() + "/" + normalizePath(logFile.Get()), true));
+  Hive &globalHive = instance.get("global");
+
+  auto logLevelEnum = static_cast<spdlog::level::level_enum>(
+      globalHive.at("log_level"s, static_cast<int>(logLevel)).get(static_cast<int>(spdlog::level::info)));
+  std::string logFileStr = globalHive.at("log_file"s, logFile).get("explo.log");
+  std::string logDirStr = globalHive.at("log_dir"s, logDir).get(CONFIG_LOG_DIR);
+  std::string pluginDirStr = globalHive.at("plugin_dir"s, pluginDir).get(CONFIG_PLUGIN_INSTALL_DIR);
+  std::string preferredUIStr = globalHive.at("preferred_ui"s, preferredUI).get(CONFIG_PREFERRED_UI);
+
+  fs::path logDirPath(logDirStr);
+
+  std::filesystem::create_directories(logDirPath);
+  spdlog::set_default_logger(
+      spdlog::basic_logger_mt("main", logDirPath.string() + "/" + normalizePath(logFileStr), true));
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
-  spdlog::basic_logger_mt("lib", logDir.Get() + "/lib.log", true);
+  spdlog::basic_logger_mt("lib", logDirStr + "/lib.log", true);
 
   PluginLoader &loader = PluginLoader::instance();
 
-  for (const auto &dir_entry : std::filesystem::directory_iterator(pluginDir.Get())) {
+  for (const auto &dir_entry : std::filesystem::directory_iterator(pluginDirStr)) {
     if (dir_entry.is_regular_file() && dir_entry.path().extension() == ".so") {
       std::string plugin_path = dir_entry.path().string();
       if (loader.loadPlugin(plugin_path)) {
@@ -207,7 +236,7 @@ int main(int argc, const char **argv, const char **envp) {
     spdlog::info(" - Module: {} version: {}", plugin->getName(), plugin->getVersion());
     std::shared_ptr<args::Group> pluginGroup = std::make_shared<args::Group>(parser, plugin->getName());
     std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
-        plugin->getName(), std::string(CONFIG_LOG_DIR "/") + normalizePath(plugin->getName()) + ".log", true);
+        plugin->getName(), logDirPath.string() + "/" + normalizePath(plugin->getName()) + ".log", true);
     plLogger->set_level(logLevel.Get());
     plLogger->flush_on(spdlog::level::debug);
 
@@ -295,7 +324,7 @@ int main(int argc, const char **argv, const char **envp) {
 
   spdlog::info("Initializing tools...");
 
-  std::string_view preferredRenderer = preferredUI.Get();
+  std::string_view preferredRenderer = preferredUIStr;
   IMod *rendererModuleRaw = nullptr;
   for (const auto &mod : get_loaded_plugins2()) {
     if (mod->getModuleType() == explo::ModuleType::RENDERER) {
@@ -340,7 +369,6 @@ void shutdown(int code) {
 
   pluginInitArgs.clear();
 
-  // clear tools to release resources before plugins are unloaded
   std::exit(code);
 }
 
