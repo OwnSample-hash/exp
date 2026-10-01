@@ -2,6 +2,10 @@
 
 #include "arc_config.hpp"
 
+#if not CONFIG_ARC_FUSE_ENABLE
+#error "Fuse is disabled and it's included in a file that comiples it"
+#endif
+
 #include <arc.hpp>
 #include <config.hpp>
 #include <expected>

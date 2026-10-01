@@ -7,6 +7,7 @@
 #include <resolv.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
+
 #if CONFIG_ARC_FUSE_ENABLE_STAT_CHDEV
 #include <sstream>
 #endif

@@ -1,7 +1,6 @@
 #include <arc.hpp>
 #include <cstring>
 #include <filesystem>
-#include <fuse3/fuse.h>
 #include <iostream>
 
 namespace fs = std::filesystem;
@@ -87,7 +86,11 @@ int main(int argc, char *argv[]) {
       std::cout << "File: " << piece.name << ", Size: " << piece.size << " bytes" << '\n';
     }
   } else if (argv[1][0] == 'v') {
-    std::cout << argv[0] << " version " << arc::VERSION << " fuse version: " << FUSE_VERSION << '\n';
+    std::cout << argv[0] << " version " << arc::VERSION << 
+#ifdef FUSE_VERSION
+    " fuse version: " << FUSE_VERSION << 
+#endif
+    "\n";
   } else if (argv[1][0] == 'm') {
     std::string archive_file = argv[2];
     arc::Arc archive;

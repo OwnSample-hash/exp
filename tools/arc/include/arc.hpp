@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#ifdef CONFIG_ARC_FUSE_ENABLE
+#if CONFIG_ARC_FUSE_ENABLE
 #include <fuse3/fuse.h>
 #endif
 

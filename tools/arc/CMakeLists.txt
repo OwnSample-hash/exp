@@ -1,5 +1,3 @@
-
-
 if(${ARC_FUSE_ENABLE})
   set(arc_SOURCES
     src/arc.cpp
@@ -18,7 +16,6 @@ if(${ARC_FUSE_ENABLE})
 else()
   set(arc_SOURCES
     src/arc.cpp
-    src/arc_fuse.cpp
     src/arc_mount_extract.cpp
   )
   add_library(arc_shared SHARED ${arc_SOURCES})
