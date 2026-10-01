@@ -53,6 +53,75 @@ void luaTool::initialize(initArgs &args) {
   } else {
     this->logger->warn("Lua tool {} does not have an 'initialize' function", name);
   }
+
+  auto makeCommand = this->lua["makeCommand"];
+  if (makeCommand.is<bool>() && makeCommand.as<bool>()) {
+    this->cmd.emplace(*args.parser, this->name, "Run " + this->name + "'s tool main function", [&](args::Subparser &s) {
+      auto vars = this->lua["vars"];
+      auto decs_raw = this->lua["desc"];
+      if (!vars.is<LTW>() && !decs_raw.is<LTW>()) {
+        this->logger->warn("Lua tool {} has no 'vars' table", name);
+        return;
+      }
+      auto decs = decs_raw.as<LTW>();
+      for (const auto &[key, value] : vars.as<LTW>().iterate()) {
+        this->logger->trace("Lua variable: '{}'", key);
+        if (value.is<std::string>()) {
+          this->flags.emplace_back(std::make_tuple(
+              new args::ValueFlag<std::string>(s, key, decs[key].as<std::string>(), {key}, value.as<std::string>()),
+              luaFlagtype::STRING));
+        } else if (value.is<lua_Number>()) {
+          this->flags.emplace_back(std::make_tuple(
+              new args::ValueFlag<lua_Number>(s, key, decs[key].as<std::string>(), {key}, value.as<lua_Number>()),
+              luaFlagtype::NUMBER));
+        } else if (value.is<bool>()) {
+          this->flags.emplace_back(
+              std::make_tuple(new args::ValueFlag<bool>(s, key, decs[key].as<std::string>(), {key}, value.as<bool>()),
+                              luaFlagtype::BOOLEAN));
+        } else {
+          const char *type_name = abi::__cxa_demangle(typeid(value).name(), nullptr, nullptr, nullptr);
+          this->logger->warn("Lua variable: '{}' of type '{}' cannot be set via command line", key, type_name);
+          free((void *)type_name);
+        }
+      }
+      s.Parse();
+      this->varTypes.reserve(this->flags.size());
+      for (auto &[flag, type] : this->flags) {
+        switch (type) {
+        case luaFlagtype::STRING: {
+          auto val = dynamic_cast<args::ValueFlag<std::string> *>(flag);
+          if (val)
+            this->varTypes.emplace(val->Name(), val->Get());
+          else
+            throw std::runtime_error("Failed to cast flag to ValueFlag<std::string>");
+          delete flag;
+          break;
+        }
+        case luaFlagtype::NUMBER: {
+          auto val = dynamic_cast<args::ValueFlag<lua_Number> *>(flag);
+          if (val)
+            this->varTypes.emplace(val->Name(), val->Get());
+          else
+            throw std::runtime_error("Failed to cast flag to ValueFlag<lua_Number>");
+          delete flag;
+          break;
+        }
+        case luaFlagtype::BOOLEAN: {
+          auto val = dynamic_cast<args::ValueFlag<bool> *>(flag);
+          if (val)
+            this->varTypes.emplace(val->Name(), val->Get());
+          else
+            throw std::runtime_error("Failed to cast flag to ValueFlag<bool>");
+          delete flag;
+          break;
+        }
+        default:
+          throw std::runtime_error("Unknown luaFlagtype");
+        }
+      }
+      this->flags.clear();
+    });
+  }
 }
 
 void luaTool::invoke(std::string_view prefix, bool soft) {
@@ -193,3 +262,38 @@ void luaTool::execute() {
     this->logger->warn("Lua tool {} does not have a valid 'execute' function", name);
   }
 }
+
+template <class... Ts> struct overloads : Ts... {
+  using Ts::operator()...;
+};
+
+bool luaTool::cmdCheck() {
+  auto makeCommand = this->lua["makeCommand"];
+  if (!makeCommand.is<bool>() || !makeCommand.as<bool>()) {
+    return false;
+  }
+  if (cmd && !(*cmd)) {
+    return false;
+  }
+  this->invoke(this->name, true);
+  auto &vars = cmd::CommandProcessor::instance().vars();
+
+  const auto visitor =
+      overloads{[&](const std::string_view var) { vars.set(this->prefix + "." + name, cmd::VarValue(var.data())); },
+                [&](lua_Number var) { vars.set(this->prefix + "." + name, cmd::VarValue(var)); },
+                [&](bool var) { vars.set(this->prefix + "." + name, cmd::VarValue(var)); },
+                [&](auto var) {
+                  const char *type_name = abi::__cxa_demangle(typeid(var).name(), nullptr, nullptr, nullptr);
+                  this->logger->warn("Lua variable: '{}' of type '{}' cannot be set via command line", name, type_name);
+                  free((void *)type_name);
+                }};
+
+  for (const auto &[name, var] : this->varTypes) {
+    std::visit(visitor, var.data);
+  }
+  this->execute();
+  this->suppress();
+  return true;
+}
+
+// Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

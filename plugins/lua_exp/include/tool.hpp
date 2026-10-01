@@ -5,12 +5,20 @@
 #include <llib.hpp>
 #include <lua.h>
 #include <memory>
+#include <optional>
 #include <spdlog/logger.h>
+#include <tuple>
 #include <utils.hpp>
 
 using namespace std::literals;
 
 using namespace explo;
+
+enum class luaFlagtype {
+  STRING,
+  NUMBER,
+  BOOLEAN,
+};
 
 class luaTool final : public ITool {
   std::shared_ptr<spdlog::logger> logger;
@@ -19,6 +27,9 @@ class luaTool final : public ITool {
   std::string description;
   std::string version;
   std::vector<std::string> tags;
+  std::optional<args::Command> cmd;
+  std::vector<std::tuple<args::ValueFlagBase *, luaFlagtype>> flags;
+  std::unordered_map<std::string, luaVartype> varTypes;
   lua_State *L;
   LTW lua;
   int lastStatus = 0;
@@ -106,5 +117,8 @@ public:
   void suppress() override;
 
   ModuleType getModuleType() const override { return ModuleType::TOOL; }
+
+  bool cmdCheck() override;
 };
+
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

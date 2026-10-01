@@ -74,7 +74,7 @@ struct LTW {
 
   int insert(const char *field, auto value);
 
-  auto operator[](const char *field, bool failIfNotFound = true);
+  auto operator[](const std::string_view field, bool failIfNotFound = true);
 
   void load(const std::string &field, const std::string &file) {
     static auto logger = spdlog::get("lua_exp");
@@ -289,9 +289,9 @@ template <typename... Args> auto LFW::operator()(Args &&...args) {
   return results;
 }
 
-inline auto LTW::operator[](const char *field, bool failIfNotFound) {
+inline auto LTW::operator[](const std::string_view field, bool failIfNotFound) {
   lua_getglobal(L, tableName.c_str());
-  lua_getfield(L, -1, field);
+  lua_getfield(L, -1, field.data());
   lua_remove(L, -2);
   switch (lua_type(L, -1)) {
   case LUA_TNUMBER:
@@ -309,4 +309,5 @@ inline auto LTW::operator[](const char *field, bool failIfNotFound) {
     return luaVartype();
   }
 }
+
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

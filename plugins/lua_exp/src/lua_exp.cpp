@@ -1,3 +1,4 @@
+#include <config/config.hpp>
 #include <filesystem>
 #include <lua_exp.hpp>
 #include <lua_exp_config.hpp>
@@ -8,6 +9,23 @@ void luaExp::initialize(initArgs &args) {
   this->parser = args.parser;
   this->logger = args.logger;
   this->logger->info("Initializing Loader v{}...", getVersion());
+  Config &instance = Config::instance();
+
+  instance.addHive("lua_exp", "lua_exp",
+                   ConfigMap{
+#define X(k, v) {k, v},
+                       CONFIG_LUA_EXP_OPTS
+#undef X
+                   },
+                   "yaml", LookUpOrder::ENV_THEN_CONFIG);
+
+  if (!instance.loadHive("lua_exp", "lua_exp", "yaml")) {
+    this->logger->warn("Failed to load Lua Exp config");
+    instance.saveConfigFile("lua_exp");
+  } else {
+    this->logger->info("Loaded Lua Exp config");
+  }
+
   this->logger->info("Scanning for Lua scripts at \"{}\"", CONFIG_LUA_EXP_DIRECTORY);
 
   for (const auto &entry : std::filesystem::directory_iterator(CONFIG_LUA_EXP_DIRECTORY)) {
@@ -25,6 +43,16 @@ void luaExp::initialize(initArgs &args) {
 
 void luaExp::shutdown() {
   // Perform any necessary cleanup here
+}
+
+bool luaExp::cmdCheck() {
+  for (const auto &[name, tool] : this->tools) {
+    if (tool->cmdCheck()) {
+      logger->info("Lua tool '{}' handled the command", name);
+      return true;
+    }
+  }
+  return false;
 }
 
 static ToolProviderRegistry::Add<luaExp> luaLoaderRegister("lua_exp");

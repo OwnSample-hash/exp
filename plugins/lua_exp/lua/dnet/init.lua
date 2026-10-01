@@ -6,7 +6,7 @@ return {
   name = "dnet",
   version = "1.0.0",
   description = "A nmap like tool",
-  tags = { "tool", "nmap" },
+  tags = { "tool" },
   vars = {
     target = "127.0.0.1",
     ports = "1-10000",
@@ -14,11 +14,15 @@ return {
     method = "tcp",
   },
   desc = {
-    target = "Target IPs to scan. Comma separated list or single. Both IPv4 and IPv6 are supported. Ranges must use CIDR notation.",
-    ports = "Ports to scan, single or comma separated list or range. Range is specified with a dash, e.g. 1-10000 includes all ports from 1 to 10000",
+    target =
+    "Target IPs to scan. Comma separated list or single. Both IPv4 and IPv6 are supported. Ranges must use CIDR notation.",
+    ports =
+    "Ports to scan, single or comma separated list or range. Range is specified with a dash, e.g. 1-10000 includes all ports from 1 to 10000",
     test_port = "Port to test if host is up. Default is 443",
     method = "Scan method to use. Comma separated list of methods. Supported methods are: tcp.",
   },
+  rootRequired = false,
+  makeCommand = true,
   initialize = function()
     explo.info("Initializing dnet")
   end,
@@ -91,9 +95,9 @@ return {
       local dom, proto, ip, port_ = k:match("^(%g+):(%g+)://(%g+):(%g+)$")
       if dom and proto and ip and port_ then
         if
-          v == explo.ConnectionStatus.HostUnreachable
-          or v == explo.ConnectionStatus.NetworkUnreachable
-          or v == explo.ConnectionStatus.Error
+            v == explo.ConnectionStatus.HostUnreachable
+            or v == explo.ConnectionStatus.NetworkUnreachable
+            or v == explo.ConnectionStatus.Error
         then
           table.insert(down_hosts, ip)
           down_hosts[ip] = v
@@ -105,6 +109,12 @@ return {
 
     explo.info("Found " .. #down_hosts .. " down hosts")
     print("Found " .. #down_hosts .. " down hosts")
+
+    if #down_hosts == #ips then
+      explo.error("All hosts are down, aborting scan")
+      print("All hosts are down, aborting scan")
+      return 1
+    end
 
     local filtered_ip = {}
     for _, ip in ipairs(ips) do
@@ -129,7 +139,7 @@ return {
 
     start = explo.clock()
     local scanRes = explo.async_scan((#ips - #down_hosts) * #ports * #types, coroutine.create(coroF))
-    took = (explo.clock() - scan_start) / 1000000000
+    took = (explo.clock() - start) / 1000000000
     explo.info(string.format("Scan took %.2f seconds", took))
 
     if not scanRes then
@@ -190,6 +200,7 @@ return {
     result = 0
     local main_time = (explo.clock() - start) / 1000000000
     print("Scan took " .. took .. " seconds and total execution time was " .. main_time .. " seconds.")
+    explo.trace(explo.clock() .. " - " .. start .. " = " .. (explo.clock() - start) .. " diff")
     return result
   end,
 }

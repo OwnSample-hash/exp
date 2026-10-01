@@ -12,8 +12,12 @@ LuaTool = {
   tags = {},
   ---@type table<string, string|number|boolean|nil>
   vars = {},
+  ---@type table<string, string>
+  desc = {},
   ---@type boolean
   rootRequired = false,
+  ---@type boolean
+  makeCommand = false,
   ---@type function|string
   execute = function() end,
   ---@type function|string

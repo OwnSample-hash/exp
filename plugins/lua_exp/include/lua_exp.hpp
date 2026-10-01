@@ -35,11 +35,14 @@ public:
   }
 
   void initialize(initArgs &) override;
+
   void shutdown() override;
 
   ModuleType getModuleType() const override { return ModuleType::TOOLPROVIDER; }
 
   const std::map<std::string, std::shared_ptr<ITool>> &getTools() const override { return tools; }
+
+  bool cmdCheck() override;
 };
 
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
