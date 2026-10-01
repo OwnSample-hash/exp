@@ -44,7 +44,7 @@ struct Hive {
     return Value;
   }
 
-  template <typename VFT> ConfigValue &at(const std::string_view key, const args::ValueFlag<VFT> &cliVal) {
+  template <typename VFT> ConfigValue &at(const std::string_view key, args::ValueFlag<VFT> &cliVal) {
     if (cliVal.Get() != cliVal.GetDefault()) {
       Cli[key.data()] = cliVal.Get();
       return Cli[key.data()];
@@ -88,6 +88,7 @@ private:
 class Config {
   std::unordered_map<std::string, std::unique_ptr<IConfigSerializer>> serializers;
   std::unordered_map<std::string, Hive> entries;
+  fs::path prefixPath;
 
   Config() {};
 
@@ -115,8 +116,8 @@ public:
     if (entries.find(name) != entries.end()) {
       return false;
     }
-    auto [pos, status] =
-        entries.try_emplace(name, name, std::string(serializer), configFilePath, lookupOrder, defaultValue);
+    auto [pos, status] = entries.try_emplace(name, name, std::string(serializer), prefixPath / configFilePath,
+                                             lookupOrder, defaultValue);
     return status;
   }
 
@@ -141,8 +142,16 @@ public:
     return true;
   }
 
+  fs::path getPrefixPath() const { return prefixPath; }
+
   bool loadHive(const std::string &filePath, const std::string &hive, const std::string_view serializer = "yaml") {
-    fs::path configFilePath(filePath);
+    auto serializerIt = serializers.find(serializer.data());
+    if (serializerIt == serializers.end()) {
+      return false;
+    }
+    IConfigSerializer *serializerPtr = serializerIt->second.get();
+    fs::path configFilePath = prefixPath / filePath;
+    configFilePath.replace_extension(serializerPtr->getSuffix());
     if (!fs::exists(configFilePath)) {
       return false;
     }
@@ -150,11 +159,6 @@ public:
     if (it == entries.end()) {
       return false;
     }
-    auto serializerIt = serializers.find(serializer.data());
-    if (serializerIt == serializers.end()) {
-      return false;
-    }
-    IConfigSerializer *serializerPtr = serializerIt->second.get();
     ConfigMap loadedConfig = serializerPtr->deserialize(configFilePath.string());
     it->second.get() = loadedConfig;
     return true;
@@ -171,7 +175,7 @@ public:
       return false;
     }
     IConfigSerializer *serializer = serializerIt->second.get();
-    serializer->serialize(entry.get(), entry.configFile.string());
+    serializer->serialize(entry.get(), (entry.configFile += serializer->getSuffix()).string());
     return true;
   }
 
@@ -182,9 +186,25 @@ public:
         continue;
       }
       IConfigSerializer *serializer = serializerIt->second.get();
-      serializer->serialize(entry.get(), entry.configFile.string());
+      serializer->serialize(entry.get(), (entry.configFile += serializer->getSuffix()).string());
     }
     return true;
+  }
+
+  bool setPrefixPath(const fs::path &path) {
+    if (!fs::exists(path)) {
+      return false;
+    }
+    prefixPath = path;
+    return true;
+  }
+
+  const std::string_view getSerializerSuffix(const std::string_view serializer) const {
+    auto it = serializers.find(serializer.data());
+    if (it != serializers.end()) {
+      return it->second->getSuffix();
+    }
+    return "";
   }
 
   Hive &get(const std::string &name) {

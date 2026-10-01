@@ -11,6 +11,7 @@ public:
   ~YAMLSerializer() override = default;
   ConfigMap deserialize(const std::string_view file_path) override;
   void serialize(const ConfigMap &config, const std::string_view file_path) override;
+  const char *getSuffix() const override { return ".yaml"; }
 };
 
 } // namespace explo

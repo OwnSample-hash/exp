@@ -24,6 +24,8 @@ public:
   virtual ConfigMap deserialize(const std::string_view file_path) = 0;
 
   virtual void serialize(const ConfigMap &config, const std::string_view file_path) = 0;
+
+  virtual const char *getSuffix() const = 0;
 };
 
 } // namespace explo
