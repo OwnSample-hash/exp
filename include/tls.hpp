@@ -3,8 +3,8 @@
 #define EXPLO_LIB_TLS
 
 #include <config.hpp>
-#include <itls.hpp>
 #include <type_traits>
+#include <interfaces/tls.hpp>
 
 #include "tls_includer.hpp"
 

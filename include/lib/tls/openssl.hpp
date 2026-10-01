@@ -4,7 +4,7 @@
 #error "This file should not be included directly. Include tls.hpp instead."
 #endif
 
-#include "../../itls.hpp"
+#include <interfaces/tls.hpp>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <string_view>
