@@ -29,7 +29,7 @@ INSTANTIATE_REGISTRY(ToolRegistry);
 INSTANTIATE_REGISTRY(ToolProviderRegistry);
 INSTANTIATE_REGISTRY(RendererRegistry);
 
-const std::vector<std::unique_ptr<IMod>> &get_loaded_plugins2(bool forceReload = false) {
+const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins(bool forceReload = false) {
   static std::vector<std::unique_ptr<IMod>> plugins;
   if (plugins.empty()) {
     spdlog::info("Loading registered plugins...");

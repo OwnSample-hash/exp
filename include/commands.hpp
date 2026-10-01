@@ -56,7 +56,7 @@
     c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
       std::stringstream result;
       result << "Loaded plugins:\n";
-      for (const auto &entry : get_loaded_plugins2()) {
+      for (const auto &entry : GetLoadedPlugins()) {
         result << " - " << entry->getName() << " version: " << entry->getVersion() << "\n";
       }
       return result.str();
