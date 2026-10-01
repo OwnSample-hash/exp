@@ -73,14 +73,12 @@ std::string formatResultKey(int domain, int socktype, std::string_view host, int
   return formatResultKey(dom2a(domain), sock2a(socktype), host, port);
 }
 
-std::atomic<bool> reservingFileDescriptors{false};
-
 bool reserveFileDescriptors(unsigned long int req) {
+  static std::mutex reserveMutex;
   static unsigned long int reserved;
+
+  std::lock_guard<std::mutex> lock(reserveMutex);
   struct rlimit rl = {};
-  while (reservingFileDescriptors.exchange(true)) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
   auto &logger = getLogger();
   logger->trace("Reserving {} file descriptors (currently) reserved: {})", req, reserved);
   if (req & (1UL << (sizeof(req) * 8 - 1))) {
@@ -104,9 +102,24 @@ bool reserveFileDescriptors(unsigned long int req) {
     return false;
   }
   reserved += req;
-  reservingFileDescriptors = false;
   return true;
 }
+
+struct RFDWrapper {
+  RFDWrapper(unsigned long int count) : count_(count) {
+    if (!reserveFileDescriptors(count)) {
+      throw std::runtime_error("Failed to reserve file descriptors");
+    }
+    getLogger()->trace("Reserved {} file descriptors", count);
+  }
+  ~RFDWrapper() {
+    reserveFileDescriptors(count_ * -1);
+    getLogger()->trace("Released {} file descriptors", count_);
+  }
+
+private:
+  unsigned long int count_;
+};
 
 struct socketInfo {
   int fd;
@@ -119,9 +132,7 @@ struct socketInfo {
 
 std::unordered_map<std::string, ConnectionStatus::Type>
 async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> generator) noexcept(false) {
-  if (!reserveFileDescriptors(CONFIG_LIB_SOCKET_LIMIT)) {
-    throw std::runtime_error("Failed to reserve file descriptors for async_scan");
-  }
+  RFDWrapper rfdWrapper(CONFIG_LIB_SOCKET_LIMIT);
   auto &logger = getLogger();
   std::unordered_map<std::string, ConnectionStatus::Type> connected;
   std::mutex connected_mutex;
@@ -317,7 +328,6 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
   futures.clear();
   close(epoll_fd);
 
-  reserveFileDescriptors(CONFIG_LIB_SOCKET_LIMIT * -1); // release reserved file descriptors
   return connected;
 }
 } // namespace explo::lib::impl
