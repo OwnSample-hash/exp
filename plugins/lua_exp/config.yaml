@@ -5,6 +5,7 @@
   help_text: Enable or disable the plugin.
   cmake_export: true
   cmake_help: $help_text$
+  runtime_export: false
 
 - name: DIRECTORY
   prompt: "Directory to recursively scan for Lua files"
