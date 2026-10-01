@@ -278,17 +278,16 @@ bool luaTool::cmdCheck() {
   this->invoke(this->name, true);
   auto &vars = cmd::CommandProcessor::instance().vars();
 
-  const auto visitor =
-      overloads{[&](const std::string_view var) { vars.set(this->prefix + "." + name, cmd::VarValue(var.data())); },
-                [&](lua_Number var) { vars.set(this->prefix + "." + name, cmd::VarValue(var)); },
-                [&](bool var) { vars.set(this->prefix + "." + name, cmd::VarValue(var)); },
-                [&](auto var) {
-                  const char *type_name = abi::__cxa_demangle(typeid(var).name(), nullptr, nullptr, nullptr);
-                  this->logger->warn("Lua variable: '{}' of type '{}' cannot be set via command line", name, type_name);
-                  free((void *)type_name);
-                }};
-
   for (const auto &[name, var] : this->varTypes) {
+    const auto visitor = overloads{
+        [&](const std::string &var) { vars.set(this->prefix + "." + name, cmd::VarValue(var.data())); },
+        [&](lua_Number var) { vars.set(this->prefix + "." + name, cmd::VarValue(var)); },
+        [&](bool var) { vars.set(this->prefix + "." + name, cmd::VarValue(var)); },
+        [&](auto var) {
+          const char *type_name = abi::__cxa_demangle(typeid(var).name(), nullptr, nullptr, nullptr);
+          this->logger->warn("Lua variable: '{}' of type '{}' cannot be set via command line", name, type_name);
+          free((void *)type_name);
+        }};
     std::visit(visitor, var.data);
   }
   this->execute();
