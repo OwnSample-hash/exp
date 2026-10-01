@@ -6,8 +6,6 @@ if(NOT OPTIONS_INCLUDED)
   message(FATAL_ERROR "Failed to include Options.cmake")
 endif()
 
-option(ENABLE_TESTS "Enable tests" ON)
-
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_CXX_STANDARD 26)
