@@ -50,6 +50,13 @@ public:
    * @return The UUID of the tool.
    */
   virtual const uuids::uuid getUUID() = 0;
+
+  /**
+   * @brief Get the heartbeat function for the tool, which can be used to check
+   * the tool's status or perform periodic tasks.
+   * @return A HeartBeat function that can be called to check the tool's status.
+   */
+  virtual HeartBeat getHeartBeat() { return {}; };
 };
 
 } // namespace explo
