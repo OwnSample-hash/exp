@@ -8,11 +8,13 @@
 #include <interfaces/renderer.hpp>
 #include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
+#include <lib.hpp>
 #include <map>
 #include <memory>
 #include <module.hpp>
 #include <plugin_interface.hpp>
 #include <plugin_loader.hpp>
+#include <session.hpp>
 #include <spdlog/common.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -86,6 +88,32 @@ std::istream &operator>>(std::istream &is, spdlog::level::level_enum &level) {
   return is;
 }
 
+std::ostream &operator<<(std::ostream &os, const spdlog::level::level_enum &level) {
+  switch (level) {
+  case spdlog::level::trace:
+    os << "trace";
+    break;
+  case spdlog::level::debug:
+    os << "debug";
+    break;
+  case spdlog::level::info:
+    os << "info";
+    break;
+  case spdlog::level::warn:
+    os << "warn";
+    break;
+  case spdlog::level::err:
+    os << "error";
+    break;
+  case spdlog::level::critical:
+    os << "critical";
+    break;
+  default:
+    os.setstate(std::ios::failbit);
+  }
+  return os;
+}
+
 } // namespace level
 } // namespace spdlog
 
@@ -103,13 +131,14 @@ thread_local ITool *currentTool = nullptr;
 
 [[noreturn]] void shutdown(int code = 0);
 
-ConfigMap &config();
+std::unique_ptr<explo::SessionStore> sessionStore = nullptr;
 
 int main(int argc, const char **argv, const char **envp) {
   Config &instance = Config::instance();
   instance.addSerializer("yaml", std::make_unique<YAMLSerializer>());
   instance.addSerializer("json", std::make_unique<JSONSerializer>());
   instance.addEnvVars(envp);
+  instance.setPrefixPath(fs::current_path());
 
   args::ArgumentParser parser(
       "Explo - A modular exploitation framework\nAny option under \"Global Options\" are parsed before any plugin "
@@ -124,8 +153,8 @@ int main(int argc, const char **argv, const char **envp) {
                                                       "Set log level (trace, debug, info, warn, error, critical)",
                                                       {'l', "log-level"}, spdlog::level::info);
 
-  args::ValueFlag<std::string> logFile(globalGroup, "log-file", "Set log file path (default: explo.log)",
-                                       {'f', "log-file"}, std::string("explo.log"));
+  args::ValueFlag<std::string> logFile(globalGroup, "log-file", "Set log file path (default: " CONFIG_LOG_FILE ")",
+                                       {'f', "log-file"}, std::string(CONFIG_LOG_FILE));
 
   args::ValueFlag<std::string> logDir(globalGroup, "log-dir", "Set log directory (default: " CONFIG_LOG_DIR ")",
                                       {'d', "log-dir"}, std::string(CONFIG_LOG_DIR));
@@ -138,9 +167,24 @@ int main(int argc, const char **argv, const char **envp) {
                                           "Set configuration file path (default: " CONFIG_CONFIG_FILE ")",
                                           {'c', "config-file"}, std::string(CONFIG_CONFIG_FILE));
 
+  args::ValueFlag<std::string> configDir(globalGroup, "config-dir",
+                                         "Set configuration directory path (default: " CONFIG_CONFIG_DIR ")",
+                                         {'C', "config-dir"}, std::string(CONFIG_CONFIG_DIR));
+
   args::ValueFlag<std::string> preferredUI(globalGroup, "preferred-ui",
                                            "Set preferred UI (default: " CONFIG_PREFERRED_UI ")", {'U', "preferred-ui"},
                                            std::string(CONFIG_PREFERRED_UI));
+
+  args::ValueFlag<std::string> sessionStorePath(globalGroup, "session-store",
+                                                "Set session store file path (default: " CONFIG_SESSION_STORE ")",
+                                                {'s', "session-store"}, std::string(CONFIG_SESSION_STORE));
+
+  args::ValueFlag<std::string> sessionSocketPath(globalGroup, "session-socket",
+                                                 "Set session socket path (default: " CONFIG_SESSION_SOCKET ")",
+                                                 {'S', "session-socket"}, std::string(CONFIG_SESSION_SOCKET));
+
+  args::ValueFlag<bool> sessionMode(globalGroup, "session-mode", "Enable session mode (default: false)",
+                                    {'m', "session-mode"}, false);
 
   args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
 
@@ -172,6 +216,7 @@ int main(int argc, const char **argv, const char **envp) {
     std::cerr << parser;
     shutdown(1);
   case Error::Completion:
+    break;
   case Error::Help:
   case Error::Parse:
   case Error::None:
@@ -189,27 +234,37 @@ int main(int argc, const char **argv, const char **envp) {
 #define X(k, v) {k, v},
                        CONFIG_OPTS
 #undef X
+                       {"log_level", spdlog::level::info},
                    },
                    "yaml", LookUpOrder::ENV_THEN_CONFIG);
 
   if (!instance.loadHive(configFilePath.string(), "global", "yaml")) {
-    spdlog::warn("Failed to load configuration file: {}.", configFilePath.string());
+    spdlog::warn("Failed to load configuration file: {}{}", configFilePath.string(),
+                 instance.getSerializerSuffix("yaml"));
     instance.saveConfigFile("global");
   } else {
-    spdlog::info("Loaded configuration file: {}", configFilePath.string());
+    spdlog::info("Loaded configuration file: {}{}", configFilePath.string(), instance.getSerializerSuffix("yaml"));
   }
 
   Hive &globalHive = instance.get("global");
 
   auto logLevelEnum = static_cast<spdlog::level::level_enum>(
-      globalHive.at("log_level"s, static_cast<int>(logLevel)).get(static_cast<int>(spdlog::level::info)));
-  std::string logFileStr = globalHive.at("log_file"s, logFile).get("explo.log");
-  std::string logDirStr = globalHive.at("log_dir"s, logDir).get(CONFIG_LOG_DIR);
-  std::string pluginDirStr = globalHive.at("plugin_dir"s, pluginDir).get(CONFIG_PLUGIN_INSTALL_DIR);
-  std::string preferredUIStr = globalHive.at("preferred_ui"s, preferredUI).get(CONFIG_PREFERRED_UI);
+      globalHive.at("log_level"s, logLevel).get(static_cast<int>(spdlog::level::info)));
+  std::string logFileStr = globalHive.at("log_file"s, logFile).get<std::string>(CONFIG_LOG_FILE);
+  std::string logDirStr = globalHive.at("log_dir"s, logDir).get<std::string>(CONFIG_LOG_DIR);
+  std::string pluginDirStr =
+      globalHive.at("plugin_install_dir"s, pluginDir).get<std::string>(CONFIG_PLUGIN_INSTALL_DIR);
+  std::string preferredUIStr = globalHive.at("preferred_ui"s, preferredUI).get<std::string>(CONFIG_PREFERRED_UI);
+  std::string configDirStr = globalHive.at("config_dir"s, configDir).get<std::string>(CONFIG_CONFIG_DIR);
+  std::string sessionStorePathStr =
+      globalHive.at("session_store"s, sessionStorePath).get<std::string>(CONFIG_SESSION_STORE);
+  std::string sessionSocketPathStr =
+      globalHive.at("session_socket"s, sessionSocketPath).get<std::string>(CONFIG_SESSION_SOCKET);
+
+  fs::create_directories(configDirStr);
+  instance.setPrefixPath(configDirStr);
 
   fs::path logDirPath(logDirStr);
-
   std::filesystem::create_directories(logDirPath);
   spdlog::set_default_logger(
       spdlog::basic_logger_mt("main", logDirPath.string() + "/" + normalizePath(logFileStr), true));
@@ -232,7 +287,7 @@ int main(int argc, const char **argv, const char **envp) {
     }
   }
 
-  for (const auto &plugin : get_loaded_plugins2()) {
+  for (const auto &plugin : GetLoadedPlugins()) {
     spdlog::info(" - Module: {} version: {}", plugin->getName(), plugin->getVersion());
     std::shared_ptr<args::Group> pluginGroup = std::make_shared<args::Group>(parser, plugin->getName());
     std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
@@ -260,6 +315,41 @@ int main(int argc, const char **argv, const char **envp) {
     }
 
     pluginInitArgs.emplace(plugin->getName(), iA);
+  }
+
+  sessionStore = std::make_unique<explo::SessionStore>(sessionStorePathStr, std::chrono::seconds(1));
+  sessionStore->Load([&](const uuids::uuid &toolId) -> explo::HeartBeat {
+    auto iter =
+        std::find_if(tools.begin(), tools.end(), [&](const auto &pair) { return pair.second->getUUID() == toolId; });
+    if (iter != tools.end()) {
+      return iter->second->getHeartBeat();
+    }
+    return explo::HeartBeat{};
+  });
+
+  if (sessionMode.Get()) {
+    int fd = explo::lib::socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) {
+      spdlog::error("Failed to create socket: {}", strerror(errno));
+      shutdown(1);
+    }
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, sessionSocketPathStr.c_str(), sizeof(addr.sun_path) - 1);
+    int res = explo::lib::bind(fd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr));
+    if (res < 0) {
+      spdlog::error("Failed to bind socket: {}", strerror(errno));
+      shutdown(1);
+    }
+    for (;;) {
+      int client_fd = explo::lib::accept(fd, nullptr, nullptr);
+      if (client_fd < 0) {
+        spdlog::error("Failed to accept connection: {}", strerror(errno));
+        continue;
+      }
+      // Handle the client connection
+    }
   }
 
   res = parser.ParseCLI(argc, argv);
@@ -297,6 +387,7 @@ int main(int argc, const char **argv, const char **envp) {
     shutdown(1);
   case Error::Completion:
     std::cout << parser.GetErrorMsg();
+    std::cerr << "Currently does't work\n";
     shutdown();
   case Error::Help:
     std::cout << parser << std::endl;
@@ -310,13 +401,13 @@ int main(int argc, const char **argv, const char **envp) {
     shutdown(1);
   };
 
-  // Command
-
-  for (const auto &plugin : get_loaded_plugins2()) {
+  for (const auto &plugin : GetLoadedPlugins()) {
     if (plugin->cmdCheck()) {
       shutdown(0);
     }
   }
+
+  // Command
 
   spdlog::info("Registering global commands...");
 
@@ -326,7 +417,7 @@ int main(int argc, const char **argv, const char **envp) {
 
   std::string_view preferredRenderer = preferredUIStr;
   IMod *rendererModuleRaw = nullptr;
-  for (const auto &mod : get_loaded_plugins2()) {
+  for (const auto &mod : GetLoadedPlugins()) {
     if (mod->getModuleType() == explo::ModuleType::RENDERER) {
       if (!preferredRenderer.empty() && mod->getName() != preferredRenderer) {
         spdlog::debug("Skipping renderer module: '{}' as it does not match preferred renderer: '{}'", mod->getName(),
@@ -363,7 +454,7 @@ void shutdown(int code) {
   tools.clear();
   currentTool = nullptr;
 
-  for (const auto &plugin : get_loaded_plugins2()) {
+  for (const auto &plugin : GetLoadedPlugins()) {
     plugin->shutdown();
   }
 

@@ -4,6 +4,12 @@
   default: plugins
   help_text: Directory where plugins will be loaded from.
 
+- name: LOG_FILE
+  prompt: Log file
+  type: string
+  default: explo.log
+  help_text: Log file name.
+
 - name: LOG_DIR
   prompt: Log directory
   type: string
@@ -13,8 +19,26 @@
 - name: CONFIG_FILE
   prompt: Default config file
   type: string
-  default: config.yaml
+  default: config
   help_text: Default configuration file to use if no other is specified.
+
+- name: SESSION_STORE
+  prompt: Default session store
+  type: string
+  default: sessions.yaml
+  help_text: Default session store file to use if no other is specified.
+
+- name: SESSION_SOCKET
+  prompt: Default session socket
+  type: string
+  default: /tmp/explo/session.sock
+  help_text: Default session socket to use if no other is specified.
+
+- name: SESSION_HEARTBEAT
+  prompt: Session heartbeat interval
+  type: int
+  default: 5
+  help_text: Interval in seconds for session heartbeat checks.
 
 - name: CONFIG_DIR
   prompt: Config directory
