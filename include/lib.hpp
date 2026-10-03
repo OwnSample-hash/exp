@@ -16,7 +16,15 @@ inline socket_t socket(int domain, int type, int protocol, int nonblock = SOCK_N
   return impl::socket(domain, type, protocol, nonblock);
 }
 
-inline int connect(socket_t sockfd, const struct sockaddr *addr, socklen_t addrlen) noexcept {
+inline int bind(socket_t sockfd, const sockaddr_t *addr, socketlen_t addrlen) noexcept {
+  return impl::bind(sockfd, addr, addrlen);
+}
+
+inline int accept(socket_t sockfd, sockaddr_t *addr, socketlen_t *addrlen) noexcept {
+  return impl::accept(sockfd, addr, addrlen);
+}
+
+inline int connect(socket_t sockfd, const sockaddr_t *addr, socketlen_t addrlen) noexcept {
   return impl::connect(sockfd, addr, addrlen);
 }
 
@@ -24,7 +32,7 @@ inline int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds
   return impl::select(nfds, readfds, writefds, exceptfds, timeout);
 }
 
-inline int getsockopt(socket_t sockfd, int level, int optname, void *optval, socklen_t *optlen) noexcept {
+inline int getsockopt(socket_t sockfd, int level, int optname, void *optval, socketlen_t *optlen) noexcept {
   return impl::getsockopt(sockfd, level, optname, optval, optlen);
 }
 
@@ -41,12 +49,11 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
   return impl::async_scan(max, generator);
 }
 
-inline int getaddrinfo(const char *node, const char *service, const struct ::addrinfo *hints,
-                       struct ::addrinfo **res) noexcept {
+inline int getaddrinfo(const char *node, const char *service, const addrinfo_t *hints, addrinfo_t **res) noexcept {
   return impl::getaddrinfo(node, service, hints, res);
 }
 
-inline void freeaddrinfo(struct ::addrinfo *res) noexcept { impl::freeaddrinfo(res); }
+inline void freeaddrinfo(addrinfo_t *res) noexcept { impl::freeaddrinfo(res); }
 
 } // namespace lib
 } // namespace explo

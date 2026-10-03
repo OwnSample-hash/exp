@@ -76,7 +76,6 @@ std::string formatResultKey(int domain, int socktype, std::string_view host, int
 bool reserveFileDescriptors(unsigned long int req) {
   static std::mutex reserveMutex;
   static unsigned long int reserved;
-
   std::lock_guard<std::mutex> lock(reserveMutex);
   struct rlimit rl = {};
   auto &logger = getLogger();
