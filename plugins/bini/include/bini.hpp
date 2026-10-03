@@ -37,4 +37,6 @@ public:
   bool cmdCheck() override;
 
   ModuleType getModuleType() const override { return ModuleType::TOOL; }
+
+  const uuids::uuid getUUID() override;
 };

@@ -119,6 +119,16 @@ public:
   ModuleType getModuleType() const override { return ModuleType::TOOL; }
 
   bool cmdCheck() override;
+
+  const uuids::uuid getUUID() override {
+    auto uuid_str = lua["uuid"].as<std::string>();
+    try {
+      return uuids::uuid::from_string(uuid_str).value();
+    } catch (const std::exception &e) {
+      this->logger->error("Failed to parse UUID '{}' for Lua tool '{}': {}", uuid_str, name, e.what());
+      throw;
+    }
+  }
 };
 
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

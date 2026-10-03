@@ -34,6 +34,9 @@ message(STATUS "TLS_BACKEND: ${TLS_BACKEND}")
 
 target_sources(main_app PRIVATE ${impl} ${CMAKE_CURRENT_SOURCE_DIR}/lib/tls/${TLS_BACKEND}.cpp)
 
+execute_process(COMMAND uuidgen OUTPUT_VARIABLE nc_UUID OUTPUT_STRIP_TRAILING_WHITESPACE)
+target_compile_definitions(main_app PRIVATE NC_UUID="${nc_UUID}")
+
 add_pch(main_app)
 
 # Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

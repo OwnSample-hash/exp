@@ -1,9 +1,13 @@
-#include "interfaces/mod.hpp"
 #include <bini.hpp>
+#include <bini_config.hpp>
 #include <cmd.hpp>
+#include <interfaces/mod.hpp>
 #include <iostream>
 #include <plugin_interface.hpp>
 #include <summary.hpp>
+#include <uuid.hpp>
+
+const uuids::uuid bini::getUUID() { return uuids::uuid::from_string(bini_UUID).value(); }
 
 bool bini::cmdCheck() {
   auto &vars = cmd::CommandProcessor::instance().vars();
@@ -14,6 +18,7 @@ bool bini::cmdCheck() {
   vars.set("bini.type", cmd::VarValue(type));
   for (const auto &target : targets) {
     vars.set("bini.target", cmd::VarValue(target));
+    std::cout << "Executing bini on target: " << target << " with type: " << type << std::endl;
     this->execute();
   }
   this->suppress();

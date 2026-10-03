@@ -6,6 +6,7 @@
 
 #include "mod.hpp"
 #include <string>
+#include <uuid.hpp>
 #include <vector>
 
 namespace explo {
@@ -44,7 +45,11 @@ public:
    */
   virtual const std::vector<std::string> &getTags() const = 0;
 
-  virtual bool isShared() const { return false; }
+  /**
+   * @brief Get the UUID of the tool.
+   * @return The UUID of the tool.
+   */
+  virtual const uuids::uuid getUUID() = 0;
 };
 
 } // namespace explo

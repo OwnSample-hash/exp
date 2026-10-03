@@ -241,8 +241,8 @@ function SendHttps(data)
 
   local pr = ParseHTTPResponse(response)
   if
-    (data.headers["Connection"] and data.headers["Connection"] == "Close")
-    or (pr.headers["Connection"] and pr.headers["Connection"]:lower() == "close")
+      (data.headers["Connection"] and data.headers["Connection"] == "Close")
+      or (pr.headers["Connection"] and pr.headers["Connection"]:lower() == "close")
   then
     explo.info("Closing TLS client due to Connection: Close header")
     explo.sclose()
@@ -276,42 +276,42 @@ function HostAnalysis(response, call_data)
   elseif Contains({ 200, 201, 202, 204, 205, 206 }, response.status_code) then
     print(
       "Host: "
-        .. call_data.headers["Host"]
-        .. " is up with: "
-        .. c.w(c.fg.green, response.status_code)
-        .. " and response size: "
-        .. #response.body
+      .. call_data.headers["Host"]
+      .. " is up with: "
+      .. c.w(c.fg.green, response.status_code)
+      .. " and response size: "
+      .. #response.body
     )
   elseif Contains({ 300, 301, 302 }, response.status_code) then
     explo.info("Received redirection response with status code: " .. response.status_code)
     print(
       "Host: "
-        .. call_data.headers["Host"]
-        .. " is up with: "
-        .. c.w(c.fg.yellow, response.status_code)
-        .. " and response size: "
-        .. #response.body
-        .. " Location: "
-        .. (response.headers["Location"] or "N/A")
+      .. call_data.headers["Host"]
+      .. " is up with: "
+      .. c.w(c.fg.yellow, response.status_code)
+      .. " and response size: "
+      .. #response.body
+      .. " Location: "
+      .. (response.headers["Location"] or "N/A")
     )
   elseif response.status_code == -1 then
     explo.warn("Failed to parse status code from response, treating as unknown response")
     print(
       "Host: "
-        .. call_data.headers["Host"]
-        .. " is up with: "
-        .. c.w(c.fg.magenta, "Unknown Status Code")
-        .. " and response size: "
-        .. #response.body
+      .. call_data.headers["Host"]
+      .. " is up with: "
+      .. c.w(c.fg.magenta, "Unknown Status Code")
+      .. " and response size: "
+      .. #response.body
     )
   else
     print(
       "Host: "
-        .. call_data.headers["Host"]
-        .. " is up with: "
-        .. c.w(c.fg.red, response.status_code)
-        .. " and response size: "
-        .. #response.body
+      .. call_data.headers["Host"]
+      .. " is up with: "
+      .. c.w(c.fg.red, response.status_code)
+      .. " and response size: "
+      .. #response.body
     )
   end
 end
@@ -327,42 +327,42 @@ function PathAnalysis(response, call_data)
   elseif Contains({ 200, 201, 202, 204, 205, 206 }, response.status_code) then
     print(
       "Path: "
-        .. call_data.url
-        .. " is accessible with: "
-        .. c.w(c.fg.green, response.status_code)
-        .. " and response size: "
-        .. #response.body
+      .. call_data.url
+      .. " is accessible with: "
+      .. c.w(c.fg.green, response.status_code)
+      .. " and response size: "
+      .. #response.body
     )
   elseif Contains({ 300, 301, 302 }, response.status_code) then
     explo.info("Received redirection response with status code: " .. response.status_code)
     print(
       "Path: "
-        .. call_data.url
-        .. " is accessible with: "
-        .. c.w(c.fg.yellow, response.status_code)
-        .. " and response size: "
-        .. #response.body
-        .. " Location: "
-        .. (response.headers["Location"] or "N/A")
+      .. call_data.url
+      .. " is accessible with: "
+      .. c.w(c.fg.yellow, response.status_code)
+      .. " and response size: "
+      .. #response.body
+      .. " Location: "
+      .. (response.headers["Location"] or "N/A")
     )
   elseif response.status_code == -1 then
     explo.warn("Failed to parse status code from response, treating as unknown response")
     print(
       "Path: "
-        .. call_data.url
-        .. " is up with: "
-        .. c.w(c.fg.magenta, "Unknown Status Code")
-        .. " and response size: "
-        .. #response.body
+      .. call_data.url
+      .. " is up with: "
+      .. c.w(c.fg.magenta, "Unknown Status Code")
+      .. " and response size: "
+      .. #response.body
     )
   else
     print(
       "Path: "
-        .. call_data.url
-        .. " is accessible with: "
-        .. c.w(c.fg.red, response.status_code)
-        .. " and response size: "
-        .. #response.body
+      .. call_data.url
+      .. " is accessible with: "
+      .. c.w(c.fg.red, response.status_code)
+      .. " and response size: "
+      .. #response.body
     )
   end
 end
@@ -371,6 +371,7 @@ end
 return {
   name = "fuzz",
   version = "0.1.0",
+  uuid = "1e0f811e-4940-45c0-9733-373397362b76",
   description = "A simple fuzzing tool",
   tags = { "fuzz", "testing" },
   vars = {
@@ -414,74 +415,74 @@ return {
     local threads = explo.var("threads")
 
     if
-      type(target) ~= "string"
-      or type(fuzz_key) ~= "string"
-      or type(fuzz_ext_key) ~= "string"
-      or type(dict) ~= "string"
-      or type(ext_dict) ~= "string"
-      or type(kind) ~= "string"
-      or type(host) ~= "string"
-      or type(header) ~= "string"
-      or type(data) ~= "string"
-      or type(type_) ~= "string"
+        type(target) ~= "string"
+        or type(fuzz_key) ~= "string"
+        or type(fuzz_ext_key) ~= "string"
+        or type(dict) ~= "string"
+        or type(ext_dict) ~= "string"
+        or type(kind) ~= "string"
+        or type(host) ~= "string"
+        or type(header) ~= "string"
+        or type(data) ~= "string"
+        or type(type_) ~= "string"
     then
       explo.error(
         "Invalid configuration: target, fuzz_key, fuzz_ext_key, dict, ext_dict, kind, header, host and data must be strings"
       )
       explo.dbg(
         "Received types: "
-          .. string.format(
-            "target=%s, fuzz_key=%s, fuzz_ext_key=%s, dict=%s, ext_dict=%s kind=%s, header=%s, host=%s, data=%s, type_=%s",
-            type(target),
-            type(fuzz_key),
-            type(fuzz_ext_key),
-            type(dict),
-            type(ext_dict),
-            type(kind),
-            type(header),
-            type(host),
-            type(data),
-            type(type_)
-          )
+        .. string.format(
+          "target=%s, fuzz_key=%s, fuzz_ext_key=%s, dict=%s, ext_dict=%s kind=%s, header=%s, host=%s, data=%s, type_=%s",
+          type(target),
+          type(fuzz_key),
+          type(fuzz_ext_key),
+          type(dict),
+          type(ext_dict),
+          type(kind),
+          type(header),
+          type(host),
+          type(data),
+          type(type_)
+        )
       )
       explo.dbg(
         "Received values: "
-          .. string.format(
-            "target=%s, fuzz_key=%s, fuzz_ext_key=%s, dict=%s, ext_dict=%s kind=%s, header=%s, host=%s, data=%s, type_=%s",
-            tostring(target),
-            tostring(fuzz_key),
-            tostring(fuzz_ext_key),
-            tostring(dict),
-            tostring(ext_dict),
-            tostring(kind),
-            tostring(header),
-            tostring(host),
-            tostring(data),
-            tostring(type_)
-          )
+        .. string.format(
+          "target=%s, fuzz_key=%s, fuzz_ext_key=%s, dict=%s, ext_dict=%s kind=%s, header=%s, host=%s, data=%s, type_=%s",
+          tostring(target),
+          tostring(fuzz_key),
+          tostring(fuzz_ext_key),
+          tostring(dict),
+          tostring(ext_dict),
+          tostring(kind),
+          tostring(header),
+          tostring(host),
+          tostring(data),
+          tostring(type_)
+        )
       )
       return 1
     end
     if
-      type(wrong_status_code) ~= "number"
-      or type(wrong_response_size) ~= "number"
-      or type(wrong_response_time) ~= "number"
-      or type(thread_delay) ~= "number"
-      or type(threads) ~= "number"
+        type(wrong_status_code) ~= "number"
+        or type(wrong_response_size) ~= "number"
+        or type(wrong_response_time) ~= "number"
+        or type(thread_delay) ~= "number"
+        or type(threads) ~= "number"
     then
       explo.error(
         "Invalid configuration: wrong_status_code, wrong_response_size, wrong_response_time, thread_delay and threads must be numbers"
       )
       explo.dbg(
         "Received types: "
-          .. string.format(
-            "wrong_status_code=%s, wrong_response_size=%s, wrong_response_time=%s, thread_delay=%s, threads=%s",
-            type(wrong_status_code),
-            type(wrong_response_size),
-            type(wrong_response_time),
-            type(thread_delay),
-            type(threads)
-          )
+        .. string.format(
+          "wrong_status_code=%s, wrong_response_size=%s, wrong_response_time=%s, thread_delay=%s, threads=%s",
+          type(wrong_status_code),
+          type(wrong_response_size),
+          type(wrong_response_time),
+          type(thread_delay),
+          type(threads)
+        )
       )
       return 2
     end

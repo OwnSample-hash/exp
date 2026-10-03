@@ -210,6 +210,21 @@
     };
     cp.registerGlobalCommand(c);
   }
+  if (CHECK(cmds, "uuids")) {
+    cmd::CommandDef c;
+    c.name = "uuids";
+    c.description = "List UUIDs of loaded tools and plugins";
+    c.variadic = false;
+    c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+      std::stringstream result;
+      result << "Loaded tools and plugins UUIDs:\n";
+      for (const auto &[name, tool] : tools) {
+        result << " - Tool: " << name << " UUID: " << tool->getUUID() << "\n";
+      }
+      return result.str();
+    };
+    cp.registerGlobalCommand(c);
+  }
   cp.getContext()->sortCommands();
 }
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

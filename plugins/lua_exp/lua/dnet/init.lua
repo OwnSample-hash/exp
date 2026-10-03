@@ -6,6 +6,7 @@ return {
   name = "dnet",
   version = "1.0.0",
   description = "A nmap like tool",
+  uuid = "da14afad-ad8a-4f0c-a89d-b63cd40553c0",
   tags = { "tool" },
   vars = {
     target = "127.0.0.1",

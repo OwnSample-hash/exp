@@ -14,7 +14,8 @@ if(BINI_ENABLE)
   target_link_libraries(${MOD_NAME} PRIVATE spdlog::spdlog 
     LLVM
   )
-  target_compile_definitions(${MOD_NAME} PRIVATE MODULE_NAME="${MOD_NAME}")
+  execute_process(COMMAND "uuidgen" OUTPUT_VARIABLE ${MOD_NAME}_UUID OUTPUT_STRIP_TRAILING_WHITESPACE) 
+  target_compile_definitions(${MOD_NAME} PRIVATE MODULE_NAME="${MOD_NAME}" ${MOD_NAME}_UUID="${${MOD_NAME}_UUID}")
   set_property(TARGET ${MOD_NAME} PROPERTY PREFIX "")
 
   add_pch(${MOD_NAME})

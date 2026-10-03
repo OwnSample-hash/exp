@@ -48,6 +48,8 @@ public:
     static std::vector<std::string> tags = {"network", "utility"};
     return tags;
   }
+
+  const uuids::uuid getUUID() override { return uuids::uuid::from_string(NC_UUID).value(); }
 };
 
 } // namespace builtin
