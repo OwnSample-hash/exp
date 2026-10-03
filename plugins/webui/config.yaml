@@ -4,6 +4,7 @@
   help_text: Enable or disable the plugin.
   cmake_export: true
   default: true
+  runtime_export: false
 
 - name: TIMEOUT_SEC
   prompt: Timeout in seconds

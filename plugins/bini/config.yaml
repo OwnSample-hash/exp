@@ -4,3 +4,4 @@
   help_text: Enable or disable the plugin.
   cmake_export: true
   default: true
+  runtime_export: false
