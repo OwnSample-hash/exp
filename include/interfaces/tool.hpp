@@ -4,7 +4,8 @@
  */
 #pragma once
 
-#include "mod.hpp"
+#include <interfaces/mod.hpp>
+#include <session.hpp>
 #include <string>
 #include <uuid.hpp>
 #include <vector>
