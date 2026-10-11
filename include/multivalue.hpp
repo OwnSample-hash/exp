@@ -14,6 +14,20 @@ template <typename... Types> struct MultiValue {
   // Construct from any of the variant types
   template <typename T> MultiValue(T &&val) : data(std::forward<T>(val)) {}
 
+  MultiValue(const MultiValue<Types...> &other) : data(other.data) {}
+
+  MultiValue(MultiValue<Types...> &&other) : data(std::move(other.data)) {}
+
+  MultiValue &operator=(const MultiValue<Types...> &other) {
+    data = other.data;
+    return *this;
+  }
+
+  MultiValue &operator=(MultiValue<Types...> &&other) {
+    data = std::move(other.data);
+    return *this;
+  }
+
   // Assign from any of the variant types
   template <typename T> MultiValue &operator=(T &&val) {
     data = std::forward<T>(val);
