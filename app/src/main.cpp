@@ -4,6 +4,7 @@
 #include <config/config.hpp>
 #include <config/json.hpp>
 #include <config/yaml.hpp>
+#include <dep.hpp>
 #include <filesystem>
 #include <interfaces/renderer.hpp>
 #include <interfaces/tool.hpp>
@@ -32,8 +33,9 @@ INSTANTIATE_REGISTRY(ToolProviderRegistry);
 INSTANTIATE_REGISTRY(RendererRegistry);
 INSTANTIATE_REGISTRY(AtStartRegistry);
 
-const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins(bool forceReload = false) {
+const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins() {
   static std::vector<std::unique_ptr<IMod>> plugins;
+  static bool dependencyCheckDone(false);
   if (plugins.empty()) {
     spdlog::info("Loading registered plugins...");
     for (const auto &entry : RendererRegistry::entries()) {
@@ -49,6 +51,45 @@ const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins(bool forceReload = fa
       plugins.emplace_back(entry.create());
     }
   }
+  if (!dependencyCheckDone) {
+    DependencyTreeBuilder builder;
+    for (const auto &plugin : plugins) {
+      builder.addPackage(pkg(plugin->getName(), plugin->getVersion(), plugin->getDependencies()));
+    }
+    Result result;
+    try {
+      result = builder.build();
+    } catch (const DependencyResolutionException &e) {
+      spdlog::error("Dependency resolution failed: {}", e.what());
+      throw;
+    } catch (const std::exception &e) {
+      spdlog::error("An error occurred during dependency resolution: {}", e.what());
+      throw;
+    }
+    if (result.skipped.size() > 0) {
+      for (const auto &[name, reason] : result.skipped) {
+        spdlog::warn("Plugin '{}' was skipped due to dependency issues: {}", name, reason);
+      }
+    }
+    for (const auto &name : result.loadOrder) {
+      spdlog::trace("Plugin load order: {}", name);
+    }
+    auto it = result.loadOrder.begin();
+    for (int i = 0; i < result.loadOrder.size(); ++i, ++it) {
+      const std::string &name = *it;
+      auto pluginIt = std::find_if(plugins.begin(), plugins.end(),
+                                   [&name](const std::unique_ptr<IMod> &plugin) { return plugin->getName() == name; });
+      if (pluginIt != plugins.end()) {
+        std::iter_swap(plugins.begin() + i, pluginIt);
+      }
+    }
+    dependencyCheckDone = true;
+    spdlog::info("Dependency resolution completed successfully. Plugin load order:");
+    for (const auto &plugin : plugins) {
+      spdlog::info("  {}", plugin->getName());
+    }
+  }
+
   return plugins;
 }
 
@@ -466,8 +507,9 @@ void shutdown(int code) {
   tools.clear();
   currentTool = nullptr;
 
-  for (const auto &plugin : GetLoadedPlugins()) {
-    plugin->shutdown();
+  auto &plugins = GetLoadedPlugins();
+  for (auto it = plugins.rbegin(); it != plugins.rend(); ++it) {
+    it->get()->shutdown();
   }
 
   pluginInitArgs.clear();
