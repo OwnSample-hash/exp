@@ -57,7 +57,7 @@
       std::stringstream result;
       result << "Loaded plugins:\n";
       for (const auto &entry : GetLoadedPlugins()) {
-        result << " - " << entry->getName() << " version: " << entry->getVersion() << "\n";
+        result << " - " << entry->getName() << " version: " << entry->getVersion().toString() << "\n";
       }
       return result.str();
     };
@@ -115,7 +115,7 @@
       std::stringstream result;
       result << "Loaded tools:\n";
       for (const auto &[name, tool] : tools) {
-        result << " - " << name << " version: " << tool->getVersion() << "\n";
+        result << " - " << name << " version: " << tool->getVersion().toString() << "\n";
       }
       return result.str();
     };
@@ -125,7 +125,19 @@
     cmd::CommandDef c;
     c.name = "use";
     c.description = "Use tool: tool <tool_name>";
-    c.addDynamic("<tool_name>", R"([^\s]+)", "Name of the tool");
+    c.addDynamic("<tool_name>", R"([^\s]+)", "Name of the tool",
+                 [&](const std::string &partial) -> std::vector<std::string> {
+                   std::vector<std::string> matches;
+                   if (partial.empty())
+                     for (const auto &[name, tool] : tools)
+                       matches.push_back(name);
+                   else
+                     for (const auto &[name, tool] : tools) {
+                       if (name.find(partial) == 0)
+                         matches.push_back(name);
+                     }
+                   return matches;
+                 });
     c.variadic = false;
     c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
       if (ec.args.size() < 2)

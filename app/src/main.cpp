@@ -299,7 +299,7 @@ int main(int argc, const char **argv, const char **envp) {
   }
 
   for (const auto &plugin : GetLoadedPlugins()) {
-    spdlog::info(" - Module: {} version: {}", plugin->getName(), plugin->getVersion());
+    spdlog::info(" - Module: {} version: {}", plugin->getName(), plugin->getVersion().toString());
     std::shared_ptr<args::Group> pluginGroup = std::make_shared<args::Group>(parser, plugin->getName());
     std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
         plugin->getName(), logDirPath.string() + "/" + normalizePath(plugin->getName()) + ".log", true);
@@ -315,12 +315,13 @@ int main(int argc, const char **argv, const char **envp) {
       break;
     case explo::ModuleType::TOOLPROVIDER:
       for (const auto &[name, tool] : dynamic_cast<explo::IToolProvider *>(plugin.get())->getTools()) {
+        spdlog::info(" - Tool: {} version: {}", name, tool->getVersion().toString());
         tools.emplace(name, std::dynamic_pointer_cast<explo::ITool>(tool).get());
       }
       break;
     case explo::ModuleType::RENDERER:
     default:
-      spdlog::debug("entry: {} version: {} type: {}", plugin->getName(), plugin->getVersion(),
+      spdlog::debug("entry: {} version: {} type: {}", plugin->getName(), plugin->getVersion().toString(),
                     static_cast<int>(plugin->getModuleType()));
       break;
     }

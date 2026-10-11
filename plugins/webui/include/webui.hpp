@@ -41,7 +41,7 @@ public:
   ~webui() override = default;
 
   const char *getName() const override { return "webui"; }
-  const char *getVersion() const override { return "0.1.0"; }
+  const SemVer getVersion() const override { return {0, 1, 0}; }
 
   void initialize(initArgs &) override;
   void shutdown() override;

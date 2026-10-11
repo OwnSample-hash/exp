@@ -15,7 +15,7 @@ using namespace explo;
 extern std::map<std::string, ITool *> tools;
 extern std::unordered_map<std::string, initArgs> pluginInitArgs;
 extern thread_local ITool *currentTool;
-extern const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins(bool forceReload = false);
+extern const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins();
 extern void shutdown [[noreturn]](int code = 0);
 
 void webui::ws_loop(const httplib::Request &req, httplib::ws::WebSocket &ws) {
