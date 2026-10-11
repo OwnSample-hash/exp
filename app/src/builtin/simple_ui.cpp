@@ -18,7 +18,7 @@ void UI::printHelp(const std::vector<std::string> &options) {
   if (options.empty()) {
     std::cout << "  (none)\n";
   } else {
-    for (auto &o : options)
+    for (const auto &o : options)
       std::cout << "  " << o << "\n";
   }
   std::cout << std::flush;
@@ -29,8 +29,9 @@ void UI::printAutocomplete(const std::string &buf, bool unique) {
   auto vars = cp.vars();
   auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
   std::string prompt = vars.expand(rawPrompt);
+  spdlog::trace("Autocomplete: buf='{}', unique={}", buf, unique);
   if (unique)
-    std::cout << "\r\033[K" << prompt << buf;
+    std::cout << "\r\033[2K" << prompt << buf; // << "\033[" << buf.size() - cp.cursorPos() << "C" << std::flush
   else {
     std::cout << "\a";
   }
@@ -69,7 +70,7 @@ void UI::runLoop() {
 
   int ch = 0;
   while ((ch = getch())) {
-    if (ch == '' && cp.buffer().empty()) { // Ctrl-D to exit
+    if (ch == 0x04 && cp.buffer().empty()) { // Ctrl-D to exit
       std::cout << "\nExiting.\n";
       break;
     }

@@ -323,13 +323,19 @@ std::vector<std::string> CommandProcessor::collectCandidates(const std::string &
       if (val.substr(0, pfx.size()) == pfx)
         result.push_back(val);
     } else {
-      // Dynamic option – show the hint as a placeholder
-      result.push_back(std::get<DynamicOption>(opt).pattern);
+      auto &opt_ = std::get<DynamicOption>(opt);
+      std::vector<std::string> completions;
+      if (opt_.completion && !atSpace && !tokens.empty())
+        completions = opt_.completion(tokens.back());
+      if (!completions.empty())
+        result.insert_range(result.end(), completions);
+      else
+        result.push_back(opt_.pattern);
     }
-  } else if (def->variadic && !def->options.empty()) {
+  } else if (!def->options.empty()) { // def->variadic &&
     // Repeat last option
     const Option &opt = def->options.back();
-    result.push_back(optionHint(opt));
+    result.insert_range(result.end(), optionHint(opt));
   }
 
   return result;
@@ -450,8 +456,7 @@ InputResult CommandProcessor::feed(char c) {
 
   if (escapeSeq) {
     if (c == '[') {               // '[' indicates arrow keys
-      return InputResult::Escape; // Still in escape sequence, wait for next
-                                  // char
+      return InputResult::Escape; // Still in escape sequence, wait for next char
     }
     escapeSeq = false;
 
@@ -495,9 +500,10 @@ InputResult CommandProcessor::feed(char c) {
 
   // Help
   if (c == '?') {
-    auto candidates = collectCandidates(buffer_);
-    if (helpCb_)
+    if (helpCb_) {
+      auto candidates = collectCandidates(buffer_);
       helpCb_(candidates);
+    }
     return InputResult::Help;
   }
 
@@ -518,6 +524,7 @@ InputResult CommandProcessor::feed(char c) {
 
     if (autocompleteCb_)
       autocompleteCb_(buffer_, unique);
+    cursorPos_ = buffer_.size();
     return InputResult::Autocompleted;
   }
 

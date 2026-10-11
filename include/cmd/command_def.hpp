@@ -17,13 +17,16 @@ struct StaticOption {
   std::string description;
 };
 
+using DynamicCompletion = std::function<std::vector<std::string>(const std::string &)>;
+
 struct DynamicOption {
   std::string pattern; // human-readable hint, e.g. "<ip-address>"
   std::regex regex;
   std::string description;
-  DynamicOption(std::string pat, const std::string &reStr, std::string desc)
+  DynamicCompletion completion; // optional dynamic completion function;
+  DynamicOption(std::string pat, const std::string &reStr, std::string desc, DynamicCompletion comp = nullptr)
       : pattern(std::move(pat)), regex(reStr, std::regex::ECMAScript | std::regex::optimize),
-        description(std::move(desc)) {}
+        description(std::move(desc)), completion(std::move(comp)) {}
 };
 
 using Option = std::variant<StaticOption, DynamicOption>;
@@ -40,14 +43,15 @@ inline bool matchOption(const Option &opt, const std::string &token) {
       opt);
 }
 
-inline std::string optionHint(const Option &opt) {
+inline std::vector<std::string> optionHint(const Option &opt, const std::string &partial = "") {
   return std::visit(
-      [](auto &&o) -> std::string {
+      [&](auto &&o) -> std::vector<std::string> {
         using T = std::decay_t<decltype(o)>;
         if constexpr (std::is_same_v<T, StaticOption>)
-          return o.value;
-        else
-          return o.pattern;
+          return {o.value};
+        else {
+          return o.completion ? o.completion(partial) : std::vector<std::string>{o.pattern};
+        }
       },
       opt);
 }
@@ -78,8 +82,9 @@ struct CommandDef {
     options.push_back(StaticOption{val, desc});
     return *this;
   }
-  CommandDef &addDynamic(const std::string &hint, const std::string &reStr, const std::string &desc = "") {
-    options.emplace_back(DynamicOption{hint, reStr, desc});
+  CommandDef &addDynamic(const std::string &hint, const std::string &reStr, const std::string &desc = "",
+                         DynamicCompletion comp = nullptr) {
+    options.emplace_back(DynamicOption{hint, reStr, desc, comp});
     return *this;
   }
   CommandDef &addSub(CommandDef sub) {
