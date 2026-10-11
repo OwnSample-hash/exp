@@ -6,12 +6,25 @@
 #pragma once
 
 #include <cstring>
+#include <iterator.hpp>
 #include <iterator>
 #include <string>
-
-#include <iterator.hpp>
+#include <vector>
 
 namespace explo {
+
+inline std::vector<std::string> SplitString(const std::string &s, char delimiter) {
+  std::vector<std::string> result;
+  size_t start = 0;
+  size_t end = s.find(delimiter);
+  while (end != std::string::npos) {
+    result.push_back(s.substr(start, end - start));
+    start = end + 1;
+    end = s.find(delimiter, start);
+  }
+  result.push_back(s.substr(start));
+  return result;
+}
 
 /**
  * @class SplitStringYield
