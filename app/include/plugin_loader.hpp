@@ -52,7 +52,7 @@ public:
 #ifdef _WIN32
     handle = LoadLibraryA(path.c_str());
 #else
-    handle = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    handle = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
     if (!handle) {
       lastError_ = dlerror();
       return false;
@@ -72,7 +72,7 @@ public:
    * @return A string containing the last error message that occurred during
    * plugin loading. If no error has occurred, it returns an empty string.
    */
-  std::string getLastError() const { return lastError_; }
+  const std::string &getLastError() const { return lastError_; }
 
   /**
    * @brief Destructor for the PluginLoader class. This destructor is
