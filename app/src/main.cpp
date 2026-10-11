@@ -30,6 +30,7 @@ using namespace std::literals;
 INSTANTIATE_REGISTRY(ToolRegistry);
 INSTANTIATE_REGISTRY(ToolProviderRegistry);
 INSTANTIATE_REGISTRY(RendererRegistry);
+INSTANTIATE_REGISTRY(AtStartRegistry);
 
 const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins(bool forceReload = false) {
   static std::vector<std::unique_ptr<IMod>> plugins;
@@ -134,6 +135,12 @@ thread_local ITool *currentTool = nullptr;
 std::unique_ptr<explo::SessionStore> sessionStore = nullptr;
 
 int main(int argc, const char **argv, const char **envp) {
+  std::vector<std::unique_ptr<explo::AtStart>> atStartObjects;
+  for (const auto &entry : AtStartRegistry::entries()) {
+    auto obj = entry.create();
+    obj->operator()();
+    atStartObjects.emplace_back(std::move(obj));
+  }
   Config &instance = Config::instance();
   instance.addSerializer("yaml", std::make_unique<YAMLSerializer>());
   instance.addSerializer("json", std::make_unique<JSONSerializer>());
@@ -271,6 +278,10 @@ int main(int argc, const char **argv, const char **envp) {
   spdlog::flush_on(spdlog::level::debug);
   spdlog::set_level(logLevel.Get());
   spdlog::basic_logger_mt("lib", logDirStr + "/lib.log", true);
+
+  for (const auto &handle : AtStartRegistry::entries()) {
+    spdlog::info("AtStart: {}", handle.getName());
+  }
 
   PluginLoader &loader = PluginLoader::instance();
 

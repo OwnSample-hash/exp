@@ -9,6 +9,7 @@
 #pragma once
 
 #include <args.hxx>
+#include <interfaces/at_start.hpp>
 #include <interfaces/renderer.hpp>
 #include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
@@ -18,8 +19,11 @@
 using ToolRegistry = Registry<explo::ITool>;
 using ToolProviderRegistry = Registry<explo::IToolProvider>;
 using RendererRegistry = Registry<explo::IRenderer>;
+using AtStartRegistry = Registry<explo::AtStart>;
 
 extern template class Registry<explo::ITool>;
 extern template class Registry<explo::IToolProvider>;
 extern template class Registry<explo::IRenderer>;
+extern template class Registry<explo::AtStart>;
+
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
