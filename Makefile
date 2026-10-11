@@ -11,7 +11,7 @@ flow: @flow
 	@printf "Done!\n"
 
 menuconfig menuconfig@flow:
-	scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "include/config.hpp" --debug -vv --enable-editor -gd scripts/generators
+	scripts/conf.py --config configs/main.yaml --output ${CONFIG_FILE} --header "include/config.hpp" --debug -vv -gd scripts/generators
 
 newplugin:
 	@scripts/conf.py --config configs/new_module.yaml --output "/tmp/new_mod.json" --header "/tmp/new_mod.h" --debug -vv
