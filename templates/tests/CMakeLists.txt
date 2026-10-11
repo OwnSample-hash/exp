@@ -1,18 +1,11 @@
 enable_testing()
-set(MOD_NAME test_{CONFIG_NEW_MODULE_NAME_UP})
-set(MOD_SRC src/test_{CONFIG_NEW_MODULE_NAME}.cpp)
-add_executable(${{MOD_NAME}} ${{MOD_SRC}})
-target_link_libraries(${{MOD_NAME}} PRIVATE Catch2::Catch2WithMain)
 
-if(MODULE_%s_STATIC)
-  target_link_libraries(${{MOD_NAME}} PRIVATE ${{MOD_NAME}}_static)
-  target_compile_definitions(${{MOD_NAME}} PRIVATE MODULE_%s_STATIC)
-endif()
+file(GLOB_RECURSE src_files src/*.cpp)
+foreach(src_file src_files) 
+    get_filename_component(MOD_NAME ${{src_file}} NAME_WE)
+    add_executable(${{MOD_NAME}} ${{src_file}})
+    target_link_libraries(${{MOD_NAME}} PRIVATE Catch2::Catch2WithMain)
+    add_test(NAME ${{MOD_NAME}}_test COMMAND ${{MOD_NAME}})
+endforeach()
 
-if (MODULE_%s_DYNAMIC)
-  target_link_libraries(${{MOD_NAME}} PRIVATE ${{MOD_NAME}}_dynamic)
-  target_compile_definitions(${{MOD_NAME}} PRIVATE MODULE_%s_DYNAMIC)
-endif()
-
-add_test(NAME ${{MOD_NAME}}_module_tests COMMAND ${{MOD_NAME}})
 # Vim: set expandtab tabstop=2 shiftwidth=2:

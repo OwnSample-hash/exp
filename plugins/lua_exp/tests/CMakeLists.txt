@@ -1,18 +1,15 @@
 enable_testing()
-set(MOD_NAME test_lua_exp)
-set(MOD_SRC src/lua_exp.cpp)
-add_executable(${MOD_NAME} ${MOD_SRC})
-target_link_libraries(${MOD_NAME} PRIVATE Catch2::Catch2WithMain)
 
-if(MODULE_LUA_EXP_STATIC)
-  target_link_libraries(${MOD_NAME} PRIVATE ${MOD_NAME}_static)
-  target_compile_definitions(${MOD_NAME} PRIVATE MODULE_LUA_EXP_STATIC)
-endif()
+file(GLOB_RECURSE src_files ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+foreach(src_file ${src_files})
+  get_filename_component(MOD_NAME ${src_file} NAME_WE)
+  message(STATUS "Adding test: ${MOD_NAME}")
+  add_executable(${MOD_NAME} ${src_file})
+  target_link_libraries(${MOD_NAME} PRIVATE Catch2::Catch2WithMain)
+  target_include_directories(${MOD_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+  add_test(NAME ${MOD_NAME}_test COMMAND ${MOD_NAME})
+endforeach()
 
-if (MODULE_LUA_EXP_DYNAMIC)
-  target_link_libraries(${MOD_NAME} PRIVATE ${MOD_NAME}_dynamic)
-  target_compile_definitions(${MOD_NAME} PRIVATE MODULE_LUA_EXP_DYNAMIC)
-endif()
+unset(src_files)
 
-add_test(NAME ${MOD_NAME}_module_tests COMMAND ${MOD_NAME})
 # Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

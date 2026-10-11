@@ -2,8 +2,6 @@ file(GLOB_RECURSE main_app_SOURCE src/*.cpp)
 
 add_executable(main_app
   ${main_app_SOURCE}
-  config/yaml.cpp
-  config/json.cpp
 )
 
 if (${TLS_BACKEND} STREQUAL "openssl")
