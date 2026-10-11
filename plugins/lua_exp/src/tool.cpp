@@ -132,28 +132,30 @@ void luaTool::invoke(std::string_view prefix, bool soft) {
     this->logger->info("Lua tool {} has no 'vars' table", name);
     return;
   }
-  if (vars.is<LTW>()) {
-    auto &cpVars = cmd::CommandProcessor::instance().vars();
-    auto var_table = vars.as<LTW>();
-    for (const auto &[key, value] : var_table.iterate()) {
-      if (soft && cpVars.get(this->prefix + "." + key).has_value()) {
-        this->logger->info("Lua variable: '{}' already exists, skipping due to soft invoke", key);
-        continue;
-      }
-      if (value.is<std::string>()) {
-        this->logger->info("Lua variable: '{}' = '{}'", key, value.as<std::string>());
-        cpVars.set(this->prefix + "." + key, cmd::VarValue(value.as<std::string>()));
-      } else if (value.is<lua_Number>()) {
-        this->logger->info("Lua variable: '{}' = {}", key, value.as<lua_Number>());
-        cpVars.set(this->prefix + "." + key, cmd::VarValue(value.as<lua_Number>()));
-      } else if (value.is<bool>()) {
-        this->logger->info("Lua variable: '{}' = {}", key, value.as<bool>());
-        cpVars.set(this->prefix + "." + key, cmd::VarValue(value.as<bool>()));
-      } else {
-        const char *type_name = abi::__cxa_demangle(typeid(value).name(), nullptr, nullptr, nullptr);
-        this->logger->info("Unused lua variable: '{}' = '{}'", key, type_name);
-        free((void *)type_name);
-      }
+  if (!vars.is<LTW>()) {
+    this->logger->info("Lua tool {} has an invalid 'vars' table", name);
+    return;
+  }
+  auto &cpVars = cmd::CommandProcessor::instance().vars();
+  auto var_table = vars.as<LTW>();
+  for (const auto &[key, value] : var_table.iterate()) {
+    if (soft && cpVars.get(this->prefix + "." + key).has_value()) {
+      this->logger->info("Lua variable: '{}' already exists, skipping due to soft invoke", key);
+      continue;
+    }
+    if (value.is<std::string>()) {
+      this->logger->info("Lua variable: '{}' = '{}'", key, value.as<std::string>());
+      cpVars.set(this->prefix + "." + key, cmd::VarValue(value.as<std::string>()));
+    } else if (value.is<lua_Number>()) {
+      this->logger->info("Lua variable: '{}' = {}", key, value.as<lua_Number>());
+      cpVars.set(this->prefix + "." + key, cmd::VarValue(value.as<lua_Number>()));
+    } else if (value.is<bool>()) {
+      this->logger->info("Lua variable: '{}' = {}", key, value.as<bool>());
+      cpVars.set(this->prefix + "." + key, cmd::VarValue(value.as<bool>()));
+    } else {
+      const char *type_name = abi::__cxa_demangle(typeid(value).name(), nullptr, nullptr, nullptr);
+      this->logger->info("Unused lua variable: '{}' = '{}'", key, type_name);
+      free((void *)type_name);
     }
   }
 }
