@@ -37,4 +37,8 @@ target_compile_definitions(main_app PRIVATE NC_UUID="${nc_UUID}")
 
 add_pch(main_app)
 
+if(ENABLE_TESTS)
+ enable_testing()
+ add_subdirectory(tests)
+endif()
 # Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
