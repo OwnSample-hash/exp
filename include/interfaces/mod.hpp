@@ -58,8 +58,18 @@ public:
    */
   virtual void shutdown() = 0;
 
+  /**
+   * @brief Method to get the type of the module.
+   *
+   * @return The type of the module.
+   */
   virtual ModuleType getModuleType() const = 0;
 
+  /**
+   * @brief If the mod has registered a command it can use this method to check if it has been selected.
+   *
+   * @return true if the module registered command has been triggered, false otherwise.
+   */
   virtual bool cmdCheck() { return false; };
 };
 

@@ -21,9 +21,8 @@
   prompt: Library Directory
   type: string
   default: "lua_lib"
-  help_text: Directory which contains the Lua libraries to be used by the plugin. Libraries in this directory will be loaded and made available to the Lua scripts.
+  help_text: Directory which contains the Lua libraries to be used by the plugin. Libraries in this directory can be loaded by Lua scripts.
   show_if:
     - ENABLE
   cmake_export: true
   cmake_help: $help_text$
-
