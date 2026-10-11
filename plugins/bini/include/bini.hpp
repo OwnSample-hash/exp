@@ -18,7 +18,7 @@ public:
   bini(std::shared_ptr<spdlog::logger> logger) : logger(std::move(logger)) {}
   ~bini() = default;
   const char *getName() const override { return "bini"; }
-  const char *getVersion() const override { return "0.0.1"; }
+  const SemVer getVersion() const override { return {0, 0, 1}; }
   const std::vector<std::string> &getTags() const override {
     static std::vector<std::string> tags = {"utility"};
     return tags;

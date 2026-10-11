@@ -9,6 +9,8 @@
 #include <args.hxx>
 #include <memory>
 #include <registry.hpp>
+#include <semver.hpp>
+#include <version.hpp>
 
 namespace explo {
 
@@ -42,9 +44,9 @@ public:
   /**
    * @brief Method to get the version of the module.
    *
-   * @return The version of the module as a C-style string.
+   * @return The version of the module.
    */
-  virtual const char *getVersion() const = 0;
+  virtual const SemVer getVersion() const = 0;
 
   /**
    * @brief Method to initialize the module, performing any necessary setup or
@@ -71,6 +73,16 @@ public:
    * @return true if the module registered command has been triggered, false otherwise.
    */
   virtual bool cmdCheck() { return false; };
+
+  /**
+   * @brief Method to get the dependencies of the module.
+   *
+   * @return A vector of the module's dependencies.
+   */
+  virtual const std::vector<Dependency> &getDependencies() {
+    static const std::vector<Dependency> deps{};
+    return deps;
+  };
 };
 
 } // namespace explo

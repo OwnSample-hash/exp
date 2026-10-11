@@ -31,7 +31,7 @@ public:
   ~NC() override = default;
 
   const char *getName() const override { return "nc"; }
-  const char *getVersion() const override { return "0.0.1"; }
+  const SemVer getVersion() const override { return {0, 0, 1}; }
 
   void initialize(initArgs &) override;
   void shutdown() override;

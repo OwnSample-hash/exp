@@ -103,7 +103,7 @@ public:
   }
 
   const char *getName() const override { return name.c_str(); }
-  const char *getVersion() const override { return version.c_str(); }
+  const SemVer getVersion() const override { return {version}; }
   const std::vector<std::string> &getTags() const override { return tags; }
 
   void initialize(initArgs &) override;

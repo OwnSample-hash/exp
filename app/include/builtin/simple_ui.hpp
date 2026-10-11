@@ -20,7 +20,7 @@ public:
   ~UI() override = default;
 
   const char *getName() const override { return "simple_ui"; }
-  const char *getVersion() const override { return "1.0.0"; }
+  const SemVer getVersion() const override { return {1, 0, 0}; }
 
   void initialize(initArgs &) override;
   void shutdown() override {};

@@ -8,7 +8,7 @@
 void luaExp::initialize(initArgs &args) {
   this->parser = args.parser;
   this->logger = args.logger;
-  this->logger->info("Initializing Loader v{}...", getVersion());
+  this->logger->info("Initializing Loader v{}...", getVersion().toString());
   Config &instance = Config::instance();
 
   instance.addHive("lua_exp", "lua_exp",

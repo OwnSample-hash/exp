@@ -30,8 +30,9 @@ public:
   luaExp &operator=(luaExp &&) = delete;
 
   const char *getName() const override { return "lua_exp"; }
-  const char *getVersion() const override {
-    return "0.0.1 with lua: v" STR(LUA_VERSION_MAJOR_N) "." STR(LUA_VERSION_MINOR_N) "." STR(LUA_VERSION_RELEASE_N);
+  const SemVer getVersion() const override {
+    return {1, 0, 0, "",
+            "with-lua-" STR(LUA_VERSION_MAJOR_N) "." STR(LUA_VERSION_MINOR_N) "." STR(LUA_VERSION_RELEASE_N)};
   }
 
   void initialize(initArgs &) override;
