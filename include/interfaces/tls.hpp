@@ -9,7 +9,7 @@ protected:
 
 public:
   ITLSClient() = default;
-  ~ITLSClient() = default;
+  virtual ~ITLSClient() = default;
 
   ITLSClient(const ITLSClient &) = delete;
   ITLSClient(ITLSClient &&) = delete;
