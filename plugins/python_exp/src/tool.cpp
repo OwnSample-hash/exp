@@ -139,10 +139,11 @@ void PythonTool::initialize(initArgs &args) {
       break;
     }
 
-    const char *requiredStrings[] = {"name", "description", "version"};
-    std::string *stringTargets[] = {&name, &description, &version};
+    const char *requiredStrings[] = {"name", "description", "version", "uuid"};
+    std::string uuidString;
+    std::string *stringTargets[] = {&name, &description, &version, &uuidString};
     // bool valid = true;
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 4; ++i) {
       PyObject *value = PyDict_GetItemString(definition, requiredStrings[i]);
       if (value == nullptr || !PyUnicode_Check(value)) {
         logger->error("Python tool '{}' requires string '{}'", scriptPath.string(), requiredStrings[i]);
@@ -156,6 +157,14 @@ void PythonTool::initialize(initArgs &args) {
         break;
       }
       *stringTargets[i] = stringValue;
+    }
+    if (valid) {
+      try {
+        uuid = uuids::uuid::from_string(uuidString).value();
+      } catch (const std::exception &e) {
+        logger->error("Failed to parse UUID '{}' for Python tool '{}': {}", uuidString, scriptPath.string(), e.what());
+        valid = false;
+      }
     }
     PyObject *tagsObject = PyDict_GetItemString(definition, "tags");
     if (valid && (tagsObject == nullptr || !PyList_Check(tagsObject))) {

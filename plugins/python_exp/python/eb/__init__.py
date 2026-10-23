@@ -1,3 +1,4 @@
+import explo
 from .eb import *
 
 
@@ -6,6 +7,7 @@ def RegisterPlugin():
         "name": "eb",
         "version": "0.1.0",
         "description": "EB plugin for explo",
+        "uuid": "123e4567-e89b-12d3-a456-426614174000",
         "tags": ["eb", "explo", "plugin"],
         "vars": {
             "int_": 1,
@@ -17,7 +19,7 @@ def RegisterPlugin():
         },
         "rootRequired": False,
         "makeCommand": False,
-        "shutdown": lambda: print("Shutting down EB plugin..."),
-        "initialize": lambda: print("Initializing EB plugin..."),
+        "shutdown": lambda: explo.info("Shutting down EB plugin..."),
+        "initialize": lambda: explo.info("Initializing EB plugin..."),
         "execute": eb
     }

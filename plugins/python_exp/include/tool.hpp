@@ -42,6 +42,7 @@ class PythonTool final : public explo::ITool {
   std::vector<std::tuple<std::unique_ptr<args::ValueFlagBase>, PythonFlagtype>> flags;
   std::unordered_map<std::string, PythonType> varTypes, vars;
   std::unordered_map<std::string, std::string> descs;
+  uuids::uuid uuid;
 
   void releasePythonObjects() noexcept;
   bool acquireInterpreter() noexcept;
@@ -75,7 +76,7 @@ public:
 
   bool cmdCheck() override { return makeCommand; }
 
-  const uuids::uuid getUUID() override { return uuids::uuid{}; }
+  const uuids::uuid getUUID() override { return uuid; }
 
   bool isValid() const { return valid; }
 
