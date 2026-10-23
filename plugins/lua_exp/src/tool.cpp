@@ -84,7 +84,16 @@ void luaTool::initialize(initArgs &args) {
           free((void *)type_name);
         }
       }
+      args::HelpFlag help(s, "help", "Display this help menu", {'h', "help"});
       s.Parse();
+      if (s.GetError() == args::Error::Help) {
+        std::cout << s;
+        for (const auto &[flag, type] : this->flags) {
+          delete flag;
+        }
+        this->flags.clear();
+        return;
+      }
       this->varTypes.reserve(this->flags.size());
       for (auto &[flag, type] : this->flags) {
         switch (type) {
@@ -137,6 +146,7 @@ void luaTool::invoke(std::string_view prefix, bool soft) {
     return;
   }
   auto &cpVars = cmd::CommandProcessor::instance().vars();
+  cpVars.set("tool_path", cmd::VarValue(this->file));
   auto var_table = vars.as<LTW>();
   for (const auto &[key, value] : var_table.iterate()) {
     if (soft && cpVars.get(this->prefix + "." + key).has_value()) {
