@@ -15,7 +15,8 @@ static constexpr const char *kExport = "export";
 static constexpr const char *kEnv = "env";
 static constexpr const char *kEcho = "echo";
 static constexpr const char *kCtx = "ctx";
-
+static constexpr const char *kGlobal = "global";
+static constexpr const char *kParent = "parent";
 // ─────────────────────────────────────────────────────────────────────────────
 // Constructor – builds the global context and registers built-in commands
 // ─────────────────────────────────────────────────────────────────────────────
@@ -159,6 +160,37 @@ CommandProcessor::CommandProcessor() {
       if (ec.args.size() < 2)
         throw std::runtime_error("ctx: usage: ctx <context-name>");
       switchContext(ec.args[1]);
+      return {};
+    };
+    globalCtx_->registerCommand(std::move(c));
+  }
+
+  {
+    CommandDef c;
+    c.name = kGlobal;
+    c.description = "Put a variable to the global context: global <name> <value>";
+    c.variadic = false;
+    c.handler = [this](const ExecutionContext &ec) -> std::string {
+      if (ec.args.size() < 3)
+        throw std::runtime_error("global: usage: global <name> <value>");
+      vars_.set(ec.args[1], ec.vars->get(ec.args[2]).value_or(VarValue("")));
+      return {};
+    };
+    globalCtx_->registerCommand(std::move(c));
+  }
+
+  {
+    CommandDef c;
+    c.name = kParent;
+    c.description = "Set a vairable to the parent context: parent <var name> <value>";
+    c.variadic = false;
+    c.handler = [this](const ExecutionContext &ec) -> std::string {
+      if (ec.args.size() < 3)
+        throw std::runtime_error("parent: usage: parent <name> <value>");
+      if (ec.vars->scopes_.size() < 2)
+        throw std::runtime_error("parent: no parent scope available");
+      auto &parentScope = ec.vars->scopes_[ec.vars->scopes_.size() - 2];
+      parentScope[ec.args[1]] = ec.vars->get(ec.args[2]).value_or(VarValue(""));
       return {};
     };
     globalCtx_->registerCommand(std::move(c));
