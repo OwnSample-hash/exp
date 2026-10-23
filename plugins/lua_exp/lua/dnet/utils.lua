@@ -135,7 +135,17 @@ function TypeToNum(type)
   end
 end
 
-S2a = function(status)
+function NumToType(num)
+  if num == SOCK_STREAM then
+    return "tcp"
+  elseif num == SOCK_DGRAM then
+    return "udp"
+  else
+    return nil
+  end
+end
+
+function S2a(status)
   local str = ""
   for k, v in pairs(explo.ConnectionStatus) do
     if v == status then

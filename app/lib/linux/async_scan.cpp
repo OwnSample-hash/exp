@@ -129,14 +129,16 @@ struct socketInfo {
   int timeOutCount = 0;
 };
 
-std::unordered_map<std::string, ConnectionStatus::Type>
-async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> generator) noexcept(false) {
+std::unordered_map<std::string, ConnectionStatus::Type> async_scan(
+    int max, std::function<std::tuple<std::string, int, int, int>(void)> generator,
+    std::function<void(const int, const std::string_view, const int, const int, const int)> sigScan) noexcept(false) {
   RFDWrapper rfdWrapper(CONFIG_LIB_SOCKET_LIMIT);
   auto &logger = getLogger();
   std::unordered_map<std::string, ConnectionStatus::Type> connected;
   std::mutex connected_mutex;
   std::inplace_vector<socketInfo, CONFIG_LIB_SOCKET_LIMIT> fds;
   std::vector<std::future<void>> futures;
+  std::vector<socketInfo> openFds;
   int step = CONFIG_LIB_SOCKET_LIMIT;
 
   const struct timespec timeout{
@@ -280,6 +282,7 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
               if (serr == 0) {
                 connected[formatResultKey(si_copy.domain, si_copy.type, si_copy.host, si_copy.port)] =
                     ConnectionStatus::Open;
+                openFds.push_back(si_copy);
               } else {
                 if (serr == ECONNREFUSED) {
                   connected[formatResultKey(si_copy.domain, si_copy.type, si_copy.host, si_copy.port)] =
@@ -297,8 +300,8 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
                   connected[formatResultKey(si_copy.domain, si_copy.type, si_copy.host, si_copy.port)] =
                       ConnectionStatus::Error;
                 }
+                close(si_copy.fd);
               }
-              close(si_copy.fd);
             });
             futures.push_back(std::move(fut));
             fds.erase(si);
@@ -326,6 +329,13 @@ async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> 
   }
   futures.clear();
   close(epoll_fd);
+
+  for (auto &fd : openFds) {
+    if (sigScan) {
+      sigScan(fd.fd, fd.host, fd.port, fd.domain, fd.type);
+    }
+    close(fd.fd);
+  }
 
   return connected;
 }

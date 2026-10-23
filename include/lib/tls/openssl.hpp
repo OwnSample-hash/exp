@@ -16,6 +16,7 @@ class OpenSSL_TLSClient : public ITLSClient {
   SSL_CTX *ctx = nullptr;
   SSL *ssl = nullptr;
   int sock = -1;
+  std::string lastError = "";
 
   void init();
 
@@ -33,6 +34,7 @@ public:
   std::string recvData(int bufSize = 4096) override;
   void close() override;
   std::string getLastError() override;
+  bool upgradeToTLS(int fd, bool setSNI = true) override;
 };
 
 extern OpenSSL_TLSClient *createTLSClient();

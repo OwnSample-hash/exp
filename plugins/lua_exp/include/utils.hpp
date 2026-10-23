@@ -46,8 +46,10 @@ private:
   lua_State *L;
 
   void pushArg(lua_Number n) { lua_pushnumber(L, n); }
-  void pushArg(const std::string &s) { lua_pushstring(L, s.c_str()); }
-  void pushArg(bool b) { lua_pushboolean(L, b); }
+  void pushArg(const std::string_view s) { lua_pushstring(L, s.data()); }
+  template <typename T, typename = std::enable_if_t<std::is_same_v<T, bool>>> void pushArg(T b) {
+    lua_pushboolean(L, b);
+  }
 };
 
 struct LTW {
@@ -72,7 +74,7 @@ struct LTW {
     nameTable();
   }
 
-  int insert(const char *field, auto value);
+  int insert(const std::string_view field, const auto &value);
 
   auto operator[](const std::string_view field, bool failIfNotFound = true);
 
@@ -130,6 +132,8 @@ struct LTW {
 
   const auto iterate() const;
 
+  void toTop() { lua_getglobal(L, tableName.c_str()); }
+
 private:
   lua_State *L;
   std::string tableName = "tool";
@@ -155,30 +159,6 @@ private:
 };
 
 using luaVartype = MultiValue<std::monostate, lua_Number, std::string, bool, LFW, LTW>;
-
-inline int LTW::insert(const char *field, auto value) {
-  static_assert(std::is_same<decltype(value), luaVartype>::value, "Value must be of type lua_Vartype");
-  luaVartype v = value;
-  logger->trace("Inserting field '{}'", field);
-  if (v.is<lua_Number>()) {
-    logger->trace("Value is number: {}", v.as<lua_Number>());
-    lua_pushnumber(L, v.as<lua_Number>());
-  } else if (v.is<std::string>()) {
-    logger->trace("Value is string: '{}'", v.as<std::string>());
-    lua_pushstring(L, v.as<std::string>().c_str());
-  } else if (v.is<bool>()) {
-    lua_pushboolean(L, v.as<bool>());
-  } else if (v.is<LFW>()) {
-    return 2;
-  } else if (v.is<LTW>()) {
-    return 3;
-  } else {
-    logger->warn("Value is nil or unknown type");
-    lua_pushnil(L);
-  }
-  lua_setglobal(L, field);
-  return 0;
-}
 
 inline const auto LTW::iterate() const {
   std::unordered_map<std::string, luaVartype> result;
@@ -227,6 +207,34 @@ inline const auto LTW::iterate() const {
     lua_pop(L, 1);            // drop value, leaving key for lua_next
   }
   return result;
+}
+
+inline int LTW::insert(const std::string_view field, const auto &value) {
+  static_assert(std::is_same<std::remove_cv_t<std::remove_reference_t<decltype(value)>>, luaVartype>::value ||
+                    std::is_constructible_v<luaVartype, decltype(value)>,
+                "Value must be of type lua_Vartype");
+  luaVartype v = value;
+  logger->trace("Inserting field '{}'", field.data());
+  if (v.is<lua_Number>()) {
+    logger->trace("Value is number: {}", v.as<lua_Number>());
+    lua_pushnumber(L, v.as<lua_Number>());
+  } else if (v.is<std::string>()) {
+    logger->trace("Value is string: '{}'", v.as<std::string>());
+    lua_pushstring(L, v.as<std::string>().c_str());
+  } else if (v.is<bool>()) {
+    lua_pushboolean(L, v.as<bool>());
+  } else if (v.is<LFW>()) {
+    return 2;
+  } else if (v.is<LTW>()) {
+    for (const auto &[key, value] : v.as<LTW>().iterate()) {
+      insert(key, value);
+    }
+  } else {
+    logger->warn("Value is nil or unknown type");
+    lua_pushnil(L);
+  }
+  lua_setglobal(L, field.data());
+  return 0;
 }
 
 static int traceback_handler(lua_State *L) {

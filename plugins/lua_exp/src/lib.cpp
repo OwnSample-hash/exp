@@ -1,6 +1,7 @@
 #include <cmd.hpp>
 #include <cmd/variable.hpp>
 #include <fcntl.h>
+#include <filesystem>
 #include <lib.hpp>
 #include <llib.hpp>
 #include <memory>
@@ -9,6 +10,8 @@
 #include <string>
 #include <tls.hpp>
 #include <utils.hpp>
+
+namespace fs = std::filesystem;
 
 #ifdef __linux__
 #include <unistd.h>
@@ -92,6 +95,38 @@ int var(lua_State *L) {
   return 1;
 }
 
+int gVar(lua_State *L) {
+  const char *env_var = luaL_checkstring(L, 1);
+  auto var = explo::cmd::CommandProcessor::instance().vars().get(env_var);
+  if (!var) {
+    lua_pushnil(L);
+    return 1;
+  }
+  getLogger()->trace("Lua is accessed global variable '{}' with type {}", env_var, static_cast<int>(var->type));
+  switch (var->type) {
+  case explo::cmd::VarType::String:
+    lua_pushstring(L, var->toString().c_str());
+    break;
+  case explo::cmd::VarType::Integer:
+    lua_pushinteger(L, var->toInt());
+    break;
+  case explo::cmd::VarType::Float:
+    lua_pushnumber(L, var->fval);
+    break;
+  case explo::cmd::VarType::Bool:
+    lua_pushboolean(L, var->toBool());
+    break;
+  case explo::cmd::VarType::Array: {
+    getLogger()->warn("Lua attempted to access global array variable '{}', which is not "
+                      "directly supported. Returning nil.",
+                      env_var);
+    lua_pushnil(L);
+    break;
+  }
+  }
+  return 1;
+}
+
 json convertLuaTable(const LTW &table, int depth = 0) {
   static int recursion_counter;
   if (depth == 0) {
@@ -124,6 +159,7 @@ json convertLuaTable(const LTW &table, int depth = 0) {
       getLogger()->warn("Lua table contains function at key '{}', which cannot be "
                         "converted to JSON. Skipping this entry.",
                         key);
+      result[key] = "<function>";
     } else if (value.is<LTW>()) {
       getLogger()->trace("Converting nested Lua table at key '{}'", key);
       result[key] = convertLuaTable(value.as<LTW>(), depth + 1);
@@ -293,41 +329,38 @@ int close_(lua_State *L) {
 }
 
 int sconnect(lua_State *L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  explo::lib::TLSClient *tlsClient_ = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
-  if (tlsClient_) {
-    getLogger()->warn(
-        "Lua attempted to establish a new TLS connection while having one already. Deleting the old one.");
-    delete tlsClient_;
-  }
-
   int sockfd = luaL_checkinteger(L, 1);
   const char *host = luaL_checkstring(L, 2);
   int port = luaL_checkinteger(L, 3);
 
-  explo::lib::TLSClient *tlsClient = explo::lib::createTLSClient();
+  explo::lib::ITLSClient *tlsClient = explo::lib::createTLSClient();
 
-  if (!tlsClient->connect(host, port)) {
-    lua_pushboolean(L, false);
+  if (!tlsClient) {
+    getLogger()->error("Failed to create TLS client");
+    lua_pushnil(L);
     return 1;
   }
-  lua_pushlightuserdata(L, tlsClient);
-  lua_setfield(L, LUA_REGISTRYINDEX, "tlsClient");
 
-  lua_pushboolean(L, true);
+  if (!tlsClient->connect(host, port)) {
+    getLogger()->error("Failed to connect TLS client");
+    lua_pushnil(L);
+    return 1;
+  }
+
+  lua_pushlightuserdata(L, tlsClient);
   return 1;
 }
 
 int swrite(lua_State *L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  explo::lib::TLSClient *tlsClient = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
+  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+  explo::lib::ITLSClient *tlsClient = static_cast<explo::lib::ITLSClient *>(lua_touserdata(L, 1));
   if (!tlsClient) {
     getLogger()->error("No TLS client found in registry for swrite");
     lua_pushnil(L);
     return 1;
   }
   size_t data_len;
-  const char *data = luaL_checklstring(L, 1, &data_len);
+  const char *data = luaL_checklstring(L, 2, &data_len);
 
   int sent = tlsClient->sendData(std::string(data, data_len));
   if (sent < 0) {
@@ -339,14 +372,14 @@ int swrite(lua_State *L) {
 }
 
 int sread(lua_State *L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  explo::lib::TLSClient *tlsClient = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
+  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+  explo::lib::ITLSClient *tlsClient = static_cast<explo::lib::ITLSClient *>(lua_touserdata(L, 1));
   if (!tlsClient) {
     getLogger()->error("No TLS client found in registry for sread");
     lua_pushnil(L);
     return 1;
   }
-  int max_len = luaL_checkinteger(L, 1);
+  int max_len = luaL_checkinteger(L, 2);
 
   std::string data = tlsClient->recvData(max_len);
   if (data.empty()) {
@@ -356,19 +389,43 @@ int sread(lua_State *L) {
 }
 
 int sclose(lua_State *L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "tlsClient");
-  explo::lib::TLSClient *tlsClient = static_cast<explo::lib::TLSClient *>(lua_touserdata(L, -1));
+  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+  auto *tlsClient = static_cast<explo::lib::ITLSClient *>(lua_touserdata(L, 1));
   if (!tlsClient) {
     getLogger()->error("No TLS client found in registry for sclose");
     lua_pushboolean(L, false);
     return 1;
   }
 
-  lua_pushlightuserdata(L, nullptr);
-  lua_setfield(L, LUA_REGISTRYINDEX, "tlsClient");
   delete tlsClient;
 
   lua_pushboolean(L, true);
+  return 1;
+}
+
+int supgrade(lua_State *L) {
+  auto &logger = getLogger();
+  explo::lib::ITLSClient *tlsClient = explo::lib::createTLSClient();
+
+  if (!tlsClient) {
+    logger->error("Failed to create TLS client");
+    lua_pushnil(L);
+    return 1;
+  }
+
+  int fd = luaL_checkinteger(L, 1);
+  int setSNI = lua_toboolean(L, 2);
+
+  if (!tlsClient->upgradeToTLS(fd, setSNI)) {
+    getLogger()->error("Failed to upgrade socket {} to TLS", fd);
+    getLogger()->error("TLS error: {}", tlsClient->getLastError());
+    tlsClient->close();
+    delete tlsClient;
+    lua_pushnil(L);
+    return 1;
+  }
+
+  lua_pushlightuserdata(L, tlsClient);
   return 1;
 }
 
@@ -383,34 +440,41 @@ int async_scan(lua_State *L) {
 
   luaL_checktype(L, 2, LUA_TTHREAD);
   lua_State *co = lua_tothread(L, 2);
-  int nargs = lua_gettop(L) - 2;
+  int nargs = lua_gettop(L) - 3;
   lua_xmove(L, co, nargs);
 
-  auto results = explo::lib::async_scan(max, [&]() -> std::tuple<std::string, int, int, int> {
-    std::string host;
-    int port, domain, type;
-    int nres;
-    int status = lua_resume(co, L, nargs, &nres);
+  LFW sigScan(L, 3); // does check type in ctor
 
-    if (status == LUA_YIELD) {
-      if (nres != 4) {
-        logger->error("Lua coroutine yielded with insufficient results: {} excepted 4", nres);
-        return std::make_tuple("", 0, 0, 0);
-      }
-      host = lua_tostring(co, -4);
-      port = lua_tointeger(co, -3);
-      type = lua_tointeger(co, -2);
-      domain = lua_tointeger(co, -1);
-      lua_pop(co, nres);
-      nargs = 0; // Reset nargs after the first resume
-    } else if (status == LUA_OK) {
-      logger->info("Lua coroutine completed successfully");
-    } else {
-      const char *err_msg = lua_tostring(co, -1);
-      logger->error("Lua coroutine error: {}", err_msg ? err_msg : "Unknown error");
-    }
-    return std::make_tuple(host, port, domain, type);
-  });
+  auto results = explo::lib::async_scan(
+      max,
+      [&]() -> std::tuple<std::string, int, int, int> {
+        std::string host;
+        int port, domain, type;
+        int nres;
+        int status = lua_resume(co, L, nargs, &nres);
+
+        if (status == LUA_YIELD) {
+          if (nres != 4) {
+            logger->error("Lua coroutine yielded with insufficient results: {} excepted 4", nres);
+            return std::make_tuple("", 0, 0, 0);
+          }
+          host = lua_tostring(co, -4);
+          port = lua_tointeger(co, -3);
+          type = lua_tointeger(co, -2);
+          domain = lua_tointeger(co, -1);
+          lua_pop(co, nres);
+          nargs = 0; // Reset nargs after the first resume
+        } else if (status == LUA_OK) {
+          logger->info("Lua coroutine completed successfully");
+        } else {
+          const char *err_msg = lua_tostring(co, -1);
+          logger->error("Lua coroutine error: {}", err_msg ? err_msg : "Unknown error");
+        }
+        return std::make_tuple(host, port, domain, type);
+      },
+      [&](const int fd, const std::string_view host, const int port, const int domain, const int type) {
+        sigScan(fd, host.data(), port, domain, type);
+      });
 
   lua_createtable(L, 0, results.size());
 
@@ -436,6 +500,89 @@ int getsockopt_(lua_State *L) {
   }
 
   lua_pushinteger(L, optval);
+  return 1;
+}
+
+int getnameinfo_(lua_State *L) {
+  const char *ip = luaL_checkstring(L, 1);
+  int port = luaL_checkinteger(L, 2);
+
+  struct sockaddr_in sa;
+  sa.sin_family = AF_INET;
+  sa.sin_port = htons(port);
+  if (inet_pton(AF_INET, ip, &sa.sin_addr) <= 0) {
+    getLogger()->error("Invalid IP address '{}': {}", ip, strerror(errno));
+    lua_pushnil(L);
+    return 1;
+  }
+
+  char host[NI_MAXHOST];
+  char serv[NI_MAXSERV];
+
+  int result = explo::lib::getnameinfo((struct sockaddr *)&sa, sizeof(sa), host, sizeof(host), serv, sizeof(serv),
+                                       NI_NUMERICHOST | NI_NUMERICSERV);
+  if (result != 0) {
+    getLogger()->error("getnameinfo failed for {}:{}: {}", ip, port, gai_strerror(result));
+    lua_pushnil(L);
+    return 1;
+  }
+
+  lua_pushstring(L, host);
+  lua_pushstring(L, serv);
+  return 2;
+}
+
+int listDir(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  std::vector<fs::directory_entry> entries;
+  try {
+    entries = explo::lib::listDir(path);
+  } catch (const std::exception &e) {
+    getLogger()->error("Failed to list directory '{}': {}", path, e.what());
+    lua_pushnil(L);
+    return 1;
+  }
+
+  lua_createtable(L, 0, entries.size());
+  int index = lua_absindex(L, -1);
+  for (const auto &entry : entries) {
+    lua_createtable(L, 0, 4);
+    lua_pushstring(L, entry.path().filename().string().c_str());
+    lua_setfield(L, -2, "name");
+    lua_pushboolean(L, entry.is_directory());
+    lua_setfield(L, -2, "is_directory");
+    lua_pushboolean(L, entry.is_regular_file());
+    lua_setfield(L, -2, "is_regular_file");
+
+    lua_setfield(L, index, entry.path().string().c_str());
+  }
+  return 1;
+}
+
+int toJSON(lua_State *L) {
+  luaL_checktype(L, 1, LUA_TTABLE);
+  LTW wrapper(L, 1);
+  json j = convertLuaTable(wrapper);
+  std::string json_str = j.dump(2);
+  lua_pushstring(L, json_str.c_str());
+  return 1;
+}
+
+int read_block(lua_State *L) {
+  int fd = luaL_checkinteger(L, 1);
+  size_t max_len = luaL_checkinteger(L, 2);
+
+  getLogger()->trace("Lua is reading up to {} bytes from fd {} in blocking mode", max_len, fd);
+
+  std::string buffer(max_len, '\0');
+  ssize_t bytes_read = explo::lib::read_block(fd, buffer.data(), max_len);
+  if (bytes_read < 0) {
+    getLogger()->error("Failed to read from fd {}: {}", fd, strerror(errno));
+    lua_pushnil(L);
+    return 1;
+  }
+  getLogger()->trace("Read {} bytes from fd {} in blocking mode", bytes_read, fd);
+  lua_pushlstring(L, buffer.data(), bytes_read);
   return 1;
 }
 

@@ -27,7 +27,6 @@ void OpenSSL_TLSClient::init() {
 }
 
 bool OpenSSL_TLSClient::connect(std::string_view host, int port) {
-
   addrinfo hints{}, *res;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -86,20 +85,65 @@ void OpenSSL_TLSClient::close() {
   if (ssl) {
     SSL_shutdown(ssl);
     SSL_free(ssl);
+    ssl = nullptr;
   }
   if (sock >= 0)
     explo::lib::close(sock);
-  if (ctx)
+  if (ctx) {
     SSL_CTX_free(ctx);
+    ctx = nullptr;
+  }
 }
 
 std::string OpenSSL_TLSClient::getLastError() {
   unsigned long errCode = ERR_get_error();
-  if (errCode == 0)
-    return "No error";
+  if (errCode == 0) {
+    if (errno != 0)
+      return lastError + " " + std::string(strerror(errno));
+    else
+      return "No error";
+  }
   char buf[256];
   ERR_error_string_n(errCode, buf, sizeof(buf));
   return std::string(buf);
+}
+
+bool OpenSSL_TLSClient::upgradeToTLS(int fd, bool setSNI) {
+  if (ssl) {
+    return true; // Already upgraded
+  }
+
+  // Create a new SSL object and associate it with the existing socket
+  ssl = SSL_new(ctx);
+  SSL_set_fd(ssl, fd);
+
+  if (setSNI) {
+    explo::lib::sockaddr_t peer;
+    explo::lib::socketlen_t peer_len = sizeof(peer);
+    int result = explo::lib::getpeername(fd, &peer, &peer_len);
+
+    if (result != 0) {
+      lastError = "getpeername";
+      return false; // Failed to get peer name
+    }
+
+    std::string host(256, '\0');
+    result = explo::lib::getnameinfo(&peer, peer_len, host.data(), host.size(), nullptr, 0, NI_NAMEREQD);
+    if (result != 0) {
+      lastError = "getnameinfo";
+      return false; // Failed to get peer name info
+    }
+
+    SSL_set_tlsext_host_name(ssl, host.data());
+  }
+
+  // Perform the TLS handshake
+  if (SSL_connect(ssl) != 1) {
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  return true;
 }
 
 OpenSSL_TLSClient *createTLSClient() { return new OpenSSL_TLSClient(); }

@@ -4,6 +4,9 @@
 
 namespace explo::lib {
 class ITLSClient {
+protected:
+  int fd;
+
 public:
   ITLSClient() = default;
   ~ITLSClient() = default;
@@ -18,6 +21,7 @@ public:
   virtual std::string recvData(int bufSize = 4096) = 0;
   virtual void close() = 0;
   virtual std::string getLastError() = 0;
+  virtual bool upgradeToTLS(int fd, bool setSNI = true) = 0;
 };
 } // namespace explo::lib
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

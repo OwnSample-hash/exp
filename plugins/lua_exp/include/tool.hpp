@@ -1,6 +1,7 @@
 #pragma once
 
 #include <args.hxx>
+#include <cmd.hpp>
 #include <interfaces/tool.hpp>
 #include <llib.hpp>
 #include <lua.h>
@@ -83,7 +84,10 @@ public:
 #undef Z
     }
 
+    auto &vars = cmd::CommandProcessor::instance().vars();
+    vars.set("tool_path", cmd::VarValue(file));
     lua(file);
+    vars.unset("tool_path");
     name = lua["name"].as("Unnamed Lua Tool"s);
     version = lua["version"].as("0.1"s);
     description = lua["description"].as("No description provided."s);
@@ -121,6 +125,10 @@ public:
   bool cmdCheck() override;
 
   const uuids::uuid getUUID() override {
+    if (lua["uuid"].is<std::monostate>()) {
+      this->logger->error("Lua tool '{}' does not have a UUID defined.", name);
+      throw std::runtime_error("Lua tool '" + name + "' does not have a UUID defined.");
+    }
     auto uuid_str = lua["uuid"].as<std::string>();
     try {
       return uuids::uuid::from_string(uuid_str).value();

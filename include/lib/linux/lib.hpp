@@ -16,12 +16,15 @@
 #include <arpa/inet.h>
 #include <chrono>
 #include <enums.hpp>
+#include <filesystem>
 #include <functional>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unordered_map>
+
+namespace fs = std::filesystem;
 
 namespace explo::lib {
 
@@ -56,13 +59,23 @@ EXPLO_LIB_API int close(socket_t sockfd) noexcept;
 
 EXPLO_LIB_API uint64_t clock() noexcept;
 
-EXPLO_LIB_API std::unordered_map<std::string, ConnectionStatus::Type>
-async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> generator);
+EXPLO_LIB_API std::unordered_map<std::string, ConnectionStatus::Type> async_scan(
+    int max, std::function<std::tuple<std::string, int, int, int>(void)> generator,
+    std::function<void(const int, const std::string_view, const int, const int, const int)> sigScan) noexcept(false);
 
 EXPLO_LIB_API int getaddrinfo(const char *node, const char *service, const addrinfo_t *hints,
                               addrinfo_t **res) noexcept;
 
 EXPLO_LIB_API void freeaddrinfo(addrinfo_t *res) noexcept;
+
+EXPLO_LIB_API int getnameinfo(const sockaddr_t *sa, socketlen_t salen, char *host, socketlen_t hostlen, char *serv,
+                              socketlen_t servlen, int flags) noexcept;
+
+EXPLO_LIB_API int getpeername(socket_t sockfd, sockaddr_t *addr, socketlen_t *addrlen) noexcept;
+
+EXPLO_LIB_API std::vector<fs::directory_entry> listDir(const std::string_view path);
+
+EXPLO_LIB_API int read_block(int fd, char *buf, size_t count) noexcept;
 
 } // namespace impl
 } // namespace explo::lib

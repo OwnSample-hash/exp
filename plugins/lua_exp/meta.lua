@@ -28,6 +28,29 @@ LuaTool = {
   commands = {},
 }
 
+---@class Signature
+Signature = {
+  ---@type string
+  name = "",
+  ---@type string
+  version = "",
+  ---@type string
+  description = "",
+  ---@type string
+  signature = "",
+  ---@type table<number, number>[]
+  ports = {},
+  ---@type function
+  ---@param fd number
+  ---@param host string
+  ---@param port number
+  ---@return string|nil
+  check = function(fd, host, port) end,
+}
+
+---@class TLSClient
+TLSClient = {}
+
 ---@type string
 name = ""
 
@@ -49,6 +72,12 @@ explo = {
   ---@param name string
   ---@return string|number|boolean|nil
   var = function(name) end,
+
+
+  ---@type function
+  ---@param name string
+  ---@return string|number|boolean|nil
+  gVar = function(name) end,
 
   ---@type function
   ---@param tool string
@@ -88,21 +117,33 @@ explo = {
 
   ---@type function
   ---@param fd number
+  close = function(fd) end,
+
+  ---@type function
+  ---@param fd number
   ---@param host string
   ---@param port number
-  ---@return boolean
+  ---@return TLSClient|nil
   sconnect = function(fd, host, port) end,
   ---@type function
+  ---@param TLSClient TLSClient
   ---@param data string
   ---@return number
-  swrite = function(data) end,
+  swrite = function(TLSClient, data) end,
   ---@type function
+  ---@param TLSClient TLSClient
   ---@param max_size number
   ---@return string
-  sread = function(max_size) end,
+  sread = function(TLSClient, max_size) end,
   ---@type function
+  ---@param TLSClient TLSClient
   ---@return boolean
-  sclose = function() end,
+  sclose = function(TLSClient) end,
+  ---@type function
+  ---@param fd number
+  ---@param setSNI boolean
+  ---@return TLSClient|nil
+  supgrade = function(fd, setSNI) end,
 
   ---@type function
   ---@return number
@@ -111,7 +152,20 @@ explo = {
   ---@type function
   ---@param max number
   ---@param coro thread
-  async_scan = function(max, coro) end,
+  ---@param sigScan function
+  ---@return table<string, number>
+  async_scan = function(max, coro, sigScan) end,
+
+  ---@type function
+  ---@param ip string
+  ---@param port number
+  ---@return nil|string, string
+  getnameinfo = function(ip, port) end,
+
+  ---@type function
+  ---@param path string
+  ---@return table<string>|nil
+  listDir = function(path) end,
 
   ConnectionStatus = {
     Open = 0,
@@ -127,6 +181,17 @@ explo = {
     HostUnreachable = 10,
     NetworkUnreachable = 11,
   },
+
+  ---@type function
+  ---@param table table
+  ---@return string
+  toJSON = function(table) end,
+
+  ---@type function
+  ---@param fd number
+  ---@param count number
+  ---@return string
+  read_block = function(fd, count) end,
 }
 
 ---@class HTTPConfig

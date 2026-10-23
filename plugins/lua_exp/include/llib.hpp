@@ -23,18 +23,24 @@ namespace ConnectionStatus = explo::ConnectionStatus;
   X(connect_, connect)                                                                                                 \
   X(write_, write)                                                                                                     \
   X(read_, read)                                                                                                       \
+  X(read_block, read_block)                                                                                            \
   X(close_, close)                                                                                                     \
   X(getsockopt_, getsockopt)                                                                                           \
   X(sconnect, sconnect)                                                                                                \
   X(swrite, swrite)                                                                                                    \
   X(sread, sread)                                                                                                      \
-  X(sclose, sclose)
+  X(sclose, sclose)                                                                                                    \
+  X(supgrade, supgrade)                                                                                                \
+  X(getnameinfo_, getnameinfo)
 
 #define luaFuncs                                                                                                       \
   X(var, var)                                                                                                          \
+  X(gVar, gVar)                                                                                                        \
   X(call, call)                                                                                                        \
   X(sleep, sleep)                                                                                                      \
   X(clock, clock)                                                                                                      \
+  X(listDir, listDir)                                                                                                  \
+  X(toJSON, toJSON)                                                                                                    \
   luaLogFuncs luaSocketFuncs
 
 #define asyncLuaFuncs X(async_scan, async_scan)

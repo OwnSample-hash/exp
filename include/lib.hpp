@@ -44,9 +44,10 @@ inline int close(socket_t sockfd) noexcept { return impl::close(sockfd); }
 
 inline uint64_t clock() noexcept { return impl::clock(); }
 
-inline std::unordered_map<std::string, ConnectionStatus::Type>
-async_scan(int max, std::function<std::tuple<std::string, int, int, int>(void)> generator) {
-  return impl::async_scan(max, generator);
+inline std::unordered_map<std::string, ConnectionStatus::Type> async_scan(
+    int max, std::function<std::tuple<std::string, int, int, int>(void)> generator,
+    std::function<void(const int, const std::string_view, const int, const int, const int)> sigScan) noexcept(false) {
+  return impl::async_scan(max, generator, sigScan);
 }
 
 inline int getaddrinfo(const char *node, const char *service, const addrinfo_t *hints, addrinfo_t **res) noexcept {
@@ -54,6 +55,19 @@ inline int getaddrinfo(const char *node, const char *service, const addrinfo_t *
 }
 
 inline void freeaddrinfo(addrinfo_t *res) noexcept { impl::freeaddrinfo(res); }
+
+inline int getnameinfo(const sockaddr_t *sa, socketlen_t salen, char *host, socketlen_t hostlen, char *serv,
+                       socketlen_t servlen, int flags) noexcept {
+  return impl::getnameinfo(sa, salen, host, hostlen, serv, servlen, flags);
+}
+
+inline int getpeername(socket_t sockfd, sockaddr_t *addr, socketlen_t *addrlen) noexcept {
+  return impl::getpeername(sockfd, addr, addrlen);
+}
+
+inline std::vector<fs::directory_entry> listDir(const std::string_view path) { return impl::listDir(path); }
+
+inline int read_block(int fd, char *buf, size_t count) noexcept { return impl::read_block(fd, buf, count); }
 
 } // namespace lib
 } // namespace explo
