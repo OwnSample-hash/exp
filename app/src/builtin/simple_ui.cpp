@@ -85,8 +85,12 @@ void UI::runLoop() {
     case cmd::InputResult::Escape: {
       int ch = getch();
       auto res = cp.feed(ch);
+      std::vector<char> escapeBuffer;
+      escapeBuffer.reserve(16);
+      escapeBuffer.push_back(ch);
       while (res == cmd::InputResult::Escape) {
         ch = getch();
+        escapeBuffer.push_back(ch);
         logger->trace("ch: {}", ch);
         res = cp.feed(ch);
       }
@@ -94,14 +98,14 @@ void UI::runLoop() {
       auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
       std::cout << "\r\033[K" << prompt << cp.buffer();
-      if (ch == 'A') {
-        std::cout << "\r\033[K" << prompt << cp.buffer() << std::flush;
-      } else if (ch == 'B') {
+      if (ch == 'A' || ch == 'B') {
         std::cout << "\r\033[K" << prompt << cp.buffer() << std::flush;
       } else if (ch == 'C') {
-        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "C" << std::flush;
+        if (cp.cursorPos() != cp.buffer().size())
+          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
       } else if (ch == 'D') {
-        std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
+        if (cp.cursorPos() != cp.buffer().size())
+          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
       }
 
       break;
@@ -157,7 +161,7 @@ void UI::initialize(initArgs &args) {
   if (!basicInitDone) {
     this->logger = args.logger;
     basicInitDone = true;
-    logger->info("Initializing web UI module");
+    logger->info("Initializing simple UI module");
     return;
   }
   assert(this->logger != nullptr);
