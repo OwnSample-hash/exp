@@ -496,6 +496,7 @@ return {
     local file = io.open(dict, "r")
     if not file then
       explo.error(("Failed to open dict file: %s"):format(dict))
+      print("Failed to open dict file: " .. dict)
       return 3
     end
 
@@ -512,6 +513,7 @@ return {
 
     if #lines == 0 then
       explo.error("Dict file is empty or contains only comments")
+      print("Dict file is empty or contains only comments")
       file:close()
       return 4
     end
@@ -522,6 +524,7 @@ return {
 
       if not file then
         explo.error(("Failed to open ext_dict file: %s"):format(ext_dict))
+        print("Failed to open ext_dict file: " .. ext_dict)
         return 3
       end
 
