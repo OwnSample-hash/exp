@@ -20,7 +20,7 @@ struct VarValue {
 
   // Constructors
   VarValue() = default;
-  explicit VarValue(std::string s) : type(VarType::String), sval(std::move(s)) {}
+  explicit VarValue(const std::string_view s) : type(VarType::String), sval(s) {}
   explicit VarValue(const char *s) : type(VarType::String), sval(s) {}
   explicit VarValue(long long i) : type(VarType::Integer), ival(i) {}
   explicit VarValue(long i) : type(VarType::Integer), ival(i) {}
@@ -49,6 +49,7 @@ struct VarValue {
 
 class VariableStore {
 public:
+  friend class CommandProcessor;
   VariableStore();
 
   // Set/get in current scope
