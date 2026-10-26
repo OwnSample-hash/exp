@@ -158,6 +158,7 @@ void bini::execute() {
     std::cout << "  SafeStack: " << toStr(sum.SafeStack) << "\n";
     std::cout << "  NX:     " << toStr(sum.NX) << "\n";
     std::cout << "  PIE:    " << toStr(sum.PIE) << "\n";
+    std::cout << "  PIC:    " << toStr(sum.PIC) << "\n";
     std::cout << "  RPATH:  " << toStr(sum.RPATH) << "\n";
     std::cout << "  RunPath: " << toStr(sum.RunPath) << "\n";
     std::cout << "  Total symbols checked: " << sum.symbolCount << "\n";

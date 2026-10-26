@@ -17,6 +17,7 @@ enum class Status {
 struct summary {
   Status NX;
   Status PIE;
+  Status PIC;
   Status RELRO;
   Status canary;
   Status CFI;
@@ -159,8 +160,8 @@ template <typename ELFT> summary analyzeELF(const ELFObjectFile<ELFT> &Obj) {
     result.PIE = Status::None; // Statically linked non-PIE
   }
 
-  if (Hdr.e_type != ELF::ET_DYN)
-    result.PIE = Status::NotApplicable; // Not an executable
+  if (Hdr.e_type == ELF::ET_DYN)
+    result.PIC = Status::Full;
   bool HasInterp = false;
   for (const auto &Phdr : *PhdrsOrErr)
     if (Phdr.p_type == ELF::PT_INTERP) {
