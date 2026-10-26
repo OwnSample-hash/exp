@@ -8,6 +8,8 @@ LuaTool = {
   version = "",
   ---@type string
   description = "",
+  ---@type string
+  uuid = "",
   ---@type string[]
   tags = {},
   ---@type table<string, string|number|boolean|nil>
@@ -24,8 +26,6 @@ LuaTool = {
   initialize = function() end,
   ---@type function|string
   shutdown = function() end,
-  ---@type table<string, function<...>>
-  commands = {},
 }
 
 ---@class Signature
@@ -57,9 +57,6 @@ name = ""
 explo = {
   ---@type function
   ---@param message string
-  dbg = function(message) end,
-  ---@type function
-  ---@param message string
   info = function(message) end,
   ---@type function
   ---@param message string
@@ -67,12 +64,18 @@ explo = {
   ---@type function
   ---@param message string
   error = function(message) end,
+  ---@type function
+  ---@param message string
+  debug = function(message) end,
+  ---@type function
+  ---@param message string
+  trace = function(message) end,
+
 
   ---@type function
   ---@param name string
   ---@return string|number|boolean|nil
   var = function(name) end,
-
 
   ---@type function
   ---@param name string
@@ -120,11 +123,10 @@ explo = {
   close = function(fd) end,
 
   ---@type function
-  ---@param fd number
   ---@param host string
   ---@param port number
   ---@return TLSClient|nil
-  sconnect = function(fd, host, port) end,
+  sconnect = function(host, port) end,
   ---@type function
   ---@param TLSClient TLSClient
   ---@param data string
