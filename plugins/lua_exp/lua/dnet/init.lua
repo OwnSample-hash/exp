@@ -8,14 +8,6 @@ if not Signatures then
   return
 end
 
--- for type, port in pairs(Signatures) do
---   for port_, sigs in pairs(port) do
---     for sigName, sig in pairs(sigs) do
---       explo.info(string.format("Loaded signature: %s for type: %s on port: %d (%s)", sigName, type, port_, sig.signature))
---     end
---   end
--- end
-
 ---@type LuaTool
 return {
   name = "dnet",
@@ -189,7 +181,7 @@ return {
               explo.info(string.format("Signature %s matched for %s:%d (%s) with version: %s", sigName, host, port_,
                 domain, version))
               versions[type][host] = versions[type][host] or {}
-              versions[type][host][port_] = version
+              versions[type][host][port_] = { version, sigName }
             else
               explo.info(string.format("Signature %s did not match for %s:%d (%s)", sigName, host, port_, domain))
             end
@@ -220,17 +212,6 @@ return {
 
     local format_str = ("    Port: " .. c.fg.cyan .. "%%-%ds" .. c.reset .. " => Status: %%s"):format(longestPort)
 
-    -- local stat = io.open("scan_results.json", "w")
-    -- if stat then
-    --   stat:write(explo.toJSON(stats))
-    --   stat:close()
-    -- end
-    -- local version_stat = io.open("version_results.json", "w")
-    -- if version_stat then
-    --   version_stat:write(explo.toJSON(versions))
-    --   version_stat:close()
-    -- end
-
     print("Scan completed. Summary:")
     for proto, ips_ in pairs(stats) do
       print(string.format("Protocol: " .. c.fg.magenta .. "%s" .. c.reset, proto))
@@ -254,7 +235,9 @@ return {
                 versions[TypeToNum(proto)][tostring(ip)][tonumber(port_)]
             if version_ then
               print(string.format(format_str, port_, S2c(status)) ..
-              string.format("  Version: %s%s%s", c.fg.blue, version_, c.reset))
+                string.format("  Signature: %s%s%s", c.fg.yellow, version_[2], c.reset) ..
+                string.format("\tVersion: %s%s%s", c.fg.blue, version_[1], c.reset)
+              )
             else
               print(string.format(format_str, port_, S2c(status)))
             end
