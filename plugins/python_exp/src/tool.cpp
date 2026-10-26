@@ -124,7 +124,7 @@ void PythonTool::initialize(initArgs &args) {
       break;
     }
 
-    PyObject *registerFunction = PyObject_GetAttrString(module, "RegisterPlugin");
+    PyObject *registerFunction = PyObject_GetAttrString(module, "RegisterTool");
     if (registerFunction == nullptr || !PyCallable_Check(registerFunction)) {
       Py_XDECREF(registerFunction);
       setError("module must define a callable RegisterPlugin function");

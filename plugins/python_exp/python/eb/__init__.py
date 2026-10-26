@@ -2,7 +2,7 @@ import explo
 from .eb import *
 
 
-def RegisterPlugin():
+def RegisterTool():
     return {
         "name": "eb",
         "version": "0.1.0",
