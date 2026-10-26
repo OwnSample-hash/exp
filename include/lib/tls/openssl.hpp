@@ -29,12 +29,12 @@ public:
   OpenSSL_TLSClient &operator=(const OpenSSL_TLSClient &) = delete;
   OpenSSL_TLSClient &operator=(OpenSSL_TLSClient &&) = delete;
 
-  bool connect(std::string_view host, int port) override;
+  bool connect(std::string_view host, int port, bool setSNI = true, bool nonBlock = true) override;
   int sendData(const std::string &data) override;
   std::string recvData(int bufSize = 4096) override;
   void close() override;
   std::string getLastError() override;
-  bool upgradeToTLS(int fd, bool setSNI = true) override;
+  bool upgradeToTLS(int fd, bool setSNI = true, bool nonBlock = true) override;
 };
 
 extern OpenSSL_TLSClient *createTLSClient();

@@ -329,9 +329,8 @@ int close_(lua_State *L) {
 }
 
 int sconnect(lua_State *L) {
-  int sockfd = luaL_checkinteger(L, 1);
-  const char *host = luaL_checkstring(L, 2);
-  int port = luaL_checkinteger(L, 3);
+  const char *host = luaL_checkstring(L, 1);
+  int port = luaL_checkinteger(L, 2);
 
   explo::lib::ITLSClient *tlsClient = explo::lib::createTLSClient();
 
@@ -341,8 +340,11 @@ int sconnect(lua_State *L) {
     return 1;
   }
 
-  if (!tlsClient->connect(host, port)) {
+  if (!tlsClient->connect(host, port, true, false)) {
     getLogger()->error("Failed to connect TLS client");
+    getLogger()->error("TLS error: {}", tlsClient->getLastError());
+    tlsClient->close();
+    delete tlsClient;
     lua_pushnil(L);
     return 1;
   }
@@ -397,6 +399,7 @@ int sclose(lua_State *L) {
     return 1;
   }
 
+  tlsClient->close();
   delete tlsClient;
 
   lua_pushboolean(L, true);
@@ -416,7 +419,7 @@ int supgrade(lua_State *L) {
   int fd = luaL_checkinteger(L, 1);
   int setSNI = lua_toboolean(L, 2);
 
-  if (!tlsClient->upgradeToTLS(fd, setSNI)) {
+  if (!tlsClient->upgradeToTLS(fd, setSNI, false)) {
     getLogger()->error("Failed to upgrade socket {} to TLS", fd);
     getLogger()->error("TLS error: {}", tlsClient->getLastError());
     tlsClient->close();

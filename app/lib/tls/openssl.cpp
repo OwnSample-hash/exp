@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <lib.hpp>
 #include <tls.hpp>
 #include <unistd.h>
@@ -26,7 +27,7 @@ void OpenSSL_TLSClient::init() {
   SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
 }
 
-bool OpenSSL_TLSClient::connect(std::string_view host, int port) {
+bool OpenSSL_TLSClient::connect(std::string_view host, int port, bool setSNI, bool nonBlock) {
   addrinfo hints{}, *res;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -34,7 +35,10 @@ bool OpenSSL_TLSClient::connect(std::string_view host, int port) {
     return false;
 
   // 2. Create TCP socket
-  sock = explo::lib::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  if (nonBlock)
+    sock = explo::lib::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  else
+    sock = explo::lib::socket(res->ai_family, res->ai_socktype, res->ai_protocol, 0);
   if (sock < 0) {
     explo::lib::freeaddrinfo(res);
     return false;
@@ -108,9 +112,27 @@ std::string OpenSSL_TLSClient::getLastError() {
   return std::string(buf);
 }
 
-bool OpenSSL_TLSClient::upgradeToTLS(int fd, bool setSNI) {
+bool OpenSSL_TLSClient::upgradeToTLS(int fd, bool setSNI, bool nonBlock) {
   if (ssl) {
     return true; // Already upgraded
+  }
+
+  int sock_flags = fcntl(fd, F_GETFL, 0);
+  if (sock_flags == -1) {
+    lastError = "fcntl F_GETFL failed";
+    return false;
+  }
+
+  if (nonBlock) {
+    if (fcntl(fd, F_SETFL, sock_flags | O_NONBLOCK) == -1) {
+      lastError = "fcntl F_SETFL O_NONBLOCK failed";
+      return false;
+    }
+  } else {
+    if (fcntl(fd, F_SETFL, sock_flags & ~O_NONBLOCK) == -1) {
+      lastError = "fcntl F_SETFL clear O_NONBLOCK failed";
+      return false;
+    }
   }
 
   // Create a new SSL object and associate it with the existing socket

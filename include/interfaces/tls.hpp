@@ -16,12 +16,12 @@ public:
   ITLSClient &operator=(const ITLSClient &) = delete;
   ITLSClient &operator=(ITLSClient &&) = delete;
 
-  virtual bool connect(std::string_view host, int port) = 0;
+  virtual bool connect(std::string_view host, int port, bool setSNI = true, bool nonBlock = true) = 0;
   virtual int sendData(const std::string &data) = 0;
   virtual std::string recvData(int bufSize = 4096) = 0;
   virtual void close() = 0;
   virtual std::string getLastError() = 0;
-  virtual bool upgradeToTLS(int fd, bool setSNI = true) = 0;
+  virtual bool upgradeToTLS(int fd, bool setSNI = true, bool nonBlock = true) = 0;
 };
 } // namespace explo::lib
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:
