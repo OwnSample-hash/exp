@@ -386,7 +386,7 @@ int main(int argc, const char **argv, const char **envp) {
       spdlog::error("Failed to create socket: {}", strerror(errno));
       shutdown(1);
     }
-    struct sockaddr_un addr;
+    struct sockaddr_un addr{};
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, sessionSocketPathStr.c_str(), sizeof(addr.sun_path) - 1);
