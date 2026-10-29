@@ -1,9 +1,9 @@
-#include "cmd/variable.hpp"
 #include <arpa/inet.h>
 #include <builtin/nc.hpp>
 #include <cctype>
 #include <cerrno>
 #include <cmd.hpp>
+#include <cmd/variable.hpp>
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
