@@ -54,6 +54,9 @@ void InteractivePythonTool::initialize(initArgs &args) {
     }
     cmd::CommandProcessor::instance().registerContext(ctx);
   }
+
+  this->cmd.emplace(*args.parser, this->getName(), "Run the interactive python tool",
+                    [&](args::Subparser &s) { s.Parse(); });
 }
 
 void InteractivePythonTool::shutdown() {
@@ -125,7 +128,15 @@ void InteractivePythonTool::suppress() {
   // No specific suppression logic for the interactive tool
 }
 
-bool InteractivePythonTool::cmdCheck() { return false; }
+bool InteractivePythonTool::cmdCheck() {
+  if (cmd && *cmd) {
+    this->invoke(this->prefix, false);
+    this->execute();
+    this->suppress();
+    return true;
+  }
+  return false;
+}
 
 static ToolRegistry::Add<InteractivePythonTool> interactiveTool("interactive");
 

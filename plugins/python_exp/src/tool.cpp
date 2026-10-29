@@ -316,6 +316,11 @@ void PythonTool::initialize(initArgs &args) {
         }
       }
       s.Parse();
+      if (s.GetError() == args::Error::Help) {
+        std::cout << s;
+        this->flags.clear();
+        return;
+      }
       varTypes.reserve(flags.size());
       for (const auto &[flag, type] : flags) {
         switch (type) {

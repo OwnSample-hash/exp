@@ -12,6 +12,8 @@ class InteractivePythonTool final : public ITool {
   bool ownsInterpreter = false;
   bool makeCommand;
 
+  std::optional<args::Command> cmd;
+
 public:
   const char *getName() const override { return "python"; }
 

@@ -9,7 +9,10 @@
   X(warn, METH_VARARGS, "Log warn message")                                                                            \
   X(error, METH_VARARGS, "Log error message")
 
-#define pyFuncs pyLogFuncs
+#define pyFuncs                                                                                                        \
+  X(var, METH_VARARGS, "Access variable")                                                                              \
+  X(vars, METH_NOARGS, "Get all variables")                                                                            \
+  pyLogFuncs
 
 #define X(name, ...) PyObject *Py_##name(PyObject *self, PyObject *args);
 pyFuncs
