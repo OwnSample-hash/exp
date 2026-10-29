@@ -1,6 +1,7 @@
 #include <b64.hpp>
 #include <chrono>
 #include <cmd.hpp>
+#include <fuzz.hpp>
 #include <httplib.h>
 #include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
@@ -16,7 +17,7 @@ extern std::map<std::string, ITool *> tools;
 extern std::unordered_map<std::string, initArgs> pluginInitArgs;
 extern thread_local ITool *currentTool;
 extern const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins();
-extern void shutdown [[noreturn]](int code = 0);
+extern void shutdown [[noreturn]] (int code = 0);
 
 void webui::ws_loop(const httplib::Request &req, httplib::ws::WebSocket &ws) {
   logger->info("WebSocket connection established from {}", req.remote_addr);

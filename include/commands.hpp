@@ -267,6 +267,44 @@
     };
     cp.registerGlobalCommand(c);
   }
+  if (CHECK(cmds, "/")) {
+    cmd::CommandDef c;
+    c.name = "/";
+    c.description = "Search in the tools tags";
+    c.variadic = false;
+    c.addDynamic("<tag to search for>", R"(.+)", "tag to search");
+    c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+      if (ec.args.size() < 2)
+        throw std::runtime_error("Usage: / <tag_name>");
+      std::map<std::string, std::vector<std::string>> tags;
+      for (const auto &[name, tool] : tools) {
+        auto &tags_ = tool->getTags();
+        tags[name] = {tags_.begin(), tags_.end()};
+      }
+      std::vector<std::tuple<double, std::string, std::string>> res = extract(ec.args[1], tags, 50.0);
+
+      std::sort(res.begin(), res.end(), [](const auto &a, const auto &b) { return std::get<0>(a) > std::get<0>(b); });
+      std::stringstream ss;
+      std::string cTool;
+      for (const auto &r : res) {
+        const double &score = std::get<0>(r);
+        const std::string &toolName = std::get<1>(r);
+        const std::string &tag = std::get<2>(r);
+        if (toolName != cTool) {
+          cTool = toolName;
+          ss << toolName << ":\n" << "  " << tag << "(" << score << "%) Tool's tags: ";
+          for (const auto atag : tags[toolName])
+            ss << atag << " ";
+          ss << '\n';
+        } else {
+          ss << "  " << tag << "(" << score << "%)\n";
+        }
+      }
+      ss << "\n";
+      return ss.str();
+    };
+    cp.registerGlobalCommand(c);
+  }
   cp.getContext()->sortCommands();
 }
 // Vim: set expandtab tabstop=2 shiftwidth=2 cc=120:

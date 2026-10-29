@@ -9,13 +9,15 @@ if(WEBUI_ENABLE)
 
   CPMAddPackage("gh:yhirose/cpp-httplib@0.46.1")
 
+  CPMAddPackage("gh:rapidfuzz/rapidfuzz-cpp@3.3.4")
+
   find_package(OpenSSL COMPONENTS SSL)
 
   add_library(${MOD_NAME} SHARED ${MOD_SRC})
   target_sources(${MOD_NAME} PUBLIC ${MOD_SRC})
   target_compile_options(${MOD_NAME} PRIVATE -Wno-c23-extensions)
   target_include_directories(${MOD_NAME} PUBLIC include ../../include/)
-  target_link_libraries(${MOD_NAME} PRIVATE spdlog::spdlog httplib OpenSSL::SSL nlohmann_json::nlohmann_json arc::arc)
+  target_link_libraries(${MOD_NAME} PRIVATE spdlog::spdlog httplib OpenSSL::SSL nlohmann_json::nlohmann_json arc::arc rapidfuzz::rapidfuzz)
   target_compile_definitions(${MOD_NAME} PRIVATE MODULE_NAME="${MOD_NAME}" CPPHTTPLIB_OPENSSL_SUPPORT)
   set_property(TARGET ${MOD_NAME} PROPERTY PREFIX "")
 

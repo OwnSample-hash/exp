@@ -18,7 +18,9 @@ elseif(${TLS_BACKEND} STREQUAL "mbedtls")
   )
 endif()
 
-target_link_libraries(main_app PRIVATE spdlog::spdlog_static yaml-cpp::yaml-cpp nlohmann_json::nlohmann_json)
+CPMAddPackage("gh:rapidfuzz/rapidfuzz-cpp@3.3.4")
+
+target_link_libraries(main_app PRIVATE spdlog::spdlog_static yaml-cpp::yaml-cpp nlohmann_json::nlohmann_json rapidfuzz::rapidfuzz)
 target_include_directories(main_app PRIVATE ../include ./include)
 set_target_properties(main_app PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

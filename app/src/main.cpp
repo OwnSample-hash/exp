@@ -6,6 +6,7 @@
 #include <config/yaml.hpp>
 #include <dep.hpp>
 #include <filesystem>
+#include <fuzz.hpp>
 #include <interfaces/renderer.hpp>
 #include <interfaces/tool.hpp>
 #include <interfaces/tool_provider.hpp>
