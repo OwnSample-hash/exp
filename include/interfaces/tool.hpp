@@ -5,12 +5,13 @@
 #pragma once
 
 #include <interfaces/mod.hpp>
-#include <session.hpp>
 #include <string>
 #include <uuid.hpp>
 #include <vector>
 
 namespace explo {
+
+struct Session;
 
 class ITool : public IMod {
 
@@ -57,7 +58,7 @@ public:
    * the tool's status or perform periodic tasks.
    * @return A HeartBeat function that can be called to check the tool's status.
    */
-  virtual HeartBeat getHeartBeat() { return {}; };
+  virtual std::function<bool(Session &)> getHeartBeat() { return {}; };
 };
 
 } // namespace explo

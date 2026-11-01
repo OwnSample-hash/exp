@@ -1,15 +1,17 @@
+#include "cmd/variable.hpp"
 #include <arpa/inet.h>
 #include <builtin/nc.hpp>
 #include <cctype>
 #include <cerrno>
+#include <chrono>
 #include <cmd.hpp>
-#include <cmd/variable.hpp>
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
 #include <lib.hpp>
 #include <memory>
 #include <netdb.h>
+#include <netinet/in.h>
 #include <poll.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
@@ -121,6 +123,35 @@ void NC::initialize(initArgs &args) {
     };
     ctx->registerCommand(c);
   }
+  {
+    cmd::CommandDef c;
+    c.name = "listen";
+    c.description = "Listen on a TCP port; every accepted connection becomes a background channel";
+    c.variadic = true;
+    c.addDynamic("<port>", R"(\d+)", "Local port (0 = pick a free one)");
+    c.handler = [this](const cmd::ExecutionContext &ec) -> std::string {
+      if (ec.args.size() < 2)
+        throw std::runtime_error("Usage: listen <port>");
+      long p = std::stol(ec.args[1]);
+      if (p < 0 || p > 65535)
+        throw std::runtime_error("Port out of range: " + ec.args[1]);
+      return this->startListener(static_cast<uint16_t>(p));
+    };
+    ctx->registerCommand(c);
+  }
+  {
+    cmd::CommandDef c;
+    c.name = "unlisten";
+    c.description = "Stop a listener (existing channels stay open)";
+    c.variadic = true;
+    c.addDynamic("<id>", R"(\d+)", "Listener id (see 'channels')");
+    c.handler = [this](const cmd::ExecutionContext &ec) -> std::string {
+      if (ec.args.size() < 2)
+        throw std::runtime_error("Usage: unlisten <id>");
+      return this->stopListener(std::stoi(ec.args[1]));
+    };
+    ctx->registerCommand(c);
+  }
   cmd::CommandProcessor::instance().registerContext(ctx);
 
   // Start the background reader. It lives until shutdown(), regardless of invoke()/suppress().
@@ -152,6 +183,10 @@ void NC::shutdown() {
       }
     }
     channels.clear();
+    for (auto &[id, l] : listeners)
+      if (l.fd >= 0)
+        explo::lib::close(l.fd);
+    listeners.clear();
   }
 
   for (int &fd : wakePipe) {
@@ -161,7 +196,7 @@ void NC::shutdown() {
     }
   }
   if (logger)
-    logger->debug("nc: all channels closed");
+    logger->debug("all channels closed");
 }
 
 void NC::invoke(std::string_view prefix, bool soft) {
@@ -258,14 +293,7 @@ int NC::openChannel(const NCConfig &cfg) {
   int id;
   {
     std::lock_guard<std::mutex> lock(mtx);
-    id = nextId++;
-    Channel &ch = channels[id];
-    ch.id = id;
-    ch.fd = sockfd;
-    ch.host = cfg.host;
-    ch.port = port_host;
-    ch.tcp = cfg.isTcp;
-    ch.state = ChannelState::Background; // runForeground() promotes it
+    id = addChannelLocked(sockfd, cfg.host, port_host, cfg.isTcp); // runForeground() promotes it
   }
   logger->debug("nc: channel {} opened to {}:{}", id, cfg.host, port_host);
   return id;
@@ -287,9 +315,11 @@ std::string NC::closeChannel(int id) {
 
 std::string NC::listChannels() {
   std::lock_guard<std::mutex> lock(mtx);
-  if (channels.empty())
+  if (channels.empty() && listeners.empty())
     return "No open channels";
   std::ostringstream os;
+  for (auto &[id, l] : listeners)
+    os << "listener [" << id << "] port " << l.port << "\n";
   for (auto &[id, ch] : channels) {
     os << "[" << id << "] " << ch.host << ":" << ch.port << (ch.tcp ? " tcp " : " udp ")
        << (ch.state == ChannelState::Foreground ? "foreground" : "background") << ", " << ch.buffer.size()
@@ -299,8 +329,7 @@ std::string NC::listChannels() {
     os << "\n";
   }
   std::string s = os.str();
-  if (!s.empty())
-    s.pop_back();
+  s.pop_back();
   return s;
 }
 
@@ -460,21 +489,29 @@ void NC::wakeReader() {
 }
 
 void NC::backgroundLoop() {
+  struct Watch {
+    bool listener;
+    int id;
+  };
   std::vector<pollfd> fds;
-  std::vector<int> ids;
+  std::vector<Watch> watches;
   char tmp[4096];
 
   while (running) {
     fds.clear();
-    ids.clear();
+    watches.clear();
     fds.push_back({wakePipe[0], POLLIN, 0});
     {
       std::lock_guard<std::mutex> lock(mtx);
       for (auto &[id, ch] : channels) {
         if (ch.state == ChannelState::Background && !ch.closed && ch.fd >= 0 && ch.buffer.size() < kMaxBuffered) {
           fds.push_back({ch.fd, POLLIN, 0});
-          ids.push_back(id);
+          watches.push_back({false, id});
         }
+      }
+      for (auto &[id, l] : listeners) {
+        fds.push_back({l.fd, POLLIN, 0});
+        watches.push_back({true, id});
       }
     }
 
@@ -494,31 +531,200 @@ void NC::backgroundLoop() {
     if (!running)
       break;
 
-    std::lock_guard<std::mutex> lock(mtx);
-    for (std::size_t i = 1; i < fds.size(); ++i) {
-      if (!fds[i].revents)
-        continue;
-      auto it = channels.find(ids[i - 1]);
-      // Re-validate under the lock: the channel may have been closed or moved to the foreground meanwhile.
-      if (it == channels.end() || it->second.fd != fds[i].fd || it->second.state != ChannelState::Background)
-        continue;
-      Channel &ch = it->second;
+    bool backoff = false;
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      for (std::size_t i = 1; i < fds.size(); ++i) {
+        if (!fds[i].revents)
+          continue;
+        const Watch &w = watches[i - 1];
 
-      ssize_t r = ::read(ch.fd, tmp, sizeof tmp);
-      if (r > 0) {
-        ch.buffer.append(tmp, static_cast<std::size_t>(r));
-      } else if (r == 0) {
-        if (ch.tcp || (fds[i].revents & (POLLHUP | POLLERR | POLLNVAL))) {
-          ch.closed = true;
-          logger->debug("nc: background channel {} closed by remote", ch.id);
+        if (w.listener) {
+          auto lit = listeners.find(w.id);
+          if (lit == listeners.end() || lit->second.fd != fds[i].fd)
+            continue; // stopped meanwhile
+          for (;;) {
+            int cfd = ::accept(lit->second.fd, nullptr, nullptr);
+            if (cfd < 0) {
+              if (errno == EINTR || errno == ECONNABORTED)
+                continue;
+              if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                logger->error("nc: accept() on listener {} failed: {}", w.id, strerror(errno));
+                backoff = true; // e.g. EMFILE: avoid spinning on a permanently readable listener
+              }
+              break;
+            }
+            int cid = adoptLocked(cfd);
+            if (cid < 0) {
+              ::close(cfd);
+              continue;
+            }
+            const Channel &nc = channels.at(cid);
+            logger->info("nc: accepted connection from {}:{} on port {} -> channel {} (background)", nc.host, nc.port,
+                         lit->second.port, cid);
+          }
+          continue;
         }
-      } else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-        ch.closed = true;
-        ch.error = strerror(errno);
-        logger->debug("nc: background channel {} error: {}", ch.id, ch.error);
+
+        auto it = channels.find(w.id);
+        // Re-validate under the lock: the channel may have been closed or moved to the foreground meanwhile.
+        if (it == channels.end() || it->second.fd != fds[i].fd || it->second.state != ChannelState::Background)
+          continue;
+        Channel &ch = it->second;
+
+        ssize_t r = ::read(ch.fd, tmp, sizeof tmp);
+        if (r > 0) {
+          ch.buffer.append(tmp, static_cast<std::size_t>(r));
+        } else if (r == 0) {
+          if (ch.tcp || (fds[i].revents & (POLLHUP | POLLERR | POLLNVAL))) {
+            ch.closed = true;
+            logger->debug("nc: background channel {} closed by remote", ch.id);
+          }
+        } else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+          ch.closed = true;
+          ch.error = strerror(errno);
+          logger->debug("nc: background channel {} error: {}", ch.id, ch.error);
+        }
       }
     }
+    if (backoff)
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Adopting connections and listening
+// ---------------------------------------------------------------------------------------------------------------------
+
+int NC::addChannelLocked(int fd, std::string host, uint16_t port, bool tcp) {
+  int id = nextId++;
+  Channel &ch = channels[id];
+  ch.id = id;
+  ch.fd = fd;
+  ch.host = std::move(host);
+  ch.port = port;
+  ch.tcp = tcp;
+  ch.state = ChannelState::Background;
+  return id;
+}
+
+bool NC::describePeer(int fd, std::string &host, uint16_t &port) {
+  sockaddr_storage ss{};
+  socklen_t sl = sizeof ss;
+  if (::getpeername(fd, reinterpret_cast<sockaddr *>(&ss), &sl) < 0)
+    return false;
+  char h[NI_MAXHOST], p[NI_MAXSERV];
+  if (getnameinfo(reinterpret_cast<sockaddr *>(&ss), sl, h, sizeof h, p, sizeof p, NI_NUMERICHOST | NI_NUMERICSERV) !=
+      0)
+    return false;
+  host = h;
+  port = static_cast<uint16_t>(std::strtoul(p, nullptr, 10));
+  return true;
+}
+
+int NC::adoptLocked(int fd) {
+  if (fd < 0)
+    return -1;
+  int type = 0;
+  socklen_t tl = sizeof type;
+  if (::getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &tl) < 0)
+    return -1; // not a socket / bad descriptor
+
+  std::string host = "unknown";
+  uint16_t port = 0;
+  describePeer(fd, host, port); // may fail for unconnected sockets; keep placeholders
+
+  set_nonblocking(fd);
+  fcntl(fd, F_SETFD, FD_CLOEXEC);
+  return addChannelLocked(fd, std::move(host), port, type == SOCK_STREAM);
+}
+
+int NC::adoptConnection(int fd) {
+  int id;
+  {
+    std::lock_guard<std::mutex> lock(mtx);
+    id = adoptLocked(fd);
+  }
+  if (id < 0)
+    throw std::runtime_error("adoptConnection: fd " + std::to_string(fd) + " is not a usable socket");
+  wakeReader();
+  logger->debug("nc: adopted fd {} as channel {}", fd, id);
+  return id;
+}
+
+std::string NC::startListener(uint16_t port) {
+  int one = 1;
+  int fd = ::socket(AF_INET6, SOCK_STREAM, 0); // dual-stack first
+  if (fd >= 0) {
+    ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
+    int off = 0;
+    ::setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof off);
+    sockaddr_in6 a{};
+    a.sin6_family = AF_INET6;
+    a.sin6_addr = in6addr_any;
+    a.sin6_port = htons(port);
+    if (::bind(fd, reinterpret_cast<sockaddr *>(&a), sizeof a) < 0) {
+      ::close(fd);
+      fd = -1;
+    }
+  }
+  if (fd < 0) { // IPv6 unavailable (or bind failed): plain IPv4
+    fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0)
+      throw std::runtime_error(std::string("socket(): ") + strerror(errno));
+    ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
+    sockaddr_in a{};
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = htonl(INADDR_ANY);
+    a.sin_port = htons(port);
+    if (::bind(fd, reinterpret_cast<sockaddr *>(&a), sizeof a) < 0) {
+      int e = errno;
+      ::close(fd);
+      throw std::runtime_error(std::string("bind(): ") + strerror(e));
+    }
+  }
+  if (::listen(fd, 16) < 0) {
+    int e = errno;
+    ::close(fd);
+    throw std::runtime_error(std::string("listen(): ") + strerror(e));
+  }
+  set_nonblocking(fd);
+  fcntl(fd, F_SETFD, FD_CLOEXEC);
+
+  uint16_t actual = port; // resolve the real port when 0 was requested
+  sockaddr_storage ss{};
+  socklen_t sl = sizeof ss;
+  if (::getsockname(fd, reinterpret_cast<sockaddr *>(&ss), &sl) == 0) {
+    actual = ss.ss_family == AF_INET6 ? ntohs(reinterpret_cast<sockaddr_in6 *>(&ss)->sin6_port)
+                                      : ntohs(reinterpret_cast<sockaddr_in *>(&ss)->sin_port);
+  }
+
+  int id;
+  {
+    std::lock_guard<std::mutex> lock(mtx);
+    id = nextListenerId++;
+    Listener &l = listeners[id];
+    l.id = id;
+    l.fd = fd;
+    l.port = actual;
+  }
+  wakeReader();
+  logger->debug("nc: listener {} on port {}", id, actual);
+  return "Listening on port " + std::to_string(actual) + " (listener " + std::to_string(id) +
+         "); accepted connections go to the background";
+}
+
+std::string NC::stopListener(int id) {
+  {
+    std::lock_guard<std::mutex> lock(mtx);
+    auto it = listeners.find(id);
+    if (it == listeners.end())
+      throw std::runtime_error("No such listener: " + std::to_string(id));
+    explo::lib::close(it->second.fd);
+    listeners.erase(it);
+  }
+  wakeReader();
+  return "Listener " + std::to_string(id) + " stopped";
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

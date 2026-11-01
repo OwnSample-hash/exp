@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <filesystem>
 #include <functional>
+#include <interfaces/tool.hpp>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -33,6 +34,7 @@ struct Session {
   uuid id;
   uuid toolId;
   bool isAlive{true};
+  bool isEmpheral{false};
   HeartBeat HeartBeat_;
   void *data{nullptr};
 };
@@ -48,8 +50,9 @@ public:
   SessionStore &operator=(const SessionStore &) = delete;
   SessionStore &operator=(SessionStore &&) = delete;
 
-  Session &addSession(uuid toolId, bool isAlive, HeartBeat heartbeat = {}, void *data = nullptr);
-  Session &addSession(bool isAlive, HeartBeat heartbeat, void *data = nullptr);
+  Session &addSession(uuid toolId, bool isAlive, bool isEmperal = false, HeartBeat heartbeat = {},
+                      void *data = nullptr);
+  Session &addSession(bool isAlive, bool isEmperal = false, HeartBeat heartbeat = {}, void *data = nullptr);
   Session &at(const uuid &id);
   const Session &at(const uuid &id) const;
   Session &operator[](const uuid &id) { return at(id); }

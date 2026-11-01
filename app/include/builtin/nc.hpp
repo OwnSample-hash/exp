@@ -46,6 +46,12 @@ class NC final : public ITool {
     std::string error;   // reason when closed by error
   };
 
+  struct Listener {
+    int id = 0;
+    int fd = -1;
+    uint16_t port = 0; // host byte order (actual port, even if 0 was requested)
+  };
+
   /// Upper bound of unread data kept per channel. When reached the reader stops draining the socket, so TCP
   /// back-pressure applies instead of unbounded memory growth.
   static constexpr std::size_t kMaxBuffered = 1u << 20;
@@ -62,6 +68,8 @@ class NC final : public ITool {
   std::mutex mtx;
   std::map<int, Channel> channels;
   int nextId = 1;
+  std::map<int, Listener> listeners; // accepted connections are turned into background channels
+  int nextListenerId = 1;
 
   // Background reader thread + self-pipe used to wake it when the set of watched fds changes.
   std::thread reader;
@@ -73,10 +81,15 @@ class NC final : public ITool {
   static void write_all(int fd, const char *data, std::size_t len);
   static void set_nonblocking(int fd);
   static bool parseCaret(std::string_view notation, unsigned char &out);
+  static bool describePeer(int fd, std::string &host, uint16_t &port);
 
   void setBackgroundKey(std::string_view notation);
 
+  int addChannelLocked(int fd, std::string host, uint16_t port, bool tcp); // caller holds `mtx`
+  int adoptLocked(int fd);                                                  // caller holds `mtx`; -1 if fd unusable
   int openChannel(const NCConfig &cfg);
+  std::string startListener(uint16_t port);
+  std::string stopListener(int id);
   std::string runForeground(int id);
   std::string listChannels();
   std::string closeChannel(int id);
@@ -87,6 +100,13 @@ class NC final : public ITool {
 public:
   NC() {};
   ~NC() override { shutdown(); }
+
+  /**
+   * Turns an already connected socket into a new background channel and returns the channel id.
+   * Takes ownership of `fd` on success (it is set non-blocking and closed by the tool). On failure
+   * (not a socket / invalid fd) it throws and the caller keeps ownership. Thread-safe.
+   */
+  int adoptConnection(int fd);
 
   const char *getName() const override { return "nc"; }
   const SemVer getVersion() const override { return {0, 0, 2}; }

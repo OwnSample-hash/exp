@@ -3,6 +3,7 @@
 #include <fstream>
 #include <interfaces/tool.hpp>
 #include <stdexcept>
+#include <yaml-cpp/emittermanip.h>
 #include <yaml-cpp/yaml.h>
 
 extern thread_local explo::ITool *currentTool;
@@ -31,18 +32,18 @@ SessionStore::~SessionStore() {
   Save();
 }
 
-Session &SessionStore::addSession(uuid toolId, bool isAlive, HeartBeat heartbeat, void *data) {
+Session &SessionStore::addSession(uuid toolId, bool isAlive, bool isEmpheral, HeartBeat heartbeat, void *data) {
   const uuid id = NewUUID();
   std::lock_guard<std::mutex> lock(mutex_);
-  auto [iter, inserted] = sessions_.emplace(id, Session{id, toolId, isAlive, std::move(heartbeat), data});
+  auto [iter, inserted] = sessions_.emplace(id, Session{id, toolId, isAlive, isEmpheral, std::move(heartbeat), data});
   if (!inserted) {
     throw std::runtime_error("Session already exists");
   }
   return iter->second;
 }
 
-Session &SessionStore::addSession(bool isAlive, HeartBeat heartbeat, void *data) {
-  return addSession(currentTool->getUUID(), isAlive, std::move(heartbeat), data);
+Session &SessionStore::addSession(bool isAlive, bool isEmpheral, HeartBeat heartbeat, void *data) {
+  return addSession(currentTool->getUUID(), isAlive, isEmpheral, std::move(heartbeat), data);
 }
 
 Session &SessionStore::at(const uuid &id) {
@@ -70,6 +71,8 @@ bool SessionStore::Save() const {
   YAML::Emitter output;
   output << YAML::BeginSeq;
   for (const auto &[id, session] : sessions_) {
+    if (session.isEmpheral)
+      continue;
     output << YAML::BeginMap;
     output << YAML::Key << "id" << YAML::Value << uuids::to_string(session.id);
     output << YAML::Key << "toolId" << YAML::Value << uuids::to_string(session.toolId);
@@ -111,7 +114,7 @@ bool SessionStore::Load(const HeartBeatResolver &heartbeat_resolver) {
     if (heartbeat_resolver) {
       heartbeat = heartbeat_resolver(*toolId);
     }
-    loaded.emplace(*id, Session{*id, *toolId, node["isAlive"].as<bool>(), std::move(heartbeat), nullptr});
+    loaded.emplace(*id, Session{*id, *toolId, node["isAlive"].as<bool>(), false, std::move(heartbeat), nullptr});
   }
 
   {
