@@ -1,0 +1,26 @@
+- name: ENABLE
+  prompt: Enable encoder?
+  type: bool
+  help_text: Enable or disable the payload encoder tool provider.
+  cmake_export: true
+  default: True
+
+- name: DIRECTORY
+  prompt: "Directory to recursively scan for encoder definitions"
+  type: string
+  default: "./encoders"
+  help_text: "The directory scanned for *.yaml encoder definitions. Each file describes one encoder."
+  show_if:
+    - ENABLE
+  cmake_export: true
+  cmake_help: $help_text$
+
+- name: WORK_DIR
+  prompt: "Scratch directory for compile artifacts"
+  type: string
+  default: "./.encoder_work"
+  help_text: "Directory used for temporary build artifacts when compiling sources into binary blobs."
+  show_if:
+    - ENABLE
+  cmake_export: true
+  cmake_help: $help_text$

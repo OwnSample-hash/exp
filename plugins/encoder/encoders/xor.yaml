@@ -1,0 +1,27 @@
+name: xor
+version: 0.1.0
+description: >
+  Repeating-key XOR transform. Reversible (apply again with the same key to
+  decode). Commonly used to keep a payload buffer free of bad bytes (NUL,
+  newline, ...) that would break a vulnerable parser, and for simple obfuscation
+  of embedded data.
+tags: [transform, byte, reversible]
+method: transform
+
+inputs:
+  - name: input
+    type: bytes
+    required: true
+    description: "Data to encode: a literal string, 0x<hex>, or @path/to/file."
+  - name: key
+    type: string
+    default: "0xaa"
+    description: "XOR key: a literal string or 0x<hex>."
+
+steps:
+  - op: xor
+    key: ${key}
+
+outputs:
+  - name: output
+    format: c

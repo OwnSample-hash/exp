@@ -1,0 +1,20 @@
+name: hex
+version: 0.1.0
+description: >
+  Hex-encode a buffer. Handy for logging, transport, or pasting a blob into a
+  script. Reversible with the matching decoder.
+tags: [transform, codec, transport]
+method: transform
+
+inputs:
+  - name: input
+    type: bytes
+    required: true
+    description: "Data to encode: a literal string, 0x<hex>, or @path/to/file."
+
+steps:
+  - op: hex
+
+outputs:
+  - name: output
+    format: raw

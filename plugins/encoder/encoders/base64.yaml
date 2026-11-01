@@ -1,0 +1,20 @@
+name: base64
+version: 0.1.0
+description: >
+  Base64-encode a buffer for transport over text-only channels. Reversible with
+  the matching decoder.
+tags: [transform, codec, transport]
+method: transform
+
+inputs:
+  - name: input
+    type: bytes
+    required: true
+    description: "Data to encode: a literal string, 0x<hex>, or @path/to/file."
+
+steps:
+  - op: base64
+
+outputs:
+  - name: output
+    format: raw
