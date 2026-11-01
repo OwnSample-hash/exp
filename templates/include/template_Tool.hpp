@@ -11,11 +11,13 @@ public:
   {CONFIG_NEW_MODULE_NAME}() = default;
   ~{CONFIG_NEW_MODULE_NAME}() = default;
   const char *getName() const override {{ return "{CONFIG_NEW_MODULE_NAME}"; }}
-  const char *getVersion() const override {{ return "0.0.1";}}
+  const SemVer getVersion() const override {{ return {{"0.0.1"}}; }}
   const std::vector<std::string> &getTags() const override {{
     static std::vector<std::string> tags = {{"utility"}};
     return tags;
   }}
+
+  const uuids::uuid getUUID() override { return uuids::uuid::from_string({UUID}).value(); }
 
   void initialize(initArgs &) override;
 

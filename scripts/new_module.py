@@ -5,6 +5,7 @@ import pathlib
 import argparse
 import argcomplete
 import tabulate
+import uuid
 
 
 class FileTemplate:
@@ -220,6 +221,7 @@ if __name__ == "__main__":
             if template.skip_first_line:
                 template_lines = template_lines[1:]
             # content = "".join(template_lines) % tuple(template.fargs)
+            config_data["UUID"] = str(uuid.uuid4())
             content = "".join(template_lines).format_map(config_data)
             with open(target_path, "w") as out_file:
                 out_file.write(content)
