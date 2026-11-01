@@ -6,7 +6,12 @@
 namespace explo {
 namespace cmd {
 
-static constexpr char CTRL_C = 0x03;
+static constexpr char CTRL_A = 0x01; // move to start of line
+static constexpr char CTRL_C = 0x03; // clear line
+static constexpr char CTRL_E = 0x05; // move to end of line
+static constexpr char CTRL_K = 0x0B; // kill from cursor to end of line
+static constexpr char CTRL_U = 0x15; // clear whole line
+static constexpr char CTRL_W = 0x17; // delete previous word
 
 // ── Built-in command names ─────────────────────────────────────────────────
 static constexpr const char *kSet = "set";
@@ -479,53 +484,135 @@ ExecutionResult CommandProcessor::executeLine(const std::string &line) {
 
 InputResult CommandProcessor::feed(char c) {
 
-  static bool escapeSeq = false;
+  // Escape sequence state machine.
+  //   escState 0: normal input
+  //   escState 1: seen ESC, expecting CSI '[' or SS3 'O' introducer
+  //   escState 2: inside sequence, accumulating the numeric parameter
+  static int escState = 0;
+  static int escParam = 0;
 
-  if (c == 0x1B) { // Start of escape sequence
-    escapeSeq = true;
-    return InputResult::Escape;
+  if (escState == 1) {
+    if (c == '[' || c == 'O') { // CSI or SS3 introducer
+      escState = 2;
+      escParam = 0;
+      return InputResult::Escape; // wait for the rest of the sequence
+    }
+    escState = 0; // lone ESC or unsupported sequence – ignore
+    return InputResult::Consumed;
   }
 
-  if (escapeSeq) {
-    if (c == '[') {               // '[' indicates arrow keys
-      return InputResult::Escape; // Still in escape sequence, wait for next char
+  if (escState == 2) {
+    if (c >= '0' && c <= '9') { // accumulate the numeric parameter
+      escParam = escParam * 10 + (c - '0');
+      return InputResult::Escape;
     }
-    escapeSeq = false;
-
-    if (c == 'A') {
-      // Up arrow – recall previous command
+    escState = 0;
+    switch (c) {
+    case 'A': // Up arrow – recall previous command
       if (!history_.empty()) {
         bufferBackup_ = buffer_;
         if (historyIndex_ > 0)
           buffer_ = history_[--historyIndex_];
         cursorPos_ = buffer_.size();
       }
-    } else if (c == 'B') {
-      // Down arrow – clear line
+      break;
+    case 'B': // Down arrow – recall next command
       if (historyIndex_ < history_.size()) {
         bufferBackup_ = buffer_;
         buffer_ = (historyIndex_ < history_.size() - 1) ? history_[++historyIndex_] : "";
         cursorPos_ = buffer_.size();
       }
-    } else if (c == 'D') {
-      if (cursorPos_ > 0)
-        cursorPos_--;
-    } else if (c == 'C') {
+      break;
+    case 'C': // Right arrow
       if (cursorPos_ < buffer_.size())
         cursorPos_++;
+      break;
+    case 'D': // Left arrow
+      if (cursorPos_ > 0)
+        cursorPos_--;
+      break;
+    case 'H': // Home (xterm)
+      cursorPos_ = 0;
+      break;
+    case 'F': // End (xterm)
+      cursorPos_ = buffer_.size();
+      break;
+    case '~': // CSI <n> ~ : extended navigation/edit keys
+      switch (escParam) {
+      case 1: // Home
+      case 7:
+        cursorPos_ = 0;
+        break;
+      case 4: // End
+      case 8:
+        cursorPos_ = buffer_.size();
+        break;
+      case 3: // Delete – remove the character under the cursor
+        if (cursorPos_ < buffer_.size())
+          buffer_.erase(buffer_.begin() + cursorPos_);
+        break;
+      default: // PgUp/PgDn/etc. – ignored
+        break;
+      }
+      break;
+    default:
+      break;
     }
     return InputResult::Consumed;
+  }
+
+  if (c == 0x1B) { // Start of escape sequence
+    escState = 1;
+    return InputResult::Escape;
   }
 
   // Ctrl-C  → clear line
   if (c == CTRL_C) {
     buffer_.clear();
+    cursorPos_ = 0;
     return InputResult::Cleared;
   }
 
-  // Backspace
+  // Ctrl-U → clear whole line
+  if (c == CTRL_U) {
+    buffer_.clear();
+    cursorPos_ = 0;
+    return InputResult::Cleared;
+  }
+
+  // Ctrl-A → move to start of line
+  if (c == CTRL_A) {
+    cursorPos_ = 0;
+    return InputResult::Consumed;
+  }
+
+  // Ctrl-E → move to end of line
+  if (c == CTRL_E) {
+    cursorPos_ = buffer_.size();
+    return InputResult::Consumed;
+  }
+
+  // Ctrl-K → kill from the cursor to the end of the line
+  if (c == CTRL_K) {
+    if (cursorPos_ < buffer_.size())
+      buffer_.erase(buffer_.begin() + cursorPos_, buffer_.end());
+    return InputResult::Consumed;
+  }
+
+  // Ctrl-W → delete the word before the cursor
+  if (c == CTRL_W) {
+    std::size_t end = cursorPos_;
+    while (cursorPos_ > 0 && buffer_[cursorPos_ - 1] == ' ')
+      cursorPos_--;
+    while (cursorPos_ > 0 && buffer_[cursorPos_ - 1] != ' ')
+      cursorPos_--;
+    buffer_.erase(buffer_.begin() + cursorPos_, buffer_.begin() + end);
+    return InputResult::Consumed;
+  }
+
+  // Backspace → delete the character before the cursor
   if (c == '\b' || c == 127) {
-    if (!buffer_.empty())
+    if (cursorPos_ > 0)
       buffer_.erase(buffer_.begin() + --cursorPos_);
     return InputResult::Consumed;
   }

@@ -47,6 +47,13 @@ void UI::printResult(const cmd::ExecutionResult &r) {
 
 void UI::printError(const std::string &msg) { std::cerr << "\033[31m[error] " << msg << "\033[0m\n"; }
 
+void UI::redraw(const std::string &prompt, const std::string &buffer, std::size_t cursorPos) {
+  std::cout << "\r\033[0K" << prompt << buffer;
+  if (cursorPos != buffer.size())
+    std::cout << "\033[" << (buffer.size() - cursorPos) << "D";
+  std::cout << std::flush;
+}
+
 inline int UI::getch() {
   int r = 0;
   unsigned char c = 0;
@@ -83,31 +90,20 @@ void UI::runLoop() {
 
     switch (cp.feed(ch)) {
     case cmd::InputResult::Escape: {
-      int ch = getch();
-      auto res = cp.feed(ch);
-      std::vector<char> escapeBuffer;
-      escapeBuffer.reserve(16);
-      escapeBuffer.push_back(ch);
+      // Feed the rest of the escape sequence byte-by-byte until the processor
+      // reports it is complete (arrow keys, Home/End, Delete, …).
+      cmd::InputResult res = cmd::InputResult::Escape;
       while (res == cmd::InputResult::Escape) {
-        ch = getch();
-        escapeBuffer.push_back(ch);
-        logger->trace("ch: {}", ch);
-        res = cp.feed(ch);
+        int ech = getch();
+        if (ech <= 0)
+          break;
+        logger->trace("esc ch: {}", ech);
+        res = cp.feed((char)ech);
       }
       auto vars = cp.vars();
       auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
-      std::cout << "\r\033[K" << prompt << cp.buffer();
-      if (ch == 'A' || ch == 'B') {
-        std::cout << "\r\033[K" << prompt << cp.buffer() << std::flush;
-      } else if (ch == 'C') {
-        if (cp.cursorPos() != cp.buffer().size())
-          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
-      } else if (ch == 'D') {
-        if (cp.cursorPos() != cp.buffer().size())
-          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D" << std::flush;
-      }
-
+      redraw(prompt, cp.buffer(), cp.cursorPos());
       break;
     }
 
@@ -125,19 +121,15 @@ void UI::runLoop() {
       auto vars = cp.vars();
       auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
-      if (ch == '\b' || ch == 127) {
-        std::cout << "\r\033[0K" << prompt << cp.buffer();
-        if (cp.cursorPos() != cp.buffer().size()) {
-          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D";
-        }
+      bool printable = (ch >= 0x20 && ch != 127);
+      if (printable && cp.cursorPos() == cp.buffer().size()) {
+        // Fast path: an ordinary character appended at the end of the line.
+        std::cout << (char)ch << std::flush;
       } else {
-        if (cp.cursorPos() != cp.buffer().size()) {
-          std::cout << "\r\033[0K" << prompt << cp.buffer();
-          std::cout << "\033[" << (cp.buffer().size() - cp.cursorPos()) << "D";
-        } else
-          std::cout << (char)ch << std::flush;
+        // Any edit that moves the cursor or changes the middle/tail of the
+        // line (backspace, Ctrl-K/W, cursor moves, mid-line insert).
+        redraw(prompt, cp.buffer(), cp.cursorPos());
       }
-      std::cout << std::flush;
       break;
     }
     case cmd::InputResult::Cleared:
