@@ -1,0 +1,6 @@
+- name: ENABLE
+  prompt: Enable fwd?
+  type: bool
+  help_text: Enable or disable the fwd tunnelling / port-forwarding tool (drives a local fwdd daemon).
+  cmake_export: true
+  default: True
