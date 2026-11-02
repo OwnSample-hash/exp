@@ -30,12 +30,7 @@ void UI::printAutocomplete(const std::string &buf, bool unique) {
   auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
   std::string prompt = vars.expand(rawPrompt);
   spdlog::trace("Autocomplete: buf='{}', unique={}", buf, unique);
-  if (unique)
-    std::cout << "\r\033[2K" << prompt << buf; // << "\033[" << buf.size() - cp.cursorPos() << "C" << std::flush
-  else {
-    std::cout << "\a";
-  }
-  std::cout << std::flush;
+  std::cout << "\r\033[2K" << prompt << buf << std::flush;
 }
 
 void UI::printResult(const cmd::ExecutionResult &r) {
@@ -55,14 +50,15 @@ void UI::redraw(const std::string &prompt, const std::string &buffer, std::size_
 }
 
 inline int UI::getch() {
-  int r = 0;
   unsigned char c = 0;
-  if ((r = read(STDIN_FILENO, &c, sizeof(c))) < 0) {
+  ssize_t r;
+  while ((r = read(STDIN_FILENO, &c, sizeof(c))) < 0) {
+    if (errno == EINTR)
+      continue; // interrupted by a signal – retry rather than feed a junk byte
     logger->error("Error reading from stdin: {}", strerror(errno));
-    return r;
-  } else {
-    return c;
+    return 0;
   }
+  return r == 0 ? 0 : c; // r == 0 means EOF
 }
 
 void UI::runLoop() {
@@ -167,7 +163,11 @@ void UI::initialize(initArgs &args) {
   tcgetattr(STDIN_FILENO, &origTermios);
   atexit([]() { tcsetattr(STDIN_FILENO, TCSANOW, &origTermios); });
   std::memcpy(&newTermios, &origTermios, sizeof(newTermios));
-  newTermios.c_lflag &= ~(ICANON | ECHO);
+  // Disable canonical mode and echo so we get bytes as they are typed, and
+  // disable ISIG/IEXTEN/IXON so Ctrl-C, Ctrl-V and Ctrl-S/Q are delivered to
+  // us as raw bytes (feed() handles them) instead of being eaten by the tty.
+  newTermios.c_lflag &= ~(ICANON | ECHO | ISIG | IEXTEN);
+  newTermios.c_iflag &= ~(IXON);
   tcsetattr(STDIN_FILENO, TCSANOW, &newTermios);
 #endif
   // signal(SIGINT, SIG_IGN);
