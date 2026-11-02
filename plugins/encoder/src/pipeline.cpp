@@ -92,9 +92,7 @@ Bytes applyStep(const TransformStep &step, Bytes data, const std::map<std::strin
 }
 
 std::string renderFormat(const std::string &format, const Bytes &blob, const std::string &name) {
-  if (format == "raw")
-    return codec::formatRaw(blob);
-  if (format == "exe")
+  if (format == "raw" or format == "exe")
     return codec::formatRaw(blob);
   if (format == "hex")
     return codec::formatHex(blob);
