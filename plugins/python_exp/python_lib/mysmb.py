@@ -5,7 +5,9 @@ from impacket.dcerpc.v5 import transport, scmr
 from struct import pack
 from threading import Thread
 import os
+import sys
 import cmd
+
 try:
     import ConfigParser
 except ImportError:
