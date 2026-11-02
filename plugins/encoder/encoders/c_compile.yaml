@@ -1,0 +1,62 @@
+name: c_compile
+version: 0.1.0
+description: >
+  Compile a C source file into a flat binary blob and render it for embedding.
+  Demonstrates the "compile from source" method: the source is built with the
+  toolchain for the selected target, the machine code is extracted from the
+  object with objcopy, and the result is rendered in the chosen output format.
+  Supports multiple cross-compilation targets.
+tags: [compile, blob, cross-platform]
+method: compile
+
+requirements:
+  - cc
+  - objcopy
+
+source_input: source
+target_input: target
+default_target: linux-x86_64
+
+inputs:
+  - name: source
+    type: file
+    required: true
+    default: "stubs/example_stub.c"
+    description: "C source file to compile (relative paths resolve next to this definition)."
+  - name: target
+    type: enum
+    default: linux-x86_64
+    values: [linux-x86_64, linux-i686, windows-x86_64]
+    description: "Target platform / toolchain to build with."
+  - name: output
+    type: file
+    required: true
+    description: "Output file to write the rendered result to."
+
+toolchains:
+  linux-x86_64:
+    cc: cc
+    mode: executable
+    cflags: ["-Os", "-ffreestanding", "-fno-asynchronous-unwind-tables", "-fno-stack-protector"]
+    objcopy: objcopy
+    extract: ["-O", "binary", "-j", ".text"]
+    out_ext: ".o"
+
+  linux-i686:
+    cc: cc
+    mode: executable
+    cflags: ["-m32", "-Os", "-ffreestanding", "-fno-stack-protector"]
+    objcopy: objcopy
+    extract: ["-O", "binary", "-j", ".text"]
+    out_ext: ".o"
+
+  windows-x86_64:
+    cc: x86_64-w64-mingw32-gcc
+    mode: executable
+    cflags: ["-Os", "-ffreestanding", "-static"]
+    out_ext: ".exe"
+
+outputs:
+  - name: output
+    format: exe
+    file: "${output}"

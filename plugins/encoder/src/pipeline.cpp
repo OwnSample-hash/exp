@@ -2,6 +2,7 @@
 #include <process.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
 
@@ -42,11 +43,15 @@ Bytes readFile(const std::filesystem::path &path) {
   return Bytes((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
 }
 
-void writeFile(const std::filesystem::path &path, const Bytes &data) {
+void writeFile(const std::filesystem::path &path, const Bytes &data,
+               std::filesystem::perms perms = std::filesystem::perms::owner_read |
+                                              std::filesystem::perms::owner_write) {
   std::ofstream f(path, std::ios::binary | std::ios::trunc);
   if (!f)
     throw std::runtime_error("cannot write file: " + path.string());
   f.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
+  f.close();
+  std::filesystem::permissions(path, perms);
 }
 
 // Interpret an input value as bytes: "@path" reads a file, "0x.." is hex,
@@ -88,6 +93,8 @@ Bytes applyStep(const TransformStep &step, Bytes data, const std::map<std::strin
 
 std::string renderFormat(const std::string &format, const Bytes &blob, const std::string &name) {
   if (format == "raw")
+    return codec::formatRaw(blob);
+  if (format == "exe")
     return codec::formatRaw(blob);
   if (format == "hex")
     return codec::formatHex(blob);
@@ -174,6 +181,9 @@ Bytes runCompile(const EncoderDef &def, const std::map<std::string, std::string>
 
 } // namespace
 
+#define o_rw_ fs::perms::owner_read | std::filesystem::perms::owner_write
+#define o_rwx std::filesystem::perms::owner_all
+
 EncodeResult runEncoder(const EncoderDef &def, const std::map<std::string, std::string> &inputs,
                         const std::filesystem::path &workDir) {
   EncodeResult result;
@@ -197,6 +207,8 @@ EncodeResult runEncoder(const EncoderDef &def, const std::map<std::string, std::
       std::filesystem::path outPath = expand(out.file, inputs);
       if (out.format == "raw")
         writeFile(outPath, result.blob);
+      else if (out.format == "exe")
+        writeFile(outPath, result.blob, o_rwx);
       else
         writeFile(outPath, codec::toBytes(result.rendered));
       result.outputFile = outPath.string();

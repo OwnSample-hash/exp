@@ -16,12 +16,7 @@ if(ENCODER_ENABLE)
 
   add_custom_command(TARGET ${MOD_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${MOD_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/../$<TARGET_FILE_NAME:${MOD_NAME}>
-  )
-
-  # Make the bundled encoder definitions available next to the built module so
-  # the default ./encoders lookup resolves during local runs.
-  add_custom_command(TARGET ${MOD_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/encoders ${CMAKE_CURRENT_BINARY_DIR}/../../encoders
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/encoders ${CMAKE_BINARY_DIR}/encoders
   )
 
   if(ENABLE_TESTS)

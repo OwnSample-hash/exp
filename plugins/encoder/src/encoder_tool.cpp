@@ -117,8 +117,8 @@ void EncoderTool::execute() {
     // Validate enum inputs.
     if (in.type == "enum" && !in.values.empty() &&
         std::find(in.values.begin(), in.values.end(), value) == in.values.end()) {
-      lastResult = "\033[1;31mencoder '" + def.name + "': '" + value + "' is not a valid value for '" + in.name +
-                   "'\033[0m";
+      lastResult =
+          "\033[1;31mencoder '" + def.name + "': '" + value + "' is not a valid value for '" + in.name + "'\033[0m";
       return;
     }
     inputs[in.name] = value;
@@ -140,7 +140,7 @@ void EncoderTool::execute() {
   }
 
   // The rendered output goes to stdout; the command returns a short summary.
-  std::cout << res.rendered;
+  // std::cout << res.rendered;
   if (!res.rendered.empty() && res.rendered.back() != '\n')
     std::cout << '\n';
 
