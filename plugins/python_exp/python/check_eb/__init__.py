@@ -26,8 +26,8 @@ def RegisterTool():
         },
         "rootRequired": False,
         "makeCommand": True,
-        "shutdown": lambda: explo.info("Shutting down Check EB plugin..."),
-        "initialize": lambda: explo.info("Initializing Check EB plugin..."),
+        "shutdown": lambda: explo.info("Shutting down Check EB tool..."),
+        "initialize": lambda: explo.info("Initializing Check EB tool..."),
         "execute": lambda: main(
             explo.var("domain"),
             explo.var("username"),
