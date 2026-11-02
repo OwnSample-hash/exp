@@ -1,0 +1,246 @@
+# libfwd compile-time configuration.
+#
+# Single source of truth for the library's build-time switches. The project's
+# menuconfig (scripts/conf.py) emits these as CONFIG_FWD_* defines into the
+# git-ignored include/fwd_config.hpp; fwd_config.h maps them onto the library's
+# documented FWD_* macro names (each still overridable with -D). Edit defaults
+# here, never the generated header.
+#
+# runtime_export is false throughout: these are C library build switches, not
+# application runtime options, so they stay out of the CONFIG_FWD_OPTS X-macro
+# list (which also keeps this header free of names the fwd plugin's own
+# generated fwd_config.hpp uses).
+
+# ---- version --------------------------------------------------------------
+- name: MAJOR
+  prompt: Major version
+  type: int
+  default: 1
+  runtime_export: false
+  help_text: libfwd major version.
+
+- name: MINOR
+  prompt: Minor version
+  type: int
+  default: 0
+  runtime_export: false
+  help_text: libfwd minor version.
+
+- name: PATCH
+  prompt: Patch version
+  type: int
+  default: 3
+  runtime_export: false
+  help_text: libfwd patch version.
+
+# ---- high level features --------------------------------------------------
+- name: ENABLE_IPV4
+  prompt: Enable IPv4
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: IPv4 support.
+
+- name: ENABLE_IPV6
+  prompt: Enable IPv6
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: IPv6 support.
+
+- name: ENABLE_PORTFWD
+  prompt: Enable port forwarding
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: User space TCP/UDP port forwarding.
+
+- name: ENABLE_TCP_FWD
+  prompt: Enable TCP forwarding
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: TCP port forwarding.
+
+- name: ENABLE_UDP_FWD
+  prompt: Enable UDP forwarding
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: UDP port forwarding.
+
+- name: ENABLE_TUNTAP
+  prompt: Enable TUN/TAP tunnels
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: Linux TUN/TAP tunnels.
+
+- name: ENABLE_NETLINK
+  prompt: Enable netlink routes
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: Linux rtnetlink routes / interface addresses.
+
+- name: ENABLE_SYSCTL
+  prompt: Enable sysctl access
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: /proc/sys access for forwarding sysctls.
+
+- name: ENABLE_CTL
+  prompt: Enable UDP control channel
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: UDP control server plus the client helper.
+
+- name: ENABLE_QUIC
+  prompt: Enable QUIC
+  type: bool
+  default: false
+  runtime_export: false
+  help_text: QUIC (TLS 1.3) control channel and tunnels; needs OpenSSL >= 3.5 (linked in by CMake when on).
+
+# ---- individual system calls (syscall wrapper, see fwd_sys.h) -------------
+- name: SYS_SOCKET
+  prompt: syscall socket
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: socket().
+
+- name: SYS_BIND
+  prompt: syscall bind
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: bind().
+
+- name: SYS_LISTEN
+  prompt: syscall listen
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: listen().
+
+- name: SYS_ACCEPT
+  prompt: syscall accept
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: accept().
+
+- name: SYS_CONNECT
+  prompt: syscall connect
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: connect().
+
+- name: SYS_SHUTDOWN
+  prompt: syscall shutdown
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: shutdown().
+
+- name: SYS_SEND
+  prompt: syscall send
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: send().
+
+- name: SYS_RECV
+  prompt: syscall recv
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: recv().
+
+- name: SYS_SENDTO
+  prompt: syscall sendto
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: sendto().
+
+- name: SYS_RECVFROM
+  prompt: syscall recvfrom
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: recvfrom().
+
+- name: SYS_SETSOCKOPT
+  prompt: syscall setsockopt
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: setsockopt().
+
+- name: SYS_GETSOCKOPT
+  prompt: syscall getsockopt
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: getsockopt().
+
+- name: SYS_CLOSE
+  prompt: syscall close
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: close().
+
+- name: SYS_READ
+  prompt: syscall read
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: read().
+
+- name: SYS_WRITE
+  prompt: syscall write
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: write().
+
+- name: SYS_OPEN
+  prompt: syscall open
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: open().
+
+- name: SYS_IOCTL
+  prompt: syscall ioctl
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: ioctl().
+
+- name: SYS_POLL
+  prompt: syscall poll
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: poll().
+
+- name: SYS_NONBLOCK
+  prompt: syscall nonblock
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: non-blocking socket support.
+
+- name: SYS_CLOCK
+  prompt: syscall clock
+  type: bool
+  default: true
+  runtime_export: false
+  help_text: monotonic clock access.

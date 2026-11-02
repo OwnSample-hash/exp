@@ -318,10 +318,10 @@ std::string Fwd::startDaemonLocked() {
     pid_t pid = spawnProcess(argv, logPath);
     if (pid <= 0)
       return -1;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < CONFIG_FWD_READY_RETRIES; ++i) {
       if (reapIfExited(pid))
         return -1; // exec failed or the daemon died at startup
-      if (pingDaemonLocked(250))
+      if (pingDaemonLocked(CONFIG_FWD_READY_INTERVAL_MS))
         return pid;
     }
     killAndReap(pid);
@@ -398,7 +398,7 @@ std::string Fwd::sendRawLocked(const std::string &encoded) {
 
   const std::string line = config.token.empty() ? encoded : (config.token + "@" + encoded);
   char resp[FWD_MAX_RESP + 1];
-  int rc = fwd_client_request(&srv, config.port, line.c_str(), resp, sizeof resp, 3000);
+  int rc = fwd_client_request(&srv, config.port, line.c_str(), resp, sizeof resp, CONFIG_FWD_CONTROL_TIMEOUT_MS);
   if (rc < 0)
     throw std::runtime_error(std::string("control channel: ") + fwd_strerror(rc));
   resp[rc] = '\0';

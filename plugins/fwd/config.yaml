@@ -1,6 +1,70 @@
+# fwd plugin configuration.
+#
+# Single source of truth for the plugin's build-time settings. The project's
+# menuconfig (scripts/conf.py) emits these as CONFIG_FWD_* defines into the
+# git-ignored include/fwd_config.hpp, which the code reads. Edit the defaults
+# here; never edit the generated header.
+
 - name: ENABLE
   prompt: Enable fwd?
   type: bool
-  help_text: Enable or disable the fwd tunnelling / port-forwarding tool (drives a local fwdd daemon).
+  help_text: Build the fwd tunnelling / port-forwarding tool (drives a local fwdd daemon).
   cmake_export: true
-  default: True
+  runtime_export: false
+  default: true
+
+- name: ADDR
+  prompt: Control channel address
+  type: string
+  help_text: Loopback / management address fwdd binds its control channel to and the tool connects to.
+  default: "127.0.0.1"
+  show_if:
+    - ENABLE
+
+- name: PORT
+  prompt: Control channel UDP port
+  type: int
+  help_text: UDP port of the fwdd control channel.
+  default: 7777
+  show_if:
+    - ENABLE
+
+- name: TOKEN
+  prompt: Control token
+  type: string
+  help_text: Fixed control token; empty means a fresh random token is generated each session.
+  default: ""
+  show_if:
+    - ENABLE
+
+- name: PREFER_ROOT
+  prompt: Prefer root
+  type: bool
+  help_text: Start fwdd as root via 'sudo -n' when possible (needed for routes, tunnels and sysctl).
+  default: true
+  show_if:
+    - ENABLE
+
+- name: CONTROL_TIMEOUT_MS
+  prompt: Control request timeout (ms)
+  type: int
+  help_text: How long to wait for a response to a control command.
+  default: 3000
+  show_if:
+    - ENABLE
+
+- name: READY_RETRIES
+  prompt: Daemon readiness attempts
+  type: int
+  help_text: Number of control-channel pings used to decide a freshly spawned fwdd is up.
+  default: 12
+  show_if:
+    - ENABLE
+
+- name: READY_INTERVAL_MS
+  prompt: Daemon readiness ping timeout (ms)
+  type: int
+  help_text: Per-attempt timeout while waiting for a freshly spawned fwdd to answer.
+  default: 250
+  show_if:
+    - ENABLE

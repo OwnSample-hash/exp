@@ -2,11 +2,17 @@ if(FWD_ENABLE)
   set(MOD_NAME fwd)
   set(MOD_SRC src/fwd.cpp)
 
+  # config.yaml is the single source of truth for the plugin's build-time
+  # settings; the project's menuconfig (scripts/conf.py) emits the git-ignored
+  # include/fwd_config.hpp of CONFIG_FWD_* defines the code reads.
+
   # The shared module links libfwd (the static `fwd` target from tools/fwd), so
   # the plugin target cannot also be named `fwd`; build it as `fwd_mod` and give
   # the artifact the plain `fwd.so` name the loader expects.
   add_library(fwd_mod SHARED ${MOD_SRC})
-  target_include_directories(fwd_mod PUBLIC include ../../include/)
+  # `include` first (BEFORE) so the plugin's own fwd_config.hpp wins over
+  # libfwd's identically named header reached through the linked fwd target.
+  target_include_directories(fwd_mod BEFORE PUBLIC include ../../include/)
   target_link_libraries(fwd_mod PRIVATE spdlog::spdlog fwd::fwd)
 
   execute_process(COMMAND uuidgen OUTPUT_VARIABLE ${MOD_NAME}_UUID OUTPUT_STRIP_TRAILING_WHITESPACE)

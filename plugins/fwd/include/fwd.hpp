@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstdint>
+#include <fwd_config.hpp> // generated from config.yaml (CONFIG_FWD_*)
 #include <interfaces/tool.hpp>
 #include <memory>
 #include <mutex>
@@ -28,10 +29,10 @@ using namespace explo;
 
 class Fwd final : public ITool {
   struct Config {
-    std::string addr = "127.0.0.1"; ///< control channel bind/connect address (keep on loopback)
-    uint16_t port = 7777;           ///< UDP control port
-    std::string token;              ///< control token; generated on first start
-    bool preferRoot = true;         ///< escalate via sudo -n when not already root
+    std::string addr = CONFIG_FWD_ADDR;      ///< control channel bind/connect address (keep on loopback)
+    uint16_t port = CONFIG_FWD_PORT;         ///< UDP control port
+    std::string token = CONFIG_FWD_TOKEN;    ///< control token; empty = generated on first start
+    bool preferRoot = CONFIG_FWD_PREFER_ROOT; ///< escalate via sudo -n when not already root
   };
 
   std::shared_ptr<spdlog::logger> logger;
