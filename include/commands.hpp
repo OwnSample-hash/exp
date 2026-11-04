@@ -216,7 +216,7 @@
                    return matches;
                  });
     c.addDynamic("<var_value>", R"(.+)", "Value of the variable");
-    c.variadic = false;
+    c.variadic = true;
     c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
       if (ec.args.size() < 3)
         throw std::runtime_error("Usage: rset <var_name> <var_value>");
@@ -229,7 +229,10 @@
           cp.vars().set(var_name, cmd::VarValue(std::stoll(var_value.substr(2))));
         else if (var_value[1] == 'f')
           cp.vars().set(var_name, cmd::VarValue(std::stod(var_value.substr(2))));
-        else if (var_value[1] == 'b') {
+        else if (var_value[1] == 'a') {
+          std::vector<std::string> arr(ec.args.begin() + 3, ec.args.end());
+          cp.vars().set(var_name, cmd::VarValue(arr));
+        } else if (var_value[1] == 'b') {
           std::string val = var_value.substr(2);
           std::transform(val.begin(), val.end(), val.begin(), ::tolower);
           if (val == "true" || val == "1")
