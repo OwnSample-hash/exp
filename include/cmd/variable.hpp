@@ -29,7 +29,7 @@ struct VarValue {
   explicit VarValue(bool b) : type(VarType::Bool), ival(b ? 1 : 0) {}
 
   // Coercion to string (for expansion)
-  std::string toString() const;
+  std::string toString(char sep = ' ') const;
   // Coercion to int (for conditions)
   long long toInt() const;
   // Coercion to bool (for conditions)

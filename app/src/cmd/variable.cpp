@@ -10,7 +10,7 @@ namespace cmd {
 // ── VarValue
 // ──────────────────────────────────────────────────────────────────
 
-std::string VarValue::toString() const {
+std::string VarValue::toString(char sep) const {
   switch (type) {
   case VarType::String:
     return sval;
@@ -27,7 +27,7 @@ std::string VarValue::toString() const {
     std::string out;
     for (size_t i = 0; i < aval.size(); ++i) {
       if (i)
-        out += ' ';
+        out += sep;
       out += aval[i];
     }
     return out;
