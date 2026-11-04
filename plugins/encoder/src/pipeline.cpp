@@ -1,9 +1,14 @@
+#include "spdlog/logger.h"
 #include <pipeline.hpp>
 #include <process.hpp>
 
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <spdlog/fmt/fmt.h>
+#include <spdlog/fmt/ranges.h>
+#include <spdlog/fmt/std.h>
+#include <spdlog/spdlog.h>
 #include <stdexcept>
 
 namespace enc {
@@ -138,12 +143,14 @@ Bytes runCompile(const EncoderDef &def, const std::map<std::string, std::string>
   if (tc.mode == "object")
     cc.push_back("-c");
   for (const auto &f : tc.cflags)
-    cc.push_back(f);
+    cc.push_back(expand(f, inputs));
   cc.push_back(source.string());
   cc.push_back("-o");
   cc.push_back(artifact.string());
   for (const auto &f : tc.ldflags)
-    cc.push_back(f);
+    cc.push_back(expand(f, inputs));
+
+  spdlog::trace("Running compiler: {}", cc);
 
   ProcResult compileRes = runProcess(cc);
   if (!compileRes.spawned)

@@ -87,7 +87,8 @@ ProcResult runProcess(const std::vector<std::string> &argv, const std::vector<ui
     std::vector<char *> cargv;
     cargv.reserve(argv.size() + 1);
     for (const auto &a : argv)
-      cargv.push_back(const_cast<char *>(a.c_str()));
+      if (!a.empty())
+        cargv.push_back(const_cast<char *>(a.c_str()));
     cargv.push_back(nullptr);
     ::execvp(cargv[0], cargv.data());
     // execvp only returns on failure.

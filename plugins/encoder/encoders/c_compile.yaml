@@ -30,30 +30,36 @@ inputs:
     description: "Target platform / toolchain to build with."
   - name: output
     type: file
+    default: "a.out"
     required: true
     description: "Output file to write the rendered result to."
+  - name: cflags
+    type: list
+    default: []
+    description: "Additional flags to pass to the C compiler."
+  - name: ldflags
+    type: list
+    default: []
+    description: "Additional flags to pass to the linker."
 
 toolchains:
   linux-x86_64:
     cc: cc
     mode: executable
     cflags: ["-Os", "-ffreestanding", "-fno-asynchronous-unwind-tables", "-fno-stack-protector"]
-    objcopy: objcopy
-    extract: ["-O", "binary", "-j", ".text"]
-    out_ext: ".o"
+    out_ext: ""
 
   linux-i686:
     cc: cc
     mode: executable
     cflags: ["-m32", "-Os", "-ffreestanding", "-fno-stack-protector"]
-    objcopy: objcopy
-    extract: ["-O", "binary", "-j", ".text"]
-    out_ext: ".o"
+    out_ext: ""
 
   windows-x86_64:
     cc: x86_64-w64-mingw32-gcc
     mode: executable
-    cflags: ["-Os", "-ffreestanding", "-static"]
+    cflags: ["-Os", "", "${cflags}"]
+    ldflags: ["-Wl,--subsystem,console", "${ldflags}"]
     out_ext: ".exe"
 
 outputs:

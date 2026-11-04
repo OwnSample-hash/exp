@@ -24,7 +24,7 @@ Method methodFromString(const std::string &s);
 /** @brief One configurable input, surfaced to the user as a tool variable. */
 struct InputSpec {
   std::string name;
-  std::string type = "string"; // string | bytes | file | enum | int
+  std::string type = "string"; // string | bytes | file | enum | int | list
   std::string description;
   std::string def; // default value, rendered as a string
   bool required = false;
