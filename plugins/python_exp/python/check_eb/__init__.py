@@ -1,6 +1,7 @@
 import explo
 from .eternal_checker import *
 
+
 def RegisterTool():
     return {
         "name": "check_eb",
@@ -22,7 +23,7 @@ def RegisterTool():
             "password": "Password (default: empty)",
             "remoteName": "Remote name (default: empty)",
             "target": "Target IP address can be used instead of remoteName (default: None)",
-            "port": "Target port (default: 445)"
+            "port": "Target port (default: 445)",
         },
         "rootRequired": False,
         "makeCommand": True,
@@ -34,7 +35,9 @@ def RegisterTool():
             explo.var("password"),
             explo.var("remoteName"),
             explo.var("target"),
-            explo.var("port")
-        )
+            explo.var("port"),
+        ),
     }
+
+
 # Vim: set expandtab tabstop=4 shiftwidth=4:

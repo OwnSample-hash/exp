@@ -1,6 +1,7 @@
 #include <cmd.hpp>
 #include <pylib.hpp>
 #include <pytypedefs.h>
+#include <unicodeobject.h>
 
 static auto &getLogger() {
   static std::shared_ptr<spdlog::logger> logger;
@@ -30,8 +31,24 @@ PyObject *Py_var(PyObject *self, PyObject *args) {
     PyErr_SetString(PyExc_TypeError, "Invalid arguments for var");
     return nullptr;
   }
+
+  PyThreadState *threadState = PyThreadState_Get();
+  PyFrameObject *frame = PyThreadState_GetFrame(threadState);
+  if (!frame) {
+    PyErr_SetString(PyExc_RuntimeError, "No frame available");
+    return nullptr;
+  }
+  PyObject *globals = PyFrame_GetGlobals(frame);
+
+  PyObject *name = nullptr;
+  PyDict_GetItemStringRef(globals, "__name__", &name);
+  std::string prefix = PyUnicode_AsUTF8(name);
+  Py_DECREF(globals);
+  Py_DECREF(frame);
+
   auto &vars = explo::cmd::CommandProcessor::instance().vars();
-  auto value = vars.get(var_name);
+  auto value = vars.get(prefix + "." + var_name);
+  getLogger()->trace("Python var lookup: {} -> {}", prefix + "." + var_name, value.has_value() ? "found" : "not found");
   if (!value.has_value()) {
     PyErr_SetString(PyExc_KeyError, "Variable not found");
     return nullptr;

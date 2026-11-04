@@ -3,6 +3,7 @@
 #include <python3.14/Python.h>
 #include <python_exp_config.hpp>
 #include <tool.hpp>
+#include <unicodeobject.h>
 
 using namespace std::literals;
 
@@ -166,6 +167,7 @@ void PythonTool::initialize(initArgs &args) {
         valid = false;
       }
     }
+    PyObject_SetAttrString(module, "__name__", PyUnicode_FromString(name.c_str()));
     PyObject *tagsObject = PyDict_GetItemString(definition, "tags");
     if (valid && (tagsObject == nullptr || !PyList_Check(tagsObject))) {
       logger->error("Python tool '{}' requires list 'tags'", scriptPath.string());
