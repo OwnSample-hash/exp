@@ -4,6 +4,7 @@
 #include <config/config.hpp>
 #include <config/json.hpp>
 #include <config/yaml.hpp>
+#include <cstdlib>
 #include <dep.hpp>
 #include <filesystem>
 #include <fuzz.hpp>
