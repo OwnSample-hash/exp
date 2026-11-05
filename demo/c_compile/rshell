@@ -1,0 +1,9 @@
+use c_compile
+rset c_compile.source stubs/rshell.c
+rset c_compile.target windows-x86_64
+rset c_compile.output rshell.exe
+rset c_compile.cflags %ar -DHOST="localhost" -DPORT="6000" -s -nostdlib -nostartfiles -e start -ffreestanding -fno-asynchronous-unwind-tables -fno-ident
+rset c_compile.ldflags %ar -lws2_32 -lkernel32 -Wl,--gc-sections
+run
+exit
+
