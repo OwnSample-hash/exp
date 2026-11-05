@@ -271,7 +271,7 @@ int start() {
   Buf out;
   SecureZeroMemory(&out, sizeof(out));
   DWORD code = 0;
-  sendQ(sock, "Minial rexec shell.\rThere are no terminal key handling capabilities.\n");
+  sendQ(sock, "Minial rexec shell.\nThere are no terminal key handling capabilities.\n");
   while (running) {
     if (n == 0) {
       GetCurrentDirectoryA(sizeof(path), path);
