@@ -1,13 +1,14 @@
-#include "spdlog/logger.h"
 #include <pipeline.hpp>
 #include <process.hpp>
 
+#include <cmd.hpp>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ranges.h>
 #include <spdlog/fmt/std.h>
+#include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
@@ -139,16 +140,32 @@ Bytes runCompile(const EncoderDef &def, const std::map<std::string, std::string>
   std::filesystem::create_directories(workDir);
   const std::filesystem::path artifact = workDir / (def.name + "_" + target + tc.outExt);
 
+  auto &vars = explo::cmd::CommandProcessor::instance().vars();
+
   std::vector<std::string> cc = {tc.cc};
   if (tc.mode == "object")
     cc.push_back("-c");
   for (const auto &f : tc.cflags)
     cc.push_back(expand(f, inputs));
+
+  auto cflags = vars.get(def.name + ".cflags");
+
+  spdlog::trace("Inserting additional cflags for encoder '{}': {}", def.name, ".cflags");
+  if (cflags.has_value()) {
+    cc.insert(cc.end(), cflags->aval.begin(), cflags->aval.end());
+  }
+
   cc.push_back(source.string());
   cc.push_back("-o");
   cc.push_back(artifact.string());
   for (const auto &f : tc.ldflags)
     cc.push_back(expand(f, inputs));
+
+  spdlog::trace("Inserting additional ldflags for encoder '{}': {}", def.name, ".ldflags");
+  auto ldflags = vars.get(def.name + ".ldflags");
+  if (ldflags.has_value()) {
+    cc.insert(cc.end(), ldflags->aval.begin(), ldflags->aval.end());
+  }
 
   spdlog::trace("Running compiler: {}", cc);
 

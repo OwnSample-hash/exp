@@ -58,8 +58,8 @@ toolchains:
   windows-x86_64:
     cc: x86_64-w64-mingw32-gcc
     mode: executable
-    cflags: ["-Os", "", "${cflags}"]
-    ldflags: ["-Wl,--subsystem,console", "${ldflags}"]
+    cflags: ["-Os"]
+    ldflags: ["-Wl,--subsystem,console"]
     out_ext: ".exe"
 
 outputs:

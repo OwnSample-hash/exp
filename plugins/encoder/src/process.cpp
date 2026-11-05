@@ -1,7 +1,6 @@
 #include <process.hpp>
 
 #include <cerrno>
-#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
