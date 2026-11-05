@@ -136,13 +136,7 @@ class MYSMB(smb.SMB):
         smb.SMB.__init__(self, remote_host, remote_host, timeout=timeout)
 
     def find_named_pipe(self, firstOnly=True):
-        pipes_file = '/usr/share/metasploit-framework/data/wordlists/named_pipes.txt'
-        try:
-            with open(pipes_file) as f:
-                pipes = [ x.strip() for x in f.readlines()]
-        except IOError as e:
-            print("[-] Could not open {}, trying hardcoded values".format(pipes_file))
-            pipes = [ 'netlogon', 'lsarpc', 'samr', 'browser', 'spoolss', 'atsvc', 'DAV RPC SERVICE', 'epmapper', 'eventlog', 'InitShutdown', 'keysvc', 'lsass', 'LSM_API_service', 'ntsvcs', 'plugplay', 'protected_storage', 'router', 'SapiServerPipeS-1-5-5-0-70123', 'scerpc', 'srvsvc', 'tapsrv', 'trkwks', 'W32TIME_ALT', 'wkssvc', r'PIPE_EVENTROOT\CIMV2SCM EVENT PROVIDER', 'db2remotecmd' ]
+        pipes = [ 'netlogon', 'lsarpc', 'samr', 'browser', 'spoolss', 'atsvc', 'DAV RPC SERVICE', 'epmapper', 'eventlog', 'InitShutdown', 'keysvc', 'lsass', 'LSM_API_service', 'ntsvcs', 'plugplay', 'protected_storage', 'router', 'SapiServerPipeS-1-5-5-0-70123', 'scerpc', 'srvsvc', 'tapsrv', 'trkwks', 'W32TIME_ALT', 'wkssvc', r'PIPE_EVENTROOT\CIMV2SCM EVENT PROVIDER', 'db2remotecmd' ]
         tid = self.tree_connect_andx('\\\\'+self.get_remote_host()+'\\'+'IPC$')
         found_pipes = []
         for pipe in pipes:
