@@ -8,4 +8,3 @@ rset fuzz.kind GET
 rset fuzz.header "Connection: Close|User-Agent: fuzz-tool||Accept: */*"
 rset fuzz.wrong_status_code %d404
 run
-exit

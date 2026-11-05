@@ -4,4 +4,3 @@ run
 rset bini.target plugins/bini.so
 run
 mem
-exit

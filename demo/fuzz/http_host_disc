@@ -6,4 +6,3 @@ rset fuzz.type_ host
 rset fuzz.kind GET
 run
 mem
-exit
