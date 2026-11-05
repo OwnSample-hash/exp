@@ -1183,6 +1183,7 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
     #     scmr_.hRCloseServiceHandle(scmr, service)
     #     scmr_.hRCloseServiceHandle(scmr, scHandle)
     print("done.")
+    print("[*] From the output it may seem it didn't work, but it did. Check nc for connections.")
 
 
 def exploit(target, port, username, password, pipe_name, share, mode, payload_file):

