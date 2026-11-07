@@ -1,6 +1,7 @@
 #pragma once
 
 #include "interfaces/mod.hpp"
+#include <cmd/var_snapshot.hpp>
 #include <interfaces/tool.hpp>
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -12,6 +13,7 @@ class bini final : public ITool {
   std::optional<args::Command> biniCommand;
   std::vector<std::string> targets;
   std::string type;
+  cmd::VarSnapshot varSnap; // preserves published variables across suppress()/invoke()
 
 public:
   bini() = default;

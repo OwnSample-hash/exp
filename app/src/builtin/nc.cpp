@@ -203,12 +203,15 @@ void NC::invoke(std::string_view prefix, bool soft) {
   // May be called many times. Only (re)publishes the variables; channels and the reader are untouched.
   this->prefix = prefix;
   auto &vars = cmd::CommandProcessor::instance().vars();
-  vars.set(this->prefix + "bgch", cmd::VarValue{bgKeyNotation}); // caret notation, default ^T
+  varSnap.restore();                        // bring back the user's last value across reselects
+  if (!vars.get(this->prefix + "bgch"))
+    vars.set(this->prefix + "bgch", cmd::VarValue{bgKeyNotation}); // caret notation, default ^T
 }
 
 void NC::suppress() {
   // May be called many times. Background channels keep being read by the reader thread.
   auto &vars = cmd::CommandProcessor::instance().vars();
+  varSnap.save(this->prefix + "bgch");      // remember it before we remove it
   vars.unset(this->prefix + "bgch");
 }
 

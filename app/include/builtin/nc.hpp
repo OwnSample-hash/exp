@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <atomic>
 #include <cstdint>
+#include <cmd/var_snapshot.hpp>
 #include <interfaces/tool.hpp>
 #include <map>
 #include <memory>
@@ -59,6 +60,7 @@ class NC final : public ITool {
   std::shared_ptr<spdlog::logger> logger;
   NCConfig config;
   std::string prefix; // variable prefix, set by invoke()
+  cmd::VarSnapshot varSnap; // preserves published variables across suppress()/invoke()
 
   // Background key, stored as caret notation (e.g. "^T"); bgKeyByte is the decoded control byte.
   std::string bgKeyNotation = "^T";

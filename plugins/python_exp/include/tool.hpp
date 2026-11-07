@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <cmd/var_snapshot.hpp>
 #include <interfaces/tool.hpp>
 #include <multivalue.hpp>
 #include <python3.14/Python.h>
@@ -42,6 +43,7 @@ class PythonTool final : public explo::ITool {
   std::vector<std::tuple<std::unique_ptr<args::ValueFlagBase>, PythonFlagtype>> flags;
   std::unordered_map<std::string, PythonType> varTypes, vars;
   std::unordered_map<std::string, std::string> descs;
+  cmd::VarSnapshot varSnap; // preserves published variables across suppress()/invoke()
   uuids::uuid uuid;
 
   void releasePythonObjects() noexcept;

@@ -72,22 +72,26 @@ void bini::initialize(initArgs &args) {
 void bini::invoke(std::string_view prefix, bool soft) {
   this->prefix = prefix;
   auto &vars = cmd::CommandProcessor::instance().vars();
-  if (soft && vars.get(this->prefix + ".target").has_value()) {
-    this->logger->info("Variable '{}' already exists, skipping due to soft invoke", this->prefix + ".target");
-  } else {
-    vars.set(this->prefix + ".target", cmd::VarValue{"a.out"});
-  }
-  if (soft && vars.get(this->prefix + ".type").has_value()) {
-    this->logger->info("Variable '{}' already exists, skipping due to soft invoke", this->prefix + ".type");
-  } else {
-    vars.set(this->prefix + ".type", cmd::VarValue{"summary"});
-  }
+  varSnap.restore(); // bring back the user's last target/type across reselects
+  // Seed a default only when the variable is absent, so a restored (or
+  // soft-preserved) value is never clobbered.
+  const auto seed = [&](const std::string &key, cmd::VarValue def) {
+    if (vars.get(key).has_value()) {
+      if (soft)
+        this->logger->info("Variable '{}' already exists, skipping due to soft invoke", key);
+      return;
+    }
+    vars.set(key, std::move(def));
+  };
+  seed(this->prefix + ".target", cmd::VarValue{"a.out"});
+  seed(this->prefix + ".type", cmd::VarValue{"summary"});
 }
 
 void bini::shutdown() { this->logger->info("Shutting down tool: {}", this->getName()); }
 
 void bini::suppress() {
   auto &vars = cmd::CommandProcessor::instance().vars();
+  varSnap.save({prefix + ".target", prefix + ".type"}); // remember before removing
   vars.unset(prefix + ".target");
   vars.unset(prefix + ".type");
 }

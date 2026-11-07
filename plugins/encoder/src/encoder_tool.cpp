@@ -84,9 +84,11 @@ void EncoderTool::initialize(initArgs &args) {
 void EncoderTool::invoke(std::string_view prefix, bool soft) {
   this->prefix = prefix;
   auto &vars = cmd::CommandProcessor::instance().vars();
+  varSnap.restore(); // bring back the user's last input values across reselects
   for (const auto &in : def.inputs) {
     const std::string key = this->prefix + "." + in.name;
-    if (soft && vars.get(key).has_value())
+    // A restored or soft-preserved value wins; only seed the default otherwise.
+    if (vars.get(key).has_value())
       continue;
     vars.set(key, cmd::VarValue(in.def));
   }
@@ -97,8 +99,10 @@ void EncoderTool::suppress() {
   auto &vars = cmd::CommandProcessor::instance().vars();
   for (const auto &in : def.inputs) {
     const std::string key = this->prefix + "." + in.name;
-    if (vars.get(key).has_value())
+    if (vars.get(key).has_value()) {
+      varSnap.save(key); // remember before removing
       vars.unset(key);
+    }
   }
 }
 

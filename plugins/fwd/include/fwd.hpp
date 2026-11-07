@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <fwd_config.hpp> // generated from config.yaml (CONFIG_FWD_*)
+#include <cmd/var_snapshot.hpp>
 #include <interfaces/tool.hpp>
 #include <memory>
 #include <mutex>
@@ -37,6 +38,7 @@ class Fwd final : public ITool {
 
   std::shared_ptr<spdlog::logger> logger;
   std::string prefix; ///< variable prefix, set by invoke()
+  cmd::VarSnapshot varSnap; ///< preserves published variables across suppress()/invoke()
 
   std::mutex mtx;        ///< guards the daemon state below
   Config config;         //

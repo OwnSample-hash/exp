@@ -147,10 +147,12 @@ void luaTool::invoke(std::string_view prefix, bool soft) {
   }
   auto &cpVars = cmd::CommandProcessor::instance().vars();
   cpVars.set("tool_path", cmd::VarValue(this->file));
+  varSnap.restore(); // bring back the user's last values across reselects
   auto var_table = vars.as<LTW>();
   for (const auto &[key, value] : var_table.iterate()) {
-    if (soft && cpVars.get(this->prefix + "." + key).has_value()) {
-      this->logger->info("Lua variable: '{}' already exists, skipping due to soft invoke", key);
+    // A restored or soft-preserved value wins; only seed the default otherwise.
+    if ((soft || varSnap.has(this->prefix + "." + key)) && cpVars.get(this->prefix + "." + key).has_value()) {
+      this->logger->info("Lua variable: '{}' already exists, skipping", key);
       continue;
     }
     if (value.is<std::string>()) {
@@ -211,6 +213,7 @@ void luaTool::suppress() {
     for (const auto &[key, value] : var_table.iterate()) {
       if (value.is<std::string>() || value.is<lua_Number>() || value.is<bool>()) {
         this->logger->info("Unsetting Lua variable: '{}'", key);
+        varSnap.save(prefix + "." + key); // remember before removing
         cpVars.unset(prefix + "." + key);
       } else {
         const char *type_name = abi::__cxa_demangle(typeid(value).name(), nullptr, nullptr, nullptr);

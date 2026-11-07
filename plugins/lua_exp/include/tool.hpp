@@ -2,6 +2,7 @@
 
 #include <args.hxx>
 #include <cmd.hpp>
+#include <cmd/var_snapshot.hpp>
 #include <interfaces/tool.hpp>
 #include <llib.hpp>
 #include <lua.h>
@@ -31,6 +32,7 @@ class luaTool final : public ITool {
   std::optional<args::Command> cmd;
   std::vector<std::tuple<args::ValueFlagBase *, luaFlagtype>> flags;
   std::unordered_map<std::string, luaVartype> varTypes;
+  cmd::VarSnapshot varSnap; // preserves published variables across suppress()/invoke()
   lua_State *L;
   LTW lua;
   int lastStatus = 0;

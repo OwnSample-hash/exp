@@ -161,12 +161,17 @@ void Fwd::shutdown() {
 
 void Fwd::invoke(std::string_view prefix, bool /*soft*/) {
   this->prefix = prefix;
-  readVars(); // adopt any values the user already set
+  varSnap.restore(); // re-publish the user's last settings before we read them back
+  readVars();        // adopt any values the user already set (or we just restored)
   publishVars();
 }
 
 void Fwd::suppress() {
   auto &vars = cmd::CommandProcessor::instance().vars();
+  // Remember the user-editable settings before removing them; "status" is
+  // recomputed on every publishVars(), so it is intentionally not snapshotted.
+  for (const char *n : {"addr", "port", "token", "sudo"})
+    varSnap.save(this->prefix + n);
   for (const char *n : {"addr", "port", "token", "sudo", "status"})
     vars.unset(this->prefix + n);
 }

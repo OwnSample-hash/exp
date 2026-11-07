@@ -10,6 +10,7 @@
 #include <encoder_def.hpp>
 
 #include <filesystem>
+#include <cmd/var_snapshot.hpp>
 #include <interfaces/tool.hpp>
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -23,6 +24,7 @@ class EncoderTool final : public ITool {
   std::shared_ptr<spdlog::logger> logger;
   std::filesystem::path workDir;
   std::string prefix;
+  cmd::VarSnapshot varSnap; // preserves published variables across suppress()/invoke()
   std::vector<std::string> tags;
   std::vector<std::string> missingRequirements;
   uuids::uuid uuid;

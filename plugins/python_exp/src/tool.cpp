@@ -411,8 +411,10 @@ void PythonTool::invoke(std::string_view prefix, bool soft) {
   logger->info("Invoking PythonTool with script: {} and prefix: {}", scriptPath.string(), prefix);
   logger->trace("Python is initialized: {}", Py_IsInitialized());
   auto &vars = cmd::CommandProcessor::instance().vars();
+  varSnap.restore(); // bring back the user's last values across reselects
   for (const auto &[key, value] : this->vars) {
-    if (soft && vars.get(this->prefix + "." + key).has_value()) {
+    // A restored or soft-preserved value wins; only seed the default otherwise.
+    if ((soft || varSnap.has(this->prefix + "." + key)) && vars.get(this->prefix + "." + key).has_value()) {
       logger->info("Python variable: '{}' already set, skipping", this->prefix + "." + key);
       continue;
     }
@@ -440,6 +442,7 @@ void PythonTool::suppress() {
   for (const auto &[key, value] : this->vars) {
     if (vars.get(this->prefix + "." + key).has_value()) {
       logger->info("Removing Python variable: '{}'", this->prefix + "." + key);
+      varSnap.save(this->prefix + "." + key); // remember before removing
       vars.unset(this->prefix + "." + key);
     } else {
       logger->info("Python variable: '{}' not set, skipping removal", this->prefix + "." + key);
