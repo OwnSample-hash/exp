@@ -208,6 +208,9 @@ CommandProcessor::CommandProcessor() {
   while (std::getline(historyFile, line)) {
     history_.push_back(line);
   }
+  // getline() reaching EOF sets eofbit/failbit; clear it so later writes
+  // (in feed()) are not silently discarded by the still-failed stream.
+  historyFile.clear();
   history_.erase(std::remove_if(history_.begin(), history_.end(), [](const std::string &s) { return s.empty(); }),
                  history_.end());
   history_.shrink_to_fit();
