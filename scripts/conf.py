@@ -96,7 +96,7 @@ def error_popup(stdscr: curses.window, message: str):
     stdscr.refresh()
 
 
-def question_popup(
+def yn_popup(
     stdscr: curses.window, header: str, footer: str, body_prefix: str = "", *body: str
 ) -> bool:
     """Display a question popup and return True for Yes, False for No"""
@@ -133,7 +133,7 @@ def question_popup(
             return False
 
 
-def qusetion_popup(stdscr: curses.window, question: str, length: int) -> str:
+def question_popup(stdscr: curses.window, question: str, length: int) -> str:
     """Display a question popup and return user input"""
     logger.verbose_1("Displaying question popup for input")  # pyright: ignore
     logger.verbose_2(f"{question=}")  # pyright: ignore
@@ -315,44 +315,74 @@ class MenuConfig:
             return False, tuple(collected_deps)
         return True, ("",)
 
+    def _scope_chain(
+        self, opt: ConfigOption, options: Optional[List[ConfigOption]] = None
+    ) -> Optional[List[List[ConfigOption]]]:
+        """Return the menus enclosing opt, innermost first (None if not found)"""
+        if options is None:
+            options = self.config
+        if any(o is opt for o in options):
+            return [options]
+        for o in options:
+            if o.children:
+                chain = self._scope_chain(opt, o.children)
+                if chain is not None:
+                    return chain + [options]
+        return None
+
+    def _resolve_option(self, opt: ConfigOption, name: str) -> Optional[ConfigOption]:
+        """Look up an option by name, starting in opt's own menu and walking
+        outwards; fall back to a global search if nothing matched."""
+        for menu in self._scope_chain(opt) or []:
+            for o in menu:
+                if o.name == name:
+                    return o
+        for o in self._flatten_options(self.config):
+            if o.name == name:
+                return o
+        return None
+
     def _check_show_if(self, opt: ConfigOption) -> bool:
-        """Check if show_if conditions are satisfied"""
+        """Check if show_if conditions are satisfied.
+
+        Every entry is ANDed together. An entry is the name of another option,
+        optionally prefixed with '!' to negate it. Entries naming an option that
+        doesn't exist are ignored.
+        """
         logger.verbose_1(  # pyright: ignore
             f"Checking show_if conditions for option: {opt.name}"
         )
         if not opt.show_if:
             return True
 
-        all_options = self._flatten_options(self.config)
-        name_to_option = {o.name: o for o in all_options}
+        conditions = opt.show_if
+        if isinstance(conditions, str):
+            conditions = [conditions]
 
-        for condition in opt.show_if:
-            logger.verbose_2(  # pyright: ignore
-                f"Evaluating show_if condition: {condition} {name_to_option[condition].value}"
-            )
-            if (
-                condition not in name_to_option
-                and not name_to_option[condition].value is None
-            ):
+        for condition in conditions:
+            condition = str(condition).strip()
+            negate = condition.startswith("!")
+            opt_name = condition[1:].strip() if negate else condition
+            ref = self._resolve_option(opt, opt_name)
+            if ref is None:
                 logger.warning(
-                    "show_if condition references unknown option/None value: {condition}"
+                    f"show_if of {opt.name} references unknown option '{opt_name}', ignoring"
                 )
-            if condition.startswith("!"):
-                opt_name = condition[1:]
-                if not name_to_option[opt_name].value:
-                    logger.verbose_1(  # pyright: ignore
-                        f"Condition '{condition}' not satisfied because {opt_name} is enabled"
-                    )
-                    return False
+                continue
+
+            if ref.type == ConfigType.TRISTATE:
+                truthy = ref.value in ("y", "m")
             else:
-                if not name_to_option[condition].value:
-                    logger.verbose_1(  # pyright: ignore
-                        f"Condition '{condition}' not satisfied because {condition} is not enabled"
-                    )
-                    logger.verbose_2(  # pyright: ignore
-                        f"{name_to_option[condition].value=}"
-                    )
-                    return False
+                truthy = bool(ref.value)
+            logger.verbose_2(  # pyright: ignore
+                f"Evaluating show_if condition: {condition} ({ref.value=}, {truthy=})"
+            )
+
+            if truthy == negate:
+                logger.verbose_1(  # pyright: ignore
+                    f"Condition '{condition}' not satisfied for {opt.name}"
+                )
+                return False
 
         logger.verbose_1(  # pyright: ignore
             f"All show_if conditions satisfied for {opt.name}"
@@ -504,7 +534,7 @@ class MenuConfig:
                     logger.debug(
                         f"Dependencies not satisfied for {opt.name}: {missing_deps}"
                     )
-                    answer = question_popup(
+                    answer = yn_popup(
                         stdscr,
                         "Missing dependencies",
                         "Enable missing dependencies? (y/n)",
@@ -682,7 +712,7 @@ class MenuConfig:
     def _delete_option(self, stdscr: curses.window, opt: ConfigOption):
         """Delete an option (not used in main loop)"""
         logger.verbose_1(f"Deleting option: {opt.name}")  # pyright: ignore
-        if not question_popup(
+        if not yn_popup(
             stdscr,
             "Confirm Deletion",
             f"Are you sure you want to delete option '{opt.name}'('{opt.prompt}')? (y/n)",
@@ -821,12 +851,12 @@ class MenuConfig:
         new_option_data = {}
         for opt in opts_to_ask:
             if opt == "range":
-                min = qusetion_popup(
+                min = question_popup(
                     stdscr,
                     f"Enter minimum value for range (default: {menu_entry[opt]['min']}): ",
                     10,
                 )
-                max = qusetion_popup(
+                max = question_popup(
                     stdscr,
                     f"Enter maximum value for range (default: {menu_entry[opt]['max']}): ",
                     10,
@@ -841,14 +871,14 @@ class MenuConfig:
                     "Entering choices for CHOICE option"
                 )
                 while True:
-                    choice_name = qusetion_popup(
+                    choice_name = question_popup(
                         stdscr,
                         "Enter choice name (or 'done' or '' (nothing) to finish): ",
                         40,
                     )
                     if choice_name.lower() == "done" or choice_name == "":
                         break
-                    choice_desc = qusetion_popup(
+                    choice_desc = question_popup(
                         stdscr,
                         f"Enter description for choice '{choice_name}': ",
                         60,
@@ -859,7 +889,7 @@ class MenuConfig:
                         {"name": choice_name, "description": choice_desc}
                     )
             else:
-                new_value = qusetion_popup(
+                new_value = question_popup(
                     stdscr, f"Enter value for {opt} (default: {menu_entry[opt]}): ", 40
                 )
                 new_option_data[opt] = new_value
@@ -985,7 +1015,7 @@ class MenuConfig:
                     continue
                 if props[idx]["name"] == "done":
                     break
-                new_value = qusetion_popup(
+                new_value = question_popup(
                     stdscr,
                     f"Enter new value for {props[idx]['description']} (current: {getattr(opt, props[idx]['name'])}): ",
                     60,
@@ -1009,14 +1039,14 @@ class MenuConfig:
                     )
                     choices = []
                     while True:
-                        choice_name = qusetion_popup(
+                        choice_name = question_popup(
                             stdscr,
                             "Enter choice name (or 'done' or '' (nothing) to finish): ",
                             40,
                         )
                         if choice_name.lower() == "done" or choice_name == "":
                             break
-                        choice_desc = qusetion_popup(
+                        choice_desc = question_popup(
                             stdscr,
                             f"Enter description for choice '{choice_name}': ",
                             60,
