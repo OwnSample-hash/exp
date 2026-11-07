@@ -50,6 +50,10 @@ foreach(exe fwdd fwdctl)
     C_EXTENSIONS ON
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tools/bin
   )
+  # FWD_LINK_STATIC (config.yaml): build fully static executables.
+  if(FWD_LINK_STATIC)
+    target_link_options(${exe} PRIVATE -static)
+  endif()
 endforeach()
 
 if(ENABLE_TESTS)

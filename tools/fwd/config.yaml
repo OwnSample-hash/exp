@@ -11,6 +11,16 @@
 # list (which also keeps this header free of names the fwd plugin's own
 # generated fwd_config.hpp uses).
 
+# ---- build ----------------------------------------------------------------
+- name: LINK_STATIC
+  prompt: Link fwdd/fwdctl statically
+  type: bool
+  default: false
+  cmake_export: true
+  runtime_export: false
+  cmake_help: $help_text$
+  help_text: Link the fwdd daemon and fwdctl client as fully static executables (-static).
+
 # ---- version --------------------------------------------------------------
 - name: MAJOR
   prompt: Major version
