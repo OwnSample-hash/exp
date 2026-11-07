@@ -85,6 +85,34 @@ Bytes applyStep(const TransformStep &step, Bytes data, const std::map<std::strin
     return codec::rotBytes(data, step.amount);
   } else if (op == "reverse") {
     return codec::reverseBytes(data);
+  } else if (op == "bswap") {
+    // Reverse bytes within each word. Width comes from the key (so it can be a
+    // ${var}), else the amount field, else defaults to 4 (32-bit).
+    size_t width = step.amount > 0 ? static_cast<size_t>(step.amount) : 4;
+    const std::string keyStr = expand(step.key, inputs);
+    if (!keyStr.empty()) {
+      try {
+        const int w = std::stoi(keyStr);
+        if (w > 0)
+          width = static_cast<size_t>(w);
+      } catch (const std::exception &) {
+        throw std::runtime_error("bswap width is not an integer: '" + keyStr + "'");
+      }
+    }
+    return codec::swapBytes(data, width);
+  } else if (op == "ip2num") {
+    // IP string => decimal number string.
+    return codec::toBytes(codec::ipToNumber(codec::toString(data)));
+  } else if (op == "num2ip") {
+    // Decimal number string => IP string; family from key ("4"/"6"), default 4.
+    const std::string fam = expand(step.key, inputs);
+    return codec::toBytes(codec::numberToIp(codec::toString(data), fam == "6" ? 6 : 4));
+  } else if (op == "ip2bytes") {
+    // IP string => packed network-order bytes (4 or 16).
+    return codec::ipToBytes(codec::toString(data));
+  } else if (op == "bytes2ip") {
+    // Packed network-order bytes => IP string.
+    return codec::toBytes(codec::bytesToIp(data));
   } else if (op == "hex") {
     return codec::toBytes(codec::toHex(data));
   } else if (op == "unhex") {

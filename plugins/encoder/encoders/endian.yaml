@@ -1,0 +1,27 @@
+name: endian
+version: 0.1.0
+description: >
+  Byte-swap a buffer to change endianness: the byte order is reversed within
+  each fixed-size word. Use width 2/4/8 for 16/32/64-bit words. Involutive for a
+  given width (apply again with the same width to undo). The buffer length must
+  be a multiple of the width.
+tags: [transform, endianness, byte]
+method: transform
+
+inputs:
+  - name: input
+    type: bytes
+    required: true
+    description: "Data to swap: a literal string, 0x<hex>, or @path/to/file."
+  - name: width
+    type: int
+    default: "4"
+    description: "Word size in bytes (2, 4 or 8). Byte order is reversed within each word."
+
+steps:
+  - op: bswap
+    key: ${width}
+
+outputs:
+  - name: output
+    format: hex

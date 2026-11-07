@@ -53,6 +53,49 @@ TEST_CASE("keyToBytes distinguishes hex from literal", "[codec]") {
   REQUIRE(keyToBytes("abc") == toBytes("abc"));
 }
 
+TEST_CASE("bswap reverses bytes within each word and round-trips", "[codec]") {
+  const Bytes data = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+  REQUIRE(swapBytes(data, 4) == Bytes({0x44, 0x33, 0x22, 0x11, 0x88, 0x77, 0x66, 0x55}));
+  REQUIRE(swapBytes(data, 2) == Bytes({0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0x88, 0x77}));
+  REQUIRE(swapBytes(swapBytes(data, 4), 4) == data); // involutive
+  REQUIRE(swapBytes(data, 1) == data);
+  REQUIRE_THROWS(swapBytes(data, 3)); // size not a multiple of width
+  REQUIRE_THROWS(swapBytes(data, 0));
+}
+
+TEST_CASE("arbitrary-width decimal round-trips", "[codec]") {
+  REQUIRE(bytesToDecimal({0x00}) == "0");
+  REQUIRE(bytesToDecimal({0x01, 0x00}) == "256");
+  REQUIRE(bytesToDecimal({0xff, 0xff, 0xff, 0xff}) == "4294967295");
+  REQUIRE(decimalToBytes("4294967295", 4) == Bytes({0xff, 0xff, 0xff, 0xff}));
+  REQUIRE(decimalToBytes("256", 4) == Bytes({0x00, 0x00, 0x01, 0x00}));
+  REQUIRE_THROWS(decimalToBytes("4294967296", 4)); // overflow
+  REQUIRE_THROWS(decimalToBytes("12x", 4));         // bad digit
+}
+
+TEST_CASE("IPv4 string <-> bytes <-> number", "[codec][ip]") {
+  REQUIRE(ipToBytes("192.168.1.1") == Bytes({192, 168, 1, 1}));
+  REQUIRE(bytesToIp({192, 168, 1, 1}) == "192.168.1.1");
+  REQUIRE(ipToNumber("192.168.1.1") == "3232235777");
+  REQUIRE(numberToIp("3232235777", 4) == "192.168.1.1");
+  REQUIRE(ipToNumber("0.0.0.0") == "0");
+  REQUIRE(numberToIp("0", 4) == "0.0.0.0");
+  REQUIRE_THROWS(ipToBytes("256.0.0.1"));  // octet out of range
+  REQUIRE_THROWS(ipToBytes("1.2.3"));      // too few octets
+}
+
+TEST_CASE("IPv6 string <-> bytes with :: compression", "[codec][ip]") {
+  const Bytes loop = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+  REQUIRE(ipToBytes("::1") == loop);
+  REQUIRE(bytesToIp(loop) == "::1");
+  REQUIRE(bytesToIp(ipToBytes("2001:db8::1")) == "2001:db8::1");
+  REQUIRE(ipToBytes("2001:db8::1") == ipToBytes("2001:0db8:0000:0000:0000:0000:0000:0001"));
+  // Full round-trip through the decimal number form.
+  REQUIRE(numberToIp(ipToNumber("2001:db8::ff"), 6) == "2001:db8::ff");
+  REQUIRE_THROWS(ipToBytes("2001:db8::1::2")); // two '::'
+  REQUIRE_THROWS(ipToBytes("gggg::1"));        // bad hex
+}
+
 TEST_CASE("formatters produce expected shapes", "[codec]") {
   const Bytes data = {0x90, 0x41};
   REQUIRE(formatHex(data) == "9041");

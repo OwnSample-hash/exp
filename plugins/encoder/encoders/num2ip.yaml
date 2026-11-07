@@ -1,0 +1,27 @@
+name: num2ip
+version: 0.1.0
+description: >
+  Convert an integer (decimal) back into an IP address string. Set family to 4
+  for IPv4 or 6 for IPv6 (the family cannot be inferred from the number alone).
+  Inverse of the ip2num encoder.
+tags: [ip, network, convert]
+method: transform
+
+inputs:
+  - name: input
+    type: string
+    required: true
+    description: "A decimal integer, e.g. 3232235777 or an IPv6-sized value."
+  - name: family
+    type: enum
+    default: "4"
+    values: ["4", "6"]
+    description: "Address family: 4 for IPv4, 6 for IPv6."
+
+steps:
+  - op: num2ip
+    key: ${family}
+
+outputs:
+  - name: output
+    format: raw

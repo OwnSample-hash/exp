@@ -1,5 +1,6 @@
 #include <codec.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <sstream>
@@ -47,6 +48,18 @@ Bytes rotBytes(const Bytes &data, int n) {
 }
 
 Bytes reverseBytes(const Bytes &data) { return Bytes(data.rbegin(), data.rend()); }
+
+Bytes swapBytes(const Bytes &data, size_t width) {
+  if (width == 0)
+    throw std::invalid_argument("swap width must be >= 1");
+  if (data.size() % width != 0)
+    throw std::invalid_argument("buffer size is not a multiple of the swap width");
+  Bytes out(data.size());
+  for (size_t base = 0; base < data.size(); base += width)
+    for (size_t i = 0; i < width; ++i)
+      out[base + i] = data[base + (width - 1 - i)];
+  return out;
+}
 
 std::string toHex(const Bytes &data, const std::string &sep) {
   static const char *digits = "0123456789abcdef";
@@ -194,6 +207,185 @@ Bytes keyToBytes(const std::string &spec) {
   if (spec.size() > 2 && spec[0] == '0' && (spec[1] == 'x' || spec[1] == 'X'))
     return fromHex(spec.substr(2));
   return toBytes(spec);
+}
+
+std::string bytesToDecimal(const Bytes &be) {
+  // Repeatedly divide the big-endian magnitude by 10, collecting remainders.
+  Bytes digits(be.begin(), be.end());
+  std::string out;
+  while (true) {
+    bool nonZero = false;
+    unsigned rem = 0;
+    for (size_t i = 0; i < digits.size(); ++i) {
+      const unsigned cur = (rem << 8) | digits[i];
+      digits[i] = static_cast<uint8_t>(cur / 10);
+      rem = cur % 10;
+      if (digits[i])
+        nonZero = true;
+    }
+    out.push_back(static_cast<char>('0' + rem));
+    if (!nonZero)
+      break;
+  }
+  std::reverse(out.begin(), out.end());
+  return out;
+}
+
+Bytes decimalToBytes(const std::string &dec, size_t nbytes) {
+  if (dec.empty())
+    throw std::invalid_argument("empty decimal integer");
+  Bytes out(nbytes, 0);
+  for (char c : dec) {
+    if (c < '0' || c > '9')
+      throw std::invalid_argument("invalid decimal digit");
+    unsigned carry = static_cast<unsigned>(c - '0');
+    // out = out * 10 + digit, big-endian, detecting overflow past nbytes.
+    for (size_t i = nbytes; i-- > 0;) {
+      const unsigned cur = static_cast<unsigned>(out[i]) * 10 + carry;
+      out[i] = static_cast<uint8_t>(cur & 0xff);
+      carry = cur >> 8;
+    }
+    if (carry)
+      throw std::invalid_argument("decimal value does not fit in " + std::to_string(nbytes) + " bytes");
+  }
+  return out;
+}
+
+Bytes ipToBytes(const std::string &ip) {
+  if (ip.find(':') != std::string::npos) {
+    // IPv6: split on "::" (at most once) into head and tail groups.
+    const size_t dpos = ip.find("::");
+    auto parseGroups = [](const std::string &s, std::vector<uint16_t> &out) {
+      if (s.empty())
+        return;
+      size_t start = 0;
+      while (start <= s.size()) {
+        size_t end = s.find(':', start);
+        if (end == std::string::npos)
+          end = s.size();
+        const std::string g = s.substr(start, end - start);
+        if (g.empty() || g.size() > 4)
+          throw std::invalid_argument("invalid IPv6 group");
+        uint16_t v = 0;
+        for (char c : g) {
+          const int d = hexVal(c);
+          if (d < 0)
+            throw std::invalid_argument("invalid IPv6 digit");
+          v = static_cast<uint16_t>((v << 4) | d);
+        }
+        out.push_back(v);
+        start = end + 1;
+      }
+    };
+    std::vector<uint16_t> head, tail;
+    if (dpos == std::string::npos) {
+      parseGroups(ip, head);
+      if (head.size() != 8)
+        throw std::invalid_argument("IPv6 address must have 8 groups");
+    } else {
+      if (ip.find("::", dpos + 1) != std::string::npos)
+        throw std::invalid_argument("IPv6 address has more than one '::'");
+      parseGroups(ip.substr(0, dpos), head);
+      parseGroups(ip.substr(dpos + 2), tail);
+      if (head.size() + tail.size() >= 8)
+        throw std::invalid_argument("IPv6 '::' must compress at least one zero group");
+    }
+    std::vector<uint16_t> groups = head;
+    groups.insert(groups.end(), 8 - head.size() - tail.size(), 0);
+    groups.insert(groups.end(), tail.begin(), tail.end());
+    Bytes out;
+    out.reserve(16);
+    for (uint16_t g : groups) {
+      out.push_back(static_cast<uint8_t>(g >> 8));
+      out.push_back(static_cast<uint8_t>(g & 0xff));
+    }
+    return out;
+  }
+
+  // IPv4: four dotted decimal octets.
+  Bytes out;
+  size_t start = 0;
+  while (start <= ip.size()) {
+    size_t end = ip.find('.', start);
+    if (end == std::string::npos)
+      end = ip.size();
+    const std::string oct = ip.substr(start, end - start);
+    if (oct.empty() || oct.size() > 3)
+      throw std::invalid_argument("invalid IPv4 octet");
+    int v = 0;
+    for (char c : oct) {
+      if (c < '0' || c > '9')
+        throw std::invalid_argument("invalid IPv4 digit");
+      v = v * 10 + (c - '0');
+    }
+    if (v > 255)
+      throw std::invalid_argument("IPv4 octet out of range");
+    out.push_back(static_cast<uint8_t>(v));
+    start = end + 1;
+  }
+  if (out.size() != 4)
+    throw std::invalid_argument("IPv4 address must have 4 octets");
+  return out;
+}
+
+std::string bytesToIp(const Bytes &packed) {
+  if (packed.size() == 4) {
+    std::string out;
+    for (size_t i = 0; i < 4; ++i) {
+      if (i)
+        out.push_back('.');
+      out += std::to_string(packed[i]);
+    }
+    return out;
+  }
+  if (packed.size() == 16) {
+    // Render canonical IPv6, compressing the longest run of zero groups.
+    uint16_t g[8];
+    for (int i = 0; i < 8; ++i)
+      g[i] = static_cast<uint16_t>((packed[2 * i] << 8) | packed[2 * i + 1]);
+    int bestStart = -1, bestLen = 0;
+    for (int i = 0; i < 8;) {
+      if (g[i] != 0) {
+        ++i;
+        continue;
+      }
+      int j = i;
+      while (j < 8 && g[j] == 0)
+        ++j;
+      if (j - i > bestLen) {
+        bestLen = j - i;
+        bestStart = i;
+      }
+      i = j;
+    }
+    if (bestLen < 2)
+      bestStart = -1; // only compress runs of 2+ groups
+    std::ostringstream os;
+    os << std::hex;
+    bool needColon = false; // whether the next group needs a leading ':'
+    for (int i = 0; i < 8;) {
+      if (i == bestStart) {
+        os << "::";
+        i += bestLen;
+        needColon = false; // "::" already supplies the separator
+        continue;
+      }
+      if (needColon)
+        os << ':';
+      os << g[i];
+      needColon = true;
+      ++i;
+    }
+    return os.str();
+  }
+  throw std::invalid_argument("packed IP must be 4 or 16 bytes");
+}
+
+std::string ipToNumber(const std::string &ip) { return bytesToDecimal(ipToBytes(ip)); }
+
+std::string numberToIp(const std::string &dec, int family) {
+  const size_t nbytes = (family == 6) ? 16 : 4;
+  return bytesToIp(decimalToBytes(dec, nbytes));
 }
 
 } // namespace enc::codec

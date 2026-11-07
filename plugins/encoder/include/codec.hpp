@@ -25,12 +25,30 @@ Bytes subBytes(const Bytes &data, uint8_t delta);
 Bytes rotBytes(const Bytes &data, int n);
 // Reverse the byte order of the buffer.
 Bytes reverseBytes(const Bytes &data);
+// Swap endianness: reverse the byte order within each group of `width` bytes.
+// `width` must be >= 1 and divide data.size(). Involutive for a fixed width.
+Bytes swapBytes(const Bytes &data, size_t width);
 
 // ── Reversible encodings ────────────────────────────────────────────────────
 std::string toHex(const Bytes &data, const std::string &sep = "");
 Bytes fromHex(const std::string &hex); // throws std::invalid_argument on bad input
 std::string toBase64(const Bytes &data);
 Bytes fromBase64(const std::string &b64); // throws std::invalid_argument on bad input
+
+// ── Arbitrary-width integers ────────────────────────────────────────────────
+// Interpret `be` as a big-endian unsigned integer and render it as a decimal
+// string, and the reverse into exactly `nbytes` big-endian bytes (throws on
+// overflow or on a non-decimal input).
+std::string bytesToDecimal(const Bytes &be);
+Bytes decimalToBytes(const std::string &dec, size_t nbytes);
+
+// ── IP addresses ────────────────────────────────────────────────────────────
+// Family is detected from the text ('.' => v4, ':' => v6) or the byte length
+// (4 => v4, 16 => v6). All throw std::invalid_argument on malformed input.
+Bytes ipToBytes(const std::string &ip);         // "1.2.3.4" => 4 bytes (network order)
+std::string bytesToIp(const Bytes &packed);     // 4 or 16 bytes => canonical string
+std::string ipToNumber(const std::string &ip);  // IP string => decimal integer string
+std::string numberToIp(const std::string &dec, int family); // decimal => IP string (family 4 or 6)
 
 // ── Output formatters ───────────────────────────────────────────────────────
 // Render a finished blob in a representation convenient for embedding/transport.

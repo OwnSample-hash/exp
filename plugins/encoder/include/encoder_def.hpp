@@ -40,7 +40,8 @@ struct OutputSpec {
 
 /** @brief A single reversible transform step (method == Transform). */
 struct TransformStep {
-  std::string op;  // xor | add | sub | rot | reverse | hex | unhex | base64 | unbase64
+  std::string op;  // xor | add | sub | rot | reverse | bswap | hex | unhex | base64 | unbase64
+                   // | ip2num | num2ip | ip2bytes | bytes2ip
   std::string key; // key/operand spec, may contain ${var}
   int amount = 0;  // operand for rot/add/sub
 };
