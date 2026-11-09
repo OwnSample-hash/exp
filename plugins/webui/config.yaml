@@ -12,3 +12,9 @@
   help_text: The timeout value for stopping the server due to no use in seconds.
   cmake_export: false
   default: 60
+
+- name: FILESERVER
+  prompt: File download server options
+  type: menu
+  source: fileserver.yaml
+  help_text: Settings for the file download web server tool.

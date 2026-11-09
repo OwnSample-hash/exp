@@ -1,0 +1,48 @@
+- name: BIND
+  prompt: Bind address
+  type: string
+  help_text: Address the file download server binds to.
+  default: 0.0.0.0
+  runtime_export: false
+
+- name: PORT
+  prompt: Port
+  type: int
+  help_text: Port the file download server listens on.
+  default: 8080
+  runtime_export: false
+
+- name: PATH
+  prompt: Served path
+  type: string
+  help_text: Root directory served for downloads.
+  default: ./
+  runtime_export: false
+
+- name: ALLOW_SUBDIRS
+  prompt: Allow subdirectories
+  type: bool
+  help_text: Allow browsing and downloading from subdirectories of the served path.
+  default: true
+  runtime_export: false
+
+- name: ENABLE_AUTOINDEX
+  prompt: Enable autoindex
+  type: bool
+  help_text: Generate an HTML directory listing when a directory is requested.
+  default: true
+  runtime_export: false
+
+- name: CERT
+  prompt: TLS certificate file
+  type: string
+  help_text: Path to a TLS certificate file. TLS is enabled when both cert and key are set.
+  default: ""
+  runtime_export: false
+
+- name: KEY
+  prompt: TLS key file
+  type: string
+  help_text: Path to a TLS private key file. TLS is enabled when both cert and key are set.
+  default: ""
+  runtime_export: false

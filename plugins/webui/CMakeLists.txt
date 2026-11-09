@@ -1,10 +1,11 @@
 if(WEBUI_ENABLE)
   set(MOD_NAME webui)
-  set(MOD_SRC 
+  set(MOD_SRC
     src/webui.cpp
     src/ws_loop.cpp
     src/convert.cpp
     src/b64.cpp
+    src/fileserver.cpp
   )
 
   CPMAddPackage("gh:yhirose/cpp-httplib@0.46.1")
