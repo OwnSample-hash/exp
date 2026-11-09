@@ -38,7 +38,6 @@ return {
     local payload_prefix = "echo"
 
     local target = explo.var("target")
-    local port = explo.var("port")
     local mode = explo.var("mode")
     local pt = explo.var("pt")
     local rce = explo.var("rce")
@@ -48,7 +47,6 @@ return {
 
     if
       type(target) ~= "string"
-      or type(port) ~= "number"
       or type(mode) ~= "string"
       or type(pt) ~= "string"
       or type(rce) ~= "string"
