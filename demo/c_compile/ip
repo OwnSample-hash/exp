@@ -1,0 +1,5 @@
+use c_compile
+rset c_compile.source payloads/x64/linux/utils/ip.c
+rset c_compile.target linux-x86_64
+rset c_compile.output ip
+run
