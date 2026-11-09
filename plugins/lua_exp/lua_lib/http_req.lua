@@ -132,7 +132,7 @@ local function connect(host, port, use_tls)
       return explo.write(h, d)
     end,
     read = function(h, n)
-      return explo.read(h, n)
+      return explo.read_block(h, n)
     end,
     close = function(h)
       return explo.close(h)
