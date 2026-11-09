@@ -5,7 +5,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-#include "stublibc.c"
+#include "../stublibc.c"
 
 #ifdef _MSC_VER
 #pragma comment(lib, "ws2_32.lib")
