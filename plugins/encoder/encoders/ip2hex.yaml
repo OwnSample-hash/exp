@@ -1,4 +1,4 @@
-name: ip2num
+name: ip2hex
 version: 0.1.0
 description: >
   Convert an IPv4 or IPv6 address string into its integer value (decimal). The
@@ -14,8 +14,10 @@ inputs:
     description: "An IPv4 (e.g. 192.168.1.1) or IPv6 (e.g. 2001:db8::1) address."
 
 steps:
-  - op: ip2num
+  - op: ip2bytes
+  - op: bswap
+    key: 4
 
 outputs:
   - name: output
-    format: raw
+    format: hex

@@ -24,4 +24,4 @@ steps:
 
 outputs:
   - name: output
-    format: hex
+    format: raw

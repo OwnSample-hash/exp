@@ -26,7 +26,14 @@ inputs:
   - name: target
     type: enum
     default: linux-x86_64
-    values: [linux-x86_64, linux-i686, windows-x86_64]
+    values: 
+      - linux-x86_64
+      - linux-x86_64-nasm
+      - linux-x86_64-ld
+      - linux-i686
+      - linux-i686-nasm
+      - linux-i686-ld
+      - windows-x86_64
     description: "Target platform / toolchain to build with."
   - name: output
     type: file
@@ -49,10 +56,34 @@ toolchains:
     cflags: ["-Os", "-ffreestanding", "-fno-asynchronous-unwind-tables", "-fno-stack-protector"]
     out_ext: ""
 
+  linux-x86_64-nasm:
+    cc: nasm
+    mode: executable
+    cflags: ["-f", "elf64"]
+    out_ext: ""
+
+  linux-x86_64-ld:
+    cc: ld
+    mode: executable
+    cflags: ["-m","elf_x86_64"]
+    out_ext: ""
+
   linux-i686:
     cc: cc
     mode: executable
     cflags: ["-m32", "-Os", "-ffreestanding", "-fno-stack-protector"]
+    out_ext: ""
+
+  linux-i686-nasm:
+    cc: nasm
+    mode: executable
+    cflags: ["-f", "elf32"]
+    out_ext: ""
+
+  linux-i686-ld:
+    cc: ld
+    mode: executable
+    cflags: ["-m","elf_i386"]
     out_ext: ""
 
   windows-x86_64:
