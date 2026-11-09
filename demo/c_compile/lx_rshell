@@ -1,5 +1,5 @@
 use c_compile
-rset c_compile.source payloads/x64/linux/remote/shell.s
+rset c_compile.source payloads/x64/linux/remote/rshell.s
 rset c_compile.target linux-x86_64-nasm
 rset c_compile.output rshell.o
 rset c_compile.cflags %ar -DHOST="localhost" -DPORT="6000"
