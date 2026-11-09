@@ -143,7 +143,10 @@ void EncoderTool::execute() {
     return;
   }
 
-  // The rendered output goes to stdout; the command returns a short summary.
+  // The rendered output goes to stdout; the command returns a short summary
+  if (def.method == enc::Method::Transform && !res.rendered.empty()) {
+    std::cout << res.rendered;
+  }
   // std::cout << res.rendered;
   if (!res.rendered.empty() && res.rendered.back() != '\n')
     std::cout << '\n';
