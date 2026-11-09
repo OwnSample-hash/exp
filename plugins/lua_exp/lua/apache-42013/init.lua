@@ -37,14 +37,14 @@ return {
   execute = function()
     local payload_prefix = "echo"
 
-    local target = explo.getVar("target")
-    local port = explo.getVar("port")
-    local mode = explo.getVar("mode")
-    local pt = explo.getVar("pt")
-    local rce = explo.getVar("rce")
-    local dds_count = explo.getVar("dds_count")
-    local payload = explo.getVar("payload")
-    local useragent = explo.getVar("useragent")
+    local target = explo.var("target")
+    local port = explo.var("port")
+    local mode = explo.var("mode")
+    local pt = explo.var("pt")
+    local rce = explo.var("rce")
+    local dds_count = explo.var("dds_count")
+    local payload = explo.var("payload")
+    local useragent = explo.var("useragent")
 
     if
       type(target) ~= "string"
