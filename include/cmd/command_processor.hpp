@@ -113,7 +113,8 @@ private:
 
   // internals
   ExecutionResult executeLine(const std::string &line);
-  std::vector<std::string> collectCandidates(const std::string &partial) const;
+  // withHints: also return placeholders such as "<script_path>". Help wants them; completion must not insert them.
+  std::vector<std::string> collectCandidates(const std::string &partial, bool withHints = true) const;
   std::string commonPrefix(const std::vector<std::string> &v) const;
   std::vector<std::string> tokenize(const std::string &line) const;
   std::string expandVariables(const std::string &token) const;

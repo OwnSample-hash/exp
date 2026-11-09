@@ -285,7 +285,7 @@ std::string CommandProcessor::expandVariables(const std::string &token) const { 
 // Candidate collection for help/autocomplete
 // ─────────────────────────────────────────────────────────────────────────────
 
-std::vector<std::string> CommandProcessor::collectCandidates(const std::string &partial) const {
+std::vector<std::string> CommandProcessor::collectCandidates(const std::string &partial, bool withHints) const {
   std::vector<std::string> result;
 
   // Tokenize the current buffer to determine what stage we're at
@@ -354,9 +354,13 @@ std::vector<std::string> CommandProcessor::collectCandidates(const std::string &
   }
 
   // Options at this position
-  size_t optIdx = atSpace ? argIdx : (argIdx > 0 ? argIdx - 1 : 0);
-  if (optIdx < def->options.size()) {
-    const Option &opt = def->options[optIdx];
+  size_t optIdx = argIdx > 0 ? argIdx - 1 : 0;
+  // When completing, an argument past the end repeats the last option and is matched against what was typed
+  const Option *current = optIdx < def->options.size()          ? &def->options[optIdx]
+                          : !withHints && !def->options.empty() ? &def->options.back()
+                                                                : nullptr;
+  if (current) {
+    const Option &opt = *current;
     if (isStatic(opt)) {
       const std::string &val = std::get<StaticOption>(opt).value;
       std::string pfx = atSpace ? "" : tokens.back();
@@ -365,11 +369,11 @@ std::vector<std::string> CommandProcessor::collectCandidates(const std::string &
     } else {
       auto &opt_ = std::get<DynamicOption>(opt);
       std::vector<std::string> completions;
-      if (opt_.completion && !atSpace && !tokens.empty())
-        completions = opt_.completion(tokens.back());
+      if (opt_.completion && (!atSpace || !withHints) && !tokens.empty())
+        completions = opt_.completion(atSpace ? "" : tokens.back());
       if (!completions.empty())
         result.insert_range(result.end(), completions);
-      else
+      else if (withHints)
         result.push_back(opt_.pattern);
     }
   } else if (!def->options.empty()) { // def->variadic &&
@@ -631,8 +635,8 @@ InputResult CommandProcessor::feed(char c) {
 
   // Autocomplete
   if (c == '\t') {
-    auto candidates = collectCandidates(buffer_);
-    if (candidates.empty())
+    auto candidates = collectCandidates(buffer_, false);
+    if (candidates.empty()) // nothing matched: leave the line exactly as typed
       return InputResult::Consumed;
 
     std::string prefix = commonPrefix(candidates);
