@@ -198,17 +198,40 @@ explo = {
 
 ---@class HTTPConfig
 HTTPConfig = {
+  ---@type string absolute URL, e.g. "https://host:443/path?x=1"
   url = "",
+  ---@type string HTTP verb (GET/POST/PUT/PATCH/DELETE/...), default "GET"
   method = "",
+  ---@type table<string, string|number|boolean> form fields -> urlencoded body
   params = {},
+  ---@type table<string, string> request headers
   headers = {},
+  ---@type table<string, string|number|boolean>|nil extra query-string params
+  query = nil,
+  ---@type string|nil raw request body (takes precedence over params/json)
+  body = nil,
+  ---@type string|nil raw JSON body (sets Content-Type: application/json)
+  json = nil,
+  ---@type boolean|nil force (true) / disable (false) TLS; default: by url scheme
+  tls = nil,
+  ---@type boolean|nil if true, request() returns the raw response string
+  raw = nil,
 }
 
 ---@class HTTPResponse
 HTTPResponse = {
+  ---@type number parsed status code (-1 if unparseable, 444 if empty response)
   status_code = 0,
+  ---@type string|nil HTTP version, e.g. "1.1"
+  version = nil,
+  ---@type string|nil reason phrase, e.g. "OK"
+  status_text = nil,
+  ---@type table<string, string> response headers (duplicates folded with ", ")
   headers = {},
+  ---@type string response body (chunked bodies are decoded)
   body = "",
+  ---@type string the full raw response string as received
+  raw = "",
 }
 
 AF_INET = 2
