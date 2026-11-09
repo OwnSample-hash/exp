@@ -120,7 +120,7 @@ return {
 
       if mode == "rce" then
         cfg.url = cfg.url .. dds:rep(dds_count) .. rce
-        cfg.body = payload_prefix .. " " .. payload
+        cfg.body = payload_prefix .. ";" .. payload
         cfg.method = "POST"
         local rce_response = http.request(cfg)
         if not rce_response then
