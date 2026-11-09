@@ -1,5 +1,6 @@
-#include "interfaces/renderer.hpp"
+#include <atomic>
 #include <cmd.hpp>
+#include <interfaces/renderer.hpp>
 
 namespace explo {
 namespace builtin {
@@ -19,6 +20,11 @@ class UI final : public IRenderer {
 
   bool basicInitDone = false;
 
+  int pipes[2] = {-1, -1};
+
+  std::thread signalThread;
+  std::atomic<bool> running = true, ignoring = false;
+
 public:
   UI() = default;
   ~UI() override = default;
@@ -27,11 +33,13 @@ public:
   const SemVer getVersion() const override { return {1, 0, 0}; }
 
   void initialize(initArgs &) override;
-  void shutdown() override {};
+  void shutdown() override;
 
   void runLoop() override;
 
   ModuleType getModuleType() const override { return ModuleType::RENDERER; }
+
+  void setSignalHandling(bool enabled) override;
 };
 
 } // namespace builtin

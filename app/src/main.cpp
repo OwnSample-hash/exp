@@ -4,6 +4,7 @@
 #include <config/config.hpp>
 #include <config/json.hpp>
 #include <config/yaml.hpp>
+#include <csignal>
 #include <cstdlib>
 #include <dep.hpp>
 #include <filesystem>
@@ -173,11 +174,21 @@ std::unordered_map<std::string, explo::initArgs> pluginInitArgs = {};
 
 thread_local ITool *currentTool = nullptr;
 
+IRenderer *rendererModule = nullptr;
+
 [[noreturn]] void shutdown(int code = 0);
 
 std::unique_ptr<explo::SessionStore> sessionStore = nullptr;
 
 int main(int argc, const char **argv, const char **envp) {
+  signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE to prevent crashes when writing to closed sockets
+  auto handler = [](int) {
+    std::cout << "\n[!] SIGINT received. Exiting...\n";
+    shutdown(0);
+  };
+  signal(SIGINT, handler);
+  signal(SIGTERM, handler);
+
   std::vector<std::unique_ptr<explo::AtStart>> atStartObjects;
   for (const auto &entry : AtStartRegistry::entries()) {
     auto obj = entry.create();
@@ -490,7 +501,7 @@ int main(int argc, const char **argv, const char **envp) {
     }
   }
 
-  IRenderer *rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
+  rendererModule = dynamic_cast<IRenderer *>(rendererModuleRaw);
   if (!rendererModule) {
     spdlog::error("Error initializing display module: No valid display module found");
     goto quit;

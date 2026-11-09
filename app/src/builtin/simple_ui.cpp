@@ -1,5 +1,7 @@
+#include <atomic>
 #include <builtin/simple_ui.hpp>
 #include <cmd.hpp>
+#include <csignal>
 #include <iostream>
 #include <string>
 #include <unistd.h>
@@ -52,7 +54,7 @@ void UI::redraw(const std::string &prompt, const std::string &buffer, std::size_
 inline int UI::getch() {
   unsigned char c = 0;
   ssize_t r;
-  while ((r = read(STDIN_FILENO, &c, sizeof(c))) < 0) {
+  while ((r = read(pipes[0], &c, sizeof(c))) < 0) {
     if (errno == EINTR)
       continue; // interrupted by a signal – retry rather than feed a junk byte
     logger->error("Error reading from stdin: {}", strerror(errno));
@@ -72,6 +74,7 @@ void UI::runLoop() {
   std::cout << prompt << std::flush;
 
   int ch = 0;
+  std::string buf;
   while ((ch = getch())) {
     if (ch == 0x04 && cp.buffer().empty()) { // Ctrl-D to exit
       std::cout << "\nExiting.\n";
@@ -80,8 +83,14 @@ void UI::runLoop() {
     if (ch == '\r')
       ch = '\n'; // convert CR to LF
 
+    buf += ch;
     if (ch == '\n') {
       std::cout << "\n" << std::flush;
+      if (buf == "run") {
+        logger->info("");
+        this->setSignalHandling(true);
+        buf.clear();
+      }
     }
 
     switch (cp.feed(ch)) {
@@ -136,6 +145,39 @@ void UI::runLoop() {
       auto rawPrompt = vars.get("prompt").has_value() ? vars.get("prompt")->toString() : "> ";
       std::string prompt = vars.expand(rawPrompt);
       std::cout << prompt << std::flush;
+      setSignalHandling(false);
+      break;
+    }
+  }
+}
+
+#define SIGS X(0x3, SIGINT) // Ctrl-C
+
+void handleSignal(int *pipes, std::atomic<bool> &running, std::atomic<bool> &ignoring) {
+  signal(SIGINT, SIG_IGN); // ignore Ctrl-C in this thread, we handle it manually
+  while (running.load()) {
+    unsigned char sig = 0;
+    ssize_t r = read(STDIN_FILENO, &sig, sizeof(sig));
+    if (r < 0) {
+      if (errno == EINTR)
+        continue; // interrupted by a signal – retry rather than feed a junk byte
+      break;
+    }
+    if (r == 0) {
+      break;
+    }
+    if (ignoring.load()) {
+      write(pipes[1], &sig, sizeof(sig));
+      continue; // ignore signals while the command processor is executing a command
+    }
+    switch (sig) {
+#define X(num, name)                                                                                                   \
+  case num:                                                                                                            \
+    kill(0, name);                                                                                                     \
+    break;
+      SIGS
+#undef X
+          default : write(pipes[1], &sig, sizeof(sig));
       break;
     }
   }
@@ -144,6 +186,8 @@ void UI::runLoop() {
 #ifdef __linux__
 struct termios origTermios = {};
 #endif
+
+void UI::setSignalHandling(bool enabled) { ignoring.store(!enabled); }
 
 void UI::initialize(initArgs &args) {
   if (!basicInitDone) {
@@ -178,6 +222,25 @@ void UI::initialize(initArgs &args) {
   cp.onAutocomplete(printAutocomplete);
   cp.onExecute(printResult);
   cp.onError(printError);
+
+  if (pipe(pipes) == -1) {
+    logger->error("Failed to create pipe: {}", strerror(errno));
+  }
+
+  signalThread = std::thread([this]() {
+    logger->info("Signal handling thread started.");
+    handleSignal(pipes, running, ignoring);
+  });
+  signalThread.detach();
+}
+
+void UI::shutdown() {
+  logger->info("Shutting down simple UI...");
+  ignoring.store(true);
+  running.store(false);
+  close(pipes[0]);
+  close(pipes[1]);
+  logger->info("Simple UI shutdown complete.");
 }
 
 } // namespace builtin
