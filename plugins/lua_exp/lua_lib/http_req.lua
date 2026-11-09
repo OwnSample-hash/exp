@@ -106,9 +106,15 @@ local function connect(host, port, use_tls)
     end
     return {
       handle = cli,
-      write = function(h, d) return explo.swrite(h, d) end,
-      read = function(h, n) return explo.sread(h, n) end,
-      close = function(h) return explo.sclose(h) end,
+      write = function(h, d)
+        return explo.swrite(h, d)
+      end,
+      read = function(h, n)
+        return explo.sread(h, n)
+      end,
+      close = function(h)
+        return explo.sclose(h)
+      end,
     }
   end
 
@@ -122,9 +128,15 @@ local function connect(host, port, use_tls)
   end
   return {
     handle = fd,
-    write = function(h, d) return explo.write(h, d) end,
-    read = function(h, n) return explo.read(h, n) end,
-    close = function(h) return explo.close(h) end,
+    write = function(h, d)
+      return explo.write(h, d)
+    end,
+    read = function(h, n)
+      return explo.read(h, n)
+    end,
+    close = function(h)
+      return explo.close(h)
+    end,
   }
 end
 
@@ -249,8 +261,7 @@ function M.parse(response)
     status_line = head
     header_block = ""
   end
-  local version, status_code, status_text =
-    status_line:match("^HTTP/(%d%.%d)%s+(%d%d%d)%s*(.*)$")
+  local version, status_code, status_text = status_line:match("^HTTP/(%d%.%d)%s+(%d%d%d)%s*(.*)$")
   status_code = tonumber(status_code)
 
   -- Headers (preserve order-independent, fold duplicates with ", ").
@@ -368,9 +379,7 @@ function M.request(cfg)
 
   -- Mandatory / sensible default headers.
   local host_header = parsed.host
-  if (parsed.scheme == "https" and parsed.port ~= 443)
-    or (parsed.scheme ~= "https" and parsed.port ~= 80)
-  then
+  if (parsed.scheme == "https" and parsed.port ~= 443) or (parsed.scheme ~= "https" and parsed.port ~= 80) then
     host_header = host_header .. ":" .. parsed.port
   end
   set_default_header(headers, present, "Host", host_header)
@@ -404,7 +413,7 @@ function M.request(cfg)
   local raw = recv_response(transport)
   transport.close(transport.handle)
 
-  explo.debug("HTTP response: " .. (#raw) .. " bytes")
+  explo.debug("HTTP response: " .. #raw .. " bytes")
 
   if cfg.raw then
     return raw, nil
