@@ -1,10 +1,4 @@
 #pragma once
-#include <algorithm>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
 
 #define CHECK(cmds, cmd)                                                                                               \
   std::find_if(cmds.begin(), cmds.end(), [&](const auto &c) { return c.name == cmd; }) == cmds.end()
@@ -92,8 +86,8 @@
     c.handler = [](const cmd::ExecutionContext &ec) -> std::string {
       std::stringstream result;
       result << "Loaded plugins:\n";
-      for (const auto &entry : GetLoadedPlugins()) {
-        result << " - " << entry->getName() << " version: " << entry->getVersion().toString() << "\n";
+      for (const auto &entry : loadedPlugins) {
+        result << " - " << entry << "\n";
       }
       return result.str();
     };
@@ -152,6 +146,21 @@
       result << "Loaded tools:\n";
       for (const auto &[name, tool] : tools) {
         result << " - " << name << " version: " << tool->getVersion().toString() << "\n";
+      }
+      return result.str();
+    };
+    cp.registerGlobalCommand(c);
+  }
+  if (CHECK(cmds, "mods")) {
+    cmd::CommandDef c;
+    c.name = "mods";
+    c.description = "List loaded mods";
+    c.variadic = false;
+    c.handler = [&](const cmd::ExecutionContext &ec) -> std::string {
+      std::stringstream result;
+      result << "Loaded mods:\n";
+      for (const auto &mod : GetLoadedMods()) {
+        result << " - " << mod->getName() << " version: " << mod->getVersion().toString() << "\n";
       }
       return result.str();
     };

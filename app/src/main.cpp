@@ -36,7 +36,7 @@ INSTANTIATE_REGISTRY(ToolProviderRegistry);
 INSTANTIATE_REGISTRY(RendererRegistry);
 INSTANTIATE_REGISTRY(AtStartRegistry);
 
-const std::vector<std::unique_ptr<IMod>> &GetLoadedPlugins() {
+const std::vector<std::unique_ptr<IMod>> &GetLoadedMods() {
   static std::vector<std::unique_ptr<IMod>> plugins;
   static bool dependencyCheckDone(false);
   if (plugins.empty()) {
@@ -179,6 +179,8 @@ IRenderer *rendererModule = nullptr;
 [[noreturn]] void shutdown(int code = 0);
 
 std::unique_ptr<explo::SessionStore> sessionStore = nullptr;
+
+std::vector<std::string> loadedPlugins{};
 
 int main(int argc, const char **argv, const char **envp) {
   signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE to prevent crashes when writing to closed sockets
@@ -344,6 +346,7 @@ int main(int argc, const char **argv, const char **envp) {
       std::string plugin_path = dir_entry.path().string();
       if (loader.loadPlugin(plugin_path)) {
         spdlog::info("Loaded plugin from: {}", plugin_path);
+        loadedPlugins.push_back(plugin_path);
       } else {
         spdlog::error("Failed to load plugin from: {}", plugin_path);
         spdlog::error("dlsym error: {}", loader.getLastError());
@@ -352,7 +355,7 @@ int main(int argc, const char **argv, const char **envp) {
     }
   }
 
-  for (const auto &plugin : GetLoadedPlugins()) {
+  for (const auto &plugin : GetLoadedMods()) {
     spdlog::info(" - Module: {} version: {}", plugin->getName(), plugin->getVersion().toString());
     std::shared_ptr<args::Group> pluginGroup = std::make_shared<args::Group>(parser, plugin->getName());
     std::shared_ptr<spdlog::logger> plLogger = spdlog::basic_logger_mt(
@@ -467,7 +470,7 @@ int main(int argc, const char **argv, const char **envp) {
     shutdown(1);
   };
 
-  for (const auto &plugin : GetLoadedPlugins()) {
+  for (const auto &plugin : GetLoadedMods()) {
     if (plugin->cmdCheck()) {
       shutdown(0);
     }
@@ -483,7 +486,7 @@ int main(int argc, const char **argv, const char **envp) {
 
   std::string_view preferredRenderer = preferredUIStr;
   IMod *rendererModuleRaw = nullptr;
-  for (const auto &mod : GetLoadedPlugins()) {
+  for (const auto &mod : GetLoadedMods()) {
     if (mod->getModuleType() == explo::ModuleType::RENDERER) {
       if (!preferredRenderer.empty() && mod->getName() != preferredRenderer) {
         spdlog::debug("Skipping renderer module: '{}' as it does not match preferred renderer: '{}'", mod->getName(),
@@ -520,7 +523,7 @@ void shutdown(int code) {
   tools.clear();
   currentTool = nullptr;
 
-  auto &plugins = GetLoadedPlugins();
+  auto &plugins = GetLoadedMods();
   for (auto it = plugins.rbegin(); it != plugins.rend(); ++it) {
     it->get()->shutdown();
   }
