@@ -89,7 +89,7 @@ public:
     }
   }
 
-  std::vector<LibHandle> GetHandles() const { return handles_; }
+  const std::vector<LibHandle> &GetHandles() const { return handles_; }
 
 private:
   PluginLoader() = default;
