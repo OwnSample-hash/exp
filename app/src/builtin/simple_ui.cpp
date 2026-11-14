@@ -54,7 +54,7 @@ void UI::redraw(const std::string &prompt, const std::string &buffer, std::size_
 inline int UI::getch() {
   unsigned char c = 0;
   ssize_t r;
-  while ((r = read(pipes[0], &c, sizeof(c))) < 0) {
+  while ((r = read(STDIN_FILENO, &c, sizeof(c))) < 0) {
     if (errno == EINTR)
       continue; // interrupted by a signal – retry rather than feed a junk byte
     logger->error("Error reading from stdin: {}", strerror(errno));
@@ -227,11 +227,11 @@ void UI::initialize(initArgs &args) {
     logger->error("Failed to create pipe: {}", strerror(errno));
   }
 
-  signalThread = std::thread([this]() {
-    logger->info("Signal handling thread started.");
-    handleSignal(pipes, running, ignoring);
-  });
-  signalThread.detach();
+  // signalThread = std::thread([this]() {
+  //   logger->info("Signal handling thread started.");
+  //   handleSignal(pipes, running, ignoring);
+  // });
+  // signalThread.detach();
 }
 
 void UI::shutdown() {
