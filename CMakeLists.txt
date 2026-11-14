@@ -49,7 +49,7 @@ if (ENABLE_PCH)
   else()
     message(FATAL_ERROR "Unsupported compiler for precompiled headers")
   endif()
-  make_directory(${CMAKE_BINARY_DIR}/pch)
+  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/pch)
   set(PCH_FLAGS -std=gnu++26 ${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS})
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -134,6 +134,6 @@ endif()
 # Global modules
 add_subdirectory(tools)
 add_subdirectory(app)
-message(STATUS "Adding global modules")
+message(STATUS "Adding global plugins")
 add_subdirectory(plugins)
 # Vim: set expandtab tabstop=2 shiftwidth=2:
