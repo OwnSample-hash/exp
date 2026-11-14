@@ -203,7 +203,7 @@ void NC::invoke(std::string_view prefix, bool soft) {
   // May be called many times. Only (re)publishes the variables; channels and the reader are untouched.
   this->prefix = prefix;
   auto &vars = cmd::CommandProcessor::instance().vars();
-  varSnap.restore();                        // bring back the user's last value across reselects
+  varSnap.restore(); // bring back the user's last value across reselects
   if (!vars.get(this->prefix + "bgch"))
     vars.set(this->prefix + "bgch", cmd::VarValue{bgKeyNotation}); // caret notation, default ^T
 }
@@ -211,7 +211,7 @@ void NC::invoke(std::string_view prefix, bool soft) {
 void NC::suppress() {
   // May be called many times. Background channels keep being read by the reader thread.
   auto &vars = cmd::CommandProcessor::instance().vars();
-  varSnap.save(this->prefix + "bgch");      // remember it before we remove it
+  varSnap.save(this->prefix + "bgch"); // remember it before we remove it
   vars.unset(this->prefix + "bgch");
 }
 
@@ -374,18 +374,21 @@ std::string NC::runForeground(int id) {
   }
   wakeReader();
 
-  if (!pending.empty())
+  TerminalGuard term; // restored on every exit path
+  const bool tty = term.isTty();
+
+  std::cout << "\x1B[34mChannel " << id << " (" << label << ") in foreground. "
+            << "Press " << bgKeyNotation << " to background it, Ctrl+D to end input.\x1B[0m\n"
+            << std::endl;
+
+  if (!pending.empty()) {
     write_all(STDOUT_FILENO, pending.data(), pending.size());
+    write_all(STDOUT_FILENO, "\n", 1);
+  }
 
   if (wasClosed) {
     return closeErr.empty() ? "Connection closed by remote host." : "Connection closed: " + closeErr;
   }
-
-  TerminalGuard term; // restored on every exit path
-  const bool tty = term.isTty();
-
-  std::cout << "Channel " << id << " (" << label << ") in foreground. "
-            << "Press " << bgKeyNotation << " to background it, Ctrl+D to end input." << std::endl;
 
   constexpr std::size_t BUF = 4096;
   char buf[BUF];
